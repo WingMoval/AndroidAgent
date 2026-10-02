@@ -4,25 +4,32 @@ AndroidAgent is the **Agent intelligence / runtime** project for future Android
 autonomous interaction.
 
 This repository is the **development source of truth** for AndroidAgent.
-It is currently at baseline stage: a buildable, testable, version-controlled
-skeleton with a single pure-Kotlin/JVM module. **No Agent behaviour exists yet.**
+It currently holds a single pure-Kotlin/JVM module, `:ag-core`, with a working
+JVM unit-test baseline and an implemented Agent Loop v0.
 
 ## Current status
 
 | Item | State |
 |---|---|
-| Stage | `AG.BASELINE-0` — project initialization and baseline freeze |
+| Stage | `AG.0` + `AG.0.R1` — AG Core v0 runtime and async boundary freeze |
 | Modules | `:ag-core` (pure Kotlin/JVM) |
-| Tests | JUnit 5, executed via `./gradlew :ag-core:test` |
-| Agent runtime | **Not implemented.** Belongs to `AG.0`. |
+| Tests | JUnit 5, **39 passing**, via `./gradlew :ag-core:test` |
+| Agent Loop v0 | **Implemented**: Session/Run, ModelProvider + Tool contracts, Tool Registry, allow/deny policy, events, Run outcomes |
+| `AgentCore.run` | **`suspend fun`** — AG Core ships no blocking wrapper |
+| Production dependencies | **None** beyond the Kotlin standard library |
+| Real model provider | **Not implemented.** A real provider vertical slice is a candidate direction, not a decided step. |
+| Next step | **PENDING ARCHITECTURE REVIEW** — not decided, and not to be assumed `AG.0.1` or `AG.1` |
+| Android Tools | **Not implemented.** Belongs outside AG Core. |
 
-Nothing in this repository is implemented beyond the build baseline. Any
-capability table must not claim features that do not exist.
+Nothing beyond the table above is implemented. Any capability table must not
+claim features that do not exist.
 
 ## Layering
 
 AG Core is the product-independent Agent runtime. It reaches Android execution
 only through tools.
+
+Runtime call flow (NOT a code dependency graph):
 
 ```text
             AGA
@@ -34,15 +41,24 @@ only through tools.
         Tool Registry
              |
              v
-       Concrete Tools
+        Concrete Tools
              |
-      Android Tools
+        Android Tools
              |
              v
        Stable AT Core
              |
              v
           Android
+```
+
+Code dependency runs the other way — implementations depend on AG Core
+contracts, and AG Core depends on none of them:
+
+```text
+Concrete Tool     --implements-->  Tool contract    (AG Core)
+Concrete Provider --implements-->  ModelProvider    (AG Core)
+AG Core  -X->  concrete implementations
 ```
 
 A future CLI/TUI frontend reuses the same Core:
@@ -77,14 +93,19 @@ AT Core. It is not AG Core.
 ## Roadmap
 
 ```text
-AG.BASELINE-0   project init + baseline freeze        DONE (this commit)
+AG.BASELINE-0   project init + baseline freeze        DONE
    |
    v
-AG.0            AG Core v0 architecture + minimal Agent Loop    NEXT
+AG.0            AG Core v0 architecture + minimal Agent Loop    DONE
    |
    v
-AG.1            AGA v0
+AG.0.R1         runtime async boundary freeze          DONE
+   |
+   v
+NEXT            PENDING ARCHITECTURE REVIEW
 ```
+
+The next step is not yet decided and must not be assumed to be AG.0.1 or AG.1.
 
 Not planned here, and deliberately not scaffolded: `:app`, `:android-tools`,
 `:agc`, `:at-core`.
@@ -116,12 +137,19 @@ node, such as AG Core v0.1.
 
 ## Dependencies
 
-At baseline the module depends on nothing but the Kotlin standard library.
+**AG Core has no production dependency beyond the Kotlin standard library.**
 
 ```text
 runtimeClasspath = kotlin-stdlib
-testRuntimeClasspath = kotlin-stdlib + JUnit 5
+testRuntime      = kotlin-stdlib + kotlinx-coroutines-core + JUnit 5
 ```
 
-Coroutines and JSON/serialization are **not** added yet. They are an explicit
-`AG.0` dependency decision, not a baseline prerequisite.
+`Tool.execute`, `ModelProvider.complete` and `AgentCore.run` are `suspend`, but
+`suspend` is a Kotlin language feature, not a library dependency. AG Core
+deliberately ships **no blocking wrapper** — choosing a thread, dispatcher, or
+lifecycle belongs to the host, which can bridge with `runBlocking { }` if it
+needs to block. Coroutines are therefore needed only to drive suspending calls
+from plain JVM tests.
+
+JSON/serialization, DI, HTTP clients, and logging frameworks are **not** added.
+They become an explicit decision at the step where a real provider needs them.

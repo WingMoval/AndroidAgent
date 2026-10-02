@@ -3,8 +3,15 @@
 // Hard boundary: this module is NOT an Android library and NOT an Android
 // application. It must stay compilable and testable on a plain JVM.
 //
-// Dependencies here are deliberately minimal at AG.BASELINE-0.
-// No AndroidX. No ADB. No JNI. No coroutines. No serialization library yet.
+// AG.0.R1: AG Core has NO production dependency beyond the Kotlin standard
+// library. The Tool, ModelProvider, and AgentCore contracts are `suspend`, but
+// `suspend` is a Kotlin language feature, not a library dependency. AG Core
+// deliberately provides no blocking wrapper: choosing a thread, dispatcher, or
+// lifecycle is the host's decision. kotlinx-coroutines is therefore TEST-ONLY,
+// used to drive suspending calls from JVM tests.
+//
+// No AndroidX. No ADB. No JNI. No serialization library. No DI. No HTTP client.
+// No logging framework. No reactive framework.
 
 plugins {
     kotlin("jvm")
@@ -26,6 +33,10 @@ kotlin {
 }
 
 dependencies {
+    // TEST ONLY. Needed to call `suspend` functions from plain JVM test methods.
+    // AG Core production code never imports this library.
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

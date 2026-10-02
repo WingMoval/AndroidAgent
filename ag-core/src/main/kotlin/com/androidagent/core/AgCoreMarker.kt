@@ -6,9 +6,9 @@ package com.androidagent.core
  * This exists only to prove that `:ag-core` compiles as a pure Kotlin/JVM
  * module and that its package contract is `com.androidagent.core`.
  *
- * It deliberately carries no Agent behaviour. Agent runtime concerns
- * (AgentCore, AgentLoop, ToolRegistry, ModelProvider, Skills, permissions)
- * belong to step AG.0 and must not be anticipated here.
+ * It deliberately carries no Agent behaviour. AG.0 added the real runtime
+ * alongside it in this same package; this marker remains as a cheap regression
+ * guard on the frozen package name.
  */
 object AgCoreMarker {
 
