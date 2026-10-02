@@ -1,0 +1,52 @@
+# Gradle / JVM
+.gradle/
+build/
+**/build/
+out/
+.kotlin/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Local environment / secrets
+local.properties
+*.keystore
+*.jks
+.env
+.env.*
+secrets/
+
+# Logs
+*.log
+logs/
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temp
+tmp/
+temp/
+*.tmp
+*.dump
+*.trace
+
+# Derived analysis data, research corpora, model output.
+# AndroidAgent git history must stay free of large generated payloads.
+.codegraph/
+**/codegraph/
+analysis/
+**/analysis/
+research/
+**/research/
+
+# Packages
+*.apk
+*.aab
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
