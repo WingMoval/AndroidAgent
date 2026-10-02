@@ -81,8 +81,34 @@ No commit / push unless the task explicitly allows it.
 Branch on demand. Do not pre-build a multi-branch Git flow for a single-line
 project.
 
-## Out of scope for AG.BASELINE-0
+## Current state: AG.0 / AG.0.R1 frozen
 
-Do not begin Agent implementation (AgentCore, AgentLoop, ModelProvider,
-ToolRegistry, Skills, permissions), Android tooling, AGA, or AGC until the
-corresponding step is explicitly opened.
+`AG.0` and `AG.0.R1` are frozen at tag `ag-0`. The following are **implemented**
+and must not be described as pending:
+
+```text
+AgentCore                     Agent Loop
+Session / Run                 ModelProvider contract
+Tool contract / Tool Registry Allow / Deny policy
+Events / RunOutcome
+```
+
+`AgentCore.run`, `ModelProvider.complete`, and `Tool.execute` are all `suspend`.
+AG Core ships no blocking wrapper and has no production dependency beyond the
+Kotlin standard library.
+
+## Still forbidden without an explicitly opened Step
+
+Do not begin any of the following unless a Step explicitly authorizes it:
+
+```text
+concrete ModelProvider          HTTP / JSON provider integration
+Android Tools                  AT Core integration
+AGA / AGC                      Skills loader
+MCP                            persistence / RAG
+multi-agent                    plugin framework
+```
+
+The development discipline above still applies in full: one Step at a time, no
+opportunistic refactor, respect dependency boundaries, and no push unless the
+task explicitly allows it.

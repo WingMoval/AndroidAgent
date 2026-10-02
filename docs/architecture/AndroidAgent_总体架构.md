@@ -241,9 +241,7 @@ ALLOWED
   AGA ---------→ AG Core
   AGC ---------→ AG Core
   AG Core ----→ Tool contract（AG Core 定义，AG Core 内部持有）
-  外部实现 --register()--> Tool Registry（外部注入，实现不反向依赖 AG Core）
   AG Core ----→ ModelProvider contract（AG Core 定义，AG Core 内部持有）
-  外部实现 --implements--> ModelProvider（外部注入，实现不反向依赖 AG Core）
   Android Tools → AT Core          (可选)
   Android Tools → Android APIs     (可选)
   AT Core ----→ adbd / Android
@@ -252,16 +250,35 @@ FORBIDDEN
   AG Core       -X-> AT Core
   AG Core       -X-> Android framework
   AG Core       -X-> ADB / JNI
-  AG Core       -X-> 具体 Tool 实现（依赖方向是外部注入，不是 AG Core 引用实现）
+  AG Core       -X-> 具体 Tool 实现
   AG Core       -X-> 具体 ModelProvider 实现
   AT Core       -X-> AG Core
   AGA           -X-> AT Core        (必须经 Android Tools)
 ```
 
-> 关于 `Tool Registry → Concrete Tools`：这不是 AG Core 的依赖边。
-> AG Core 只**定义** Tool contract 并**持有**由外部注册进来的实例；
-> 具体实现位于 AG Core 之外，方向是 `实现 --register--> Registry`。
-> 写成「Registry → Concrete Tools」容易被误读为 AG Core 依赖具体实现。
+代码依赖方向（**编译期**）：
+
+```text
+Concrete Tool      --implements / depends on-->  AG Core Tool contract
+Concrete Provider  --implements / depends on-->  AG Core ModelProvider contract
+
+Host / Composition Root
+   --constructs / registers / injects-->  AG Core runtime
+
+AG Core  -X->  concrete implementations
+```
+
+> **核心表述**：Concrete implementation **依赖** AG Core 中定义的 contract。
+> 依赖倒置指的是**方向** —— AG Core 不反向依赖 concrete implementation。
+> 外部实现之所以「倒置」，是因为它依赖 AG Core 的 contract，而 AG Core 不依赖它；
+> 而不是「实现不依赖 AG Core」。
+
+运行时注册与调用（**运行期**，与上面的代码依赖方向相反，不可混读）：
+
+```text
+Host 构造 provider 与 tools -> register / inject 进 AG Core
+Run 内 AG Core 通过 registry 调用已注册的 tool 实例
+```
 
 架构图（**runtime call flow，NOT code dependency**）：
 
