@@ -441,6 +441,65 @@ class AgentLoopTest {
     }
 
     @Test
+    fun `T15 mixed model content and tool calls are both preserved`() = runBlocking {
+        // AG.PROVIDER-0.R1: a ModelTurn may carry prose AND tool calls together.
+        // Both must survive into Session history and into the next ModelRequest.
+        val tool = RecordingTool(ToolSpec("probe", "")) { ToolResult(true, "probe-ok") }
+        val registry = ToolRegistry().apply { register(tool) }
+        val call = ToolCall("c1", "probe")
+        val provider = ScriptedModelProvider(
+            listOf(
+                ModelTurn.ToolCalls(
+                    calls = listOf(call),
+                    content = "I will check that.",
+                ),
+                ModelTurn.FinalAnswer("checked"),
+            )
+        )
+        val core = AgentCore(provider, registry)
+
+        val outcome = core.run("s1", "check it")
+
+        assertEquals(RunOutcome.Answer("checked"), outcome)
+        assertEquals(1, tool.executeCount)
+
+        // Both halves present in Session history.
+        val recorded = core.session("s1").history().filterIsInstance<ModelMessage>().first {
+            it.toolCalls.isNotEmpty()
+        }
+        assertEquals("I will check that.", recorded.content, "prose must be recorded, not dropped")
+        assertEquals(listOf(call), recorded.toolCalls)
+
+        // Both halves present in the next ModelRequest the provider sees.
+        val nextRequest = provider.requests[1]
+        val replayed = nextRequest.history.filterIsInstance<ModelMessage>().first {
+            it.toolCalls.isNotEmpty()
+        }
+        assertEquals("I will check that.", replayed.content)
+        assertEquals(listOf(call), replayed.toolCalls)
+    }
+
+    @Test
+    fun `T15b a pure tool call turn still records empty prose`() = runBlocking {
+        val tool = RecordingTool(ToolSpec("probe", "")) { ToolResult(true, "ok") }
+        val registry = ToolRegistry().apply { register(tool) }
+        val provider = ScriptedModelProvider(
+            listOf(
+                ModelTurn.ToolCalls(listOf(ToolCall("c1", "probe"))),
+                ModelTurn.FinalAnswer("done"),
+            )
+        )
+        val core = AgentCore(provider, registry)
+
+        assertEquals(RunOutcome.Answer("done"), core.run("s1", "go"))
+
+        val recorded = core.session("s1").history().filterIsInstance<ModelMessage>().first {
+            it.toolCalls.isNotEmpty()
+        }
+        assertEquals("", recorded.content, "omitted prose must remain empty, not become placeholder text")
+    }
+
+    @Test
     fun `T13b mechanism failure is the opposite case`() = runBlocking {
         val tool = RecordingTool(ToolSpec("shell", "")) {
             ToolResult(success = false, output = "", error = "could not reach device")

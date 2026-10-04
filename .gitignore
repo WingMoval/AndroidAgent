@@ -20,6 +20,10 @@ local.properties
 .env.*
 secrets/
 
+# AG-owned local provider configuration (contains a real API key).
+# Only the local file is ignored; config/provider.example.json stays tracked.
+/config/provider.local.json
+
 # Logs
 *.log
 logs/

@@ -1,0 +1,9 @@
+{
+  "provider": {
+    "type": "openai-compatible",
+    "baseUrl": "https://api.example.com/v1",
+    "apiKey": "REPLACE_ME",
+    "model": "example-model",
+    "requestTimeoutSeconds": 60
+  }
+}

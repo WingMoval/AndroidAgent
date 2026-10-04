@@ -81,33 +81,78 @@ No commit / push unless the task explicitly allows it.
 Branch on demand. Do not pre-build a multi-branch Git flow for a single-line
 project.
 
-## Current state: AG.0 / AG.0.R1 frozen
-
-`AG.0` and `AG.0.R1` are frozen at tag `ag-0`. The following are **implemented**
-and must not be described as pending:
+## Current frozen state
 
 ```text
-AgentCore                     Agent Loop
-Session / Run                 ModelProvider contract
-Tool contract / Tool Registry Allow / Deny policy
-Events / RunOutcome
+AG.0            FROZEN   (tag ag-0)
+AG.PROVIDER-0   FROZEN   (tag ag-provider-0)
+```
+
+Implemented and **not** to be described as pending:
+
+```text
+:ag-core                       AgentCore, Agent Loop, Session / Run
+                               ModelProvider contract, Tool contract
+                               Tool Registry, Allow / Deny policy
+                               Events, RunOutcome
+:provider-openai-compatible    OpenAiCompatibleProvider
+                               OpenAiCompatibleConfigLoader
+                               ProviderConfigResolver
+                               config/provider.example.json (tracked)
+                               config/provider.local.json   (ignored)
 ```
 
 `AgentCore.run`, `ModelProvider.complete`, and `Tool.execute` are all `suspend`.
 AG Core ships no blocking wrapper and has no production dependency beyond the
-Kotlin standard library.
+Kotlin standard library. AG Core does not know about HTTP, JSON, API keys,
+config files, OpenAI, EMG, Android, or AT Core.
+
+`ModelTurn.ToolCalls` carries `content`, so a single assistant turn can hold
+prose and tool calls together. Verified against a real endpoint.
 
 ## Still forbidden without an explicitly opened Step
 
 Do not begin any of the following unless a Step explicitly authorizes it:
 
 ```text
-concrete ModelProvider          HTTP / JSON provider integration
-Android Tools                  AT Core integration
-AGA / AGC                      Skills loader
-MCP                            persistence / RAG
-multi-agent                    plugin framework
+ShellTool / any Android Tool    AT Runtime / AT Core integration
+AGA / AGC                       Skills loader
+MCP                             persistence / RAG
+multi-agent                     plugin framework
+provider routing                AIController integration
 ```
+
+## Test hygiene
+
+```text
+JUnit/Kotlin tests must use normal block-body Unit methods,
+or explicitly return Unit.
+
+Do not place @Test methods as local functions.
+
+Test-count claims must come from actual JUnit execution results,
+not source-level method counting.
+```
+
+Both failure modes have already occurred here: a non-Unit inferred return type,
+and a `@Test` on a local function. In both cases JUnit silently executed nothing
+while the source appeared correct.
+
+## Secret handling
+
+```text
+Never print, log, or commit an API key.
+Never echo a secret-bearing file, including via a parser error path.
+Never emit an Authorization header.
+
+Only these are allowed in output:
+  API_KEY = PRESENT / ABSENT
+  safe endpoint identity (scheme + host + port + path)
+  model id
+```
+
+The development config is `config/provider.local.json`, which is gitignored and
+holds a real key. Validate it without any code path that can echo raw content.
 
 The development discipline above still applies in full: one Step at a time, no
 opportunistic refactor, respect dependency boundaries, and no push unless the

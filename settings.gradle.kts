@@ -26,6 +26,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "AndroidAgent"
 
-// AG.BASELINE-0 scope: :ag-core only.
-// Not created here, by decision: :app (AGA), :android-tools, :agc, :at-core.
+// AG.PROVIDER-0: the first concrete ModelProvider integration. It depends on
+// :ag-core, never the reverse. No provider framework: there is exactly one
+// real provider, so exactly one module.
 include(":ag-core")
+include(":provider-openai-compatible")

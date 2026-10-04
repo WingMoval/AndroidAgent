@@ -15,8 +15,17 @@ sealed interface ModelTurn {
      * The model wants tools run before it can answer.
      *
      * AG.0 executes these strictly in list order.
+     *
+     * [content] carries any prose the model emitted in the SAME turn as the tool
+     * calls. Real chat-completion APIs do return both together ("Let me check the
+     * device" plus a tool call), and discarding either half would lose model
+     * output. It defaults to empty so a pure tool-call turn needs no argument, and
+     * so existing `ToolCalls(calls)` call sites keep working when recompiled.
      */
-    data class ToolCalls(val calls: List<ToolCall>) : ModelTurn
+    data class ToolCalls(
+        val calls: List<ToolCall>,
+        val content: String = "",
+    ) : ModelTurn
 }
 
 /**

@@ -4,22 +4,25 @@ AndroidAgent is the **Agent intelligence / runtime** project for future Android
 autonomous interaction.
 
 This repository is the **development source of truth** for AndroidAgent.
-It currently holds a single pure-Kotlin/JVM module, `:ag-core`, with a working
-JVM unit-test baseline and an implemented Agent Loop v0.
+It holds two pure-Kotlin/JVM modules: `:ag-core` (the Agent runtime) and
+`:provider-openai-compatible` (the first real, verified ModelProvider).
 
 ## Current status
 
 | Item | State |
 |---|---|
-| Stage | `AG.0` + `AG.0.R1` — AG Core v0 runtime and async boundary freeze |
-| Modules | `:ag-core` (pure Kotlin/JVM) |
-| Tests | JUnit 5, **39 passing**, via `./gradlew :ag-core:test` |
-| Agent Loop v0 | **Implemented**: Session/Run, ModelProvider + Tool contracts, Tool Registry, allow/deny policy, events, Run outcomes |
+| Stage | `AG.0` **FROZEN** · `AG.PROVIDER-0` **FROZEN** |
+| Modules | `:ag-core` (pure Kotlin/JVM), `:provider-openai-compatible` |
+| Tests | AG Core **41 passing**, Provider offline **46 passing**, Provider live **6 verified** |
+| AG Core v0 | **FROZEN** — Agent Loop, Session/Run, ModelProvider + Tool contracts, Tool Registry, allow/deny policy, events, Run outcomes |
+| OpenAI-compatible Provider | **IMPLEMENTED / VERIFIED** against a real endpoint |
+| Real Model → Tool → Model loop | **VERIFIED** end to end (not fixture-only) |
 | `AgentCore.run` | **`suspend fun`** — AG Core ships no blocking wrapper |
-| Production dependencies | **None** beyond the Kotlin standard library |
-| Real model provider | **Not implemented.** A real provider vertical slice is a candidate direction, not a decided step. |
-| Next step | **PENDING ARCHITECTURE REVIEW** — not decided, and not to be assumed `AG.0.1` or `AG.1` |
-| Android Tools | **Not implemented.** Belongs outside AG Core. |
+| AG Core production dependencies | **None** beyond the Kotlin standard library |
+| Android Tools | **NOT IMPLEMENTED.** Belongs outside AG Core. |
+| AT integration | **NOT STARTED** |
+| AGA | **NOT STARTED** |
+| Next step | **First Real Android Tool Boundary** (candidate: ShellTool → AT Runtime / AT Core) — **PENDING ARCHITECTURE STEP DESIGN**, not started |
 
 Nothing beyond the table above is implemented. Any capability table must not
 claim features that do not exist.
@@ -93,22 +96,52 @@ AT Core. It is not AG Core.
 ## Roadmap
 
 ```text
-AG.BASELINE-0   project init + baseline freeze        DONE
+AG.BASELINE-0   project init + baseline freeze              DONE
    |
    v
-AG.0            AG Core v0 architecture + minimal Agent Loop    DONE
+AG.0            AG Core v0 architecture + Agent Loop         DONE / FROZEN
    |
    v
-AG.0.R1         runtime async boundary freeze          DONE
+AG.0.R1         runtime async boundary freeze               DONE
    |
    v
-NEXT            PENDING ARCHITECTURE REVIEW
+AG.PROVIDER-0   verified OpenAI-compatible provider         DONE / FROZEN
+   |
+   v
+NEXT            First Real Android Tool Boundary
+                candidate: ShellTool -> AT Runtime / AT Core
+                STATUS: PENDING SHELLTOOL STEP DESIGN
 ```
 
-The next step is not yet decided and must not be assumed to be AG.0.1 or AG.1.
+`PENDING DESIGN` — implementation has **not** started.
 
 Not planned here, and deliberately not scaffolded: `:app`, `:android-tools`,
 `:agc`, `:at-core`.
+
+## Provider configuration
+
+The first concrete provider is configured by AndroidAgent itself, never by
+reading another tool's configuration.
+
+```text
+config/provider.example.json    tracked, no secret
+config/provider.local.json      ignored, holds the real key
+        |
+        v
+OpenAiCompatibleConfigLoader -> ProviderConfigResolver -> OpenAiCompatibleConfig
+```
+
+Resolution uses **one** complete source per run: the local JSON if usable,
+otherwise `AG_OPENAI_*` environment variables. Fields are never mixed across
+sources.
+
+```bash
+# live verification (requires a filled config/provider.local.json)
+./gradlew :provider-openai-compatible:liveTest
+```
+
+`config/provider.local.json` is development/bootstrap configuration only. It is
+not a production credential store.
 
 ## Build
 

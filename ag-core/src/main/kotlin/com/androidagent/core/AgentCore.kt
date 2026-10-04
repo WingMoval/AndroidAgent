@@ -156,12 +156,11 @@ class AgentCore(
                 }
 
                 is ModelTurn.ToolCalls -> {
-                    // ModelTurn.ToolCalls carries no prose, so the recorded turn
-                    // has empty content and the calls the model requested. The
-                    // call list is copied so a provider cannot mutate recorded
-                    // history after the fact.
+                    // Prose emitted in the same turn as the tool calls is recorded
+                    // alongside them. Before AG.PROVIDER-0.R1 this was hardcoded
+                    // to "", which silently lost any such prose.
                     val calls = turn.calls.toList()
-                    session.append(ModelMessage("", calls))
+                    session.append(ModelMessage(turn.content, calls))
                     // Sequential by construction: each dispatch is awaited before
                     // the next begins, preserving the model's ordering.
                     for (call in calls) {

@@ -1,6 +1,7 @@
 # AndroidAgent 总体架构
 
-> 状态：`AG.0` 已完成（AG Core v0 架构与最小 Agent Loop）。
+> 状态：`AG.0` **FROZEN**（tag `ag-0`）、`AG.PROVIDER-0` **FROZEN**（tag `ag-provider-0`）。
+> 首个真实 Provider 已实现并在真实 endpoint 上验证。
 > 本文只冻结**当前已确定**的内容。未实现的部分一律标注为"未实现"，
 > 不得作为已完成能力描述。
 
@@ -80,6 +81,45 @@ Run 结束            无论成功/失败/异常，ownership 必定释放
 ```
 
 AG Core **不是**"全局只能存在一个 Session"的单例模型；多个 Session 可长期并存。
+
+### ModelTurn 冻结契约
+
+```kotlin
+sealed interface ModelTurn {
+    data class FinalAnswer(val content: String) : ModelTurn
+    data class ToolCalls(
+        val calls: List<ToolCall>,
+        val content: String = "",   // 同一 turn 的 prose
+    ) : ModelTurn
+}
+```
+
+已由真实 endpoint 验证的能力：
+
+```text
+pure final answer                YES
+single tool call                 YES
+multiple tool calls              YES
+same-turn prose + tool_calls     YES   ← TRUE SAME-TURN MIXED OBSERVED
+opaque tool arguments            YES
+tool result continuation         YES
+```
+
+`AG.PROVIDER-0` 之后不得再无证据修改该契约。
+
+### 已实现状态
+
+```text
+AG Core（:ag-core，已 FROZEN）
+  Agent Loop / Session / Run / Context / History
+  ModelProvider contract / Tool contract / Tool Registry
+  Allow-Deny Policy / Events / RunOutcome
+
+Concrete Provider（:provider-openai-compatible，已 FROZEN）
+  OpenAiCompatibleProvider —— 首个真实验证的 concrete provider
+  AG-owned 开发期 Provider 配置（loader / resolver / local JSON）
+  真实链路：Model -> ToolCall -> Tool -> ToolResult -> Model -> Final
+```
 
 AG Core 的边界规则：
 
@@ -341,20 +381,31 @@ AndroidAgent-Public   发布目录，只在明确 release 节点由开发目录�
 AG.BASELINE-0   独立开发工程初始化与基线冻结            DONE
    |
    v
-AG.0            AG Core v0 架构与最小 Agent Loop       DONE
+AG.0            AG Core v0 架构与 Agent Loop          DONE / FROZEN
    |
    v
-AG.0.R1         Runtime Async Boundary Freeze           DONE
+AG.0.R1         Runtime Async Boundary Freeze          DONE
    |
    v
-NEXT            PENDING ARCHITECTURE REVIEW
+AG.PROVIDER-0   真实验证的 OpenAI-compatible Provider  DONE / FROZEN
+   |
+   v
+NEXT            First Real Android Tool Boundary
+                candidate: ShellTool -> AT Runtime / AT Core
+                STATUS: PENDING SHELLTOOL STEP DESIGN
 ```
 
-> 后续步骤**尚未确定**。AG.0.R1 完成异步边界冻结后，下一步的名称与范围
-> 待架构审查决定；不得默认视为 AG.0.1 或 AG.1，也不得据此预建任何 module。
+> `PENDING DESIGN` —— **实现尚未开始**。不得据此预建任何 module，
+> 也不得默认视为已开始 ShellTool 开发。
 
-本工程当前**仅存在** `:ag-core` 一个 module。以下均**不在**本工程基线内，
-且未被预建：
+本工程当前存在两个 module：
+
+```text
+:ag-core                       已实现 / 已冻结
+:provider-openai-compatible    已实现 / 已冻结
+```
+
+以下均**不在**本工程内，且未被预建：
 
 ```text
 :app (AGA)   :android-tools   :agc   :at-core
@@ -363,9 +414,16 @@ NEXT            PENDING ARCHITECTURE REVIEW
 依赖决策：
 
 ```text
-生产依赖   无（仅 Kotlin 标准库）
-测试依赖   kotlinx-coroutines-core（用于从 JVM 测试驱动 suspend 调用）
+:ag-core  生产依赖   无（仅 Kotlin 标准库）
+          测试依赖   kotlinx-coroutines-core（用于从 JVM 测试驱动 suspend 调用）
+
+:provider-openai-compatible
+          允许       project(:ag-core)
+                     kotlinx-serialization-json
+                     kotlinx-coroutines-core
+                     JDK java.net.http
+          禁止       Android / AT Core / ADB / JNI / ShellTool
 ```
 
-JSON / serialization、DI、HTTP client、logging framework、reactive framework
-一律未引入，且在出现真实 consumer 前不应引入。
+JSON / serialization、DI、其它 HTTP client、logging framework、
+reactive framework 一律未引入，且在出现真实 consumer 前不应引入。
