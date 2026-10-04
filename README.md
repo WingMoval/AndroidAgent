@@ -173,8 +173,14 @@ node, such as AG Core v0.1.
 **AG Core has no production dependency beyond the Kotlin standard library.**
 
 ```text
-runtimeClasspath = kotlin-stdlib
-testRuntime      = kotlin-stdlib + kotlinx-coroutines-core + JUnit 5
+:ag-core  runtimeClasspath = kotlin-stdlib
+          testRuntime      = kotlin-stdlib + kotlinx-coroutines-core + JUnit 5
+
+:provider-openai-compatible
+          = kotlin-stdlib + project(:ag-core)
+          + kotlinx-serialization-json
+          + kotlinx-coroutines-core
+          + JDK java.net.http (no OkHttp / Retrofit)
 ```
 
 `Tool.execute`, `ModelProvider.complete` and `AgentCore.run` are `suspend`, but
@@ -184,5 +190,10 @@ lifecycle belongs to the host, which can bridge with `runBlocking { }` if it
 needs to block. Coroutines are therefore needed only to drive suspending calls
 from plain JVM tests.
 
-JSON/serialization, DI, HTTP clients, and logging frameworks are **not** added.
-They become an explicit decision at the step where a real provider needs them.
+AG Core does not depend on JSON/serialization, HTTP clients, DI, or logging
+frameworks.
+
+The concrete OpenAI-compatible Provider, which lives **outside** AG Core, does
+use `kotlinx-serialization-json` and the JDK `java.net.http.HttpClient`.
+
+No DI framework and no logging framework has been introduced anywhere.

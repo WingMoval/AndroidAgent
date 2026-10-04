@@ -1,24 +1,30 @@
 # 步骤 AG.PROVIDER-0 — Real OpenAI-Compatible ModelProvider Vertical Slice
 
-> ⚠ **本文档已由 `AG.PROVIDER-0.R1` 修订。**
-> 下文 §12 GAP-1 已 **RESOLVED**：`ModelTurn.ToolCalls` 现携带 `content`。
-> §10 / §17 的测试数量与 §21 的兼容性表述均已更正。
-> 修订记录见文末 §19。
+> **本文档记录 AG.PROVIDER-0 的完整执行轨迹，包含多个阶段的历史状态。**
+> 读取时请注意区分：
+> - **当前状态（SSOT）** = §1 Metadata、§5 Current test state、§17 Verdict、§24 Final Freeze
+> - **历史快照** = §11、§12、§15、§16、§18、§20（均已标记 HISTORICAL / PRE-LIVE / PRE-CFG）
+>
+> 修订轨迹：R1 见 §19 · CFG 见 §21 · Live Gate 见 §22 · R2 hardening 见 §23
+> 最终冻结见 §24。
 
 ## 1. Metadata
 
 | 项 | 值 |
 |---|---|
-| 步骤 | `AG.PROVIDER-0`（R1 修订见 §19） |
+| 步骤 | `AG.PROVIDER-0` |
 | 工程 | AndroidAgent |
 | 根目录 | `D:\codebank\AndCode\AndroidAgent` |
-| 基线 | `2174499`（parent `9d43598` = tag `ag-0`） |
 | 类型 | 首个真实 Provider 纵向集成 |
-| 结果 | **`AG.PROVIDER-0_LIVE_BLOCKED_CREDENTIALS`**（当前） |
-| Commit | **无**（`NO COMMIT`） |
-| Push | **无** |
+| **结果** | **`AG.PROVIDER-0_COMPLETE` / FROZEN** |
+| **Freeze commit** | `80d67a77f2afed64e6d43f625ca9ea2839c221cc` |
+| **Tag** | `ag-provider-0` |
+| Push | **无**（无 remote，从未发布） |
+| Step baseline | `2174499`（parent `9d43598` = tag `ag-0`）— 这是**步骤起点**，不是当前 HEAD |
 
 ## 2. Baseline
+
+> **HISTORICAL**：以下为 `AG.PROVIDER-0` 开工时的仓库状态，非当前状态。
 
 ```text
 branch   : main
@@ -78,13 +84,14 @@ provider 需要把它投影为开头的 `system` 消息。
 ### Current test state
 
 ```text
-AG Core JUnit        41 / 41     (39 pre-R1 + T15 + T15b)
-Provider offline     24 / 24
-Provider live         6 tests defined (L1–L6, @Tag("live"))
+AG Core JUnit        41 / 41      （39 pre-R1 + T15 + T15b）
+Provider offline     46 / 46      （37 + 9 个 timeout 配置测试）
+Provider live         6 / 6 verified （L1–L6，@Tag("live")，真实 endpoint）
+Build                SUCCESS
 ```
 
-> **PRE-R1 HISTORICAL STATE**：`39`（R1 前）、`16`、`19` 等数字均为历史值，
-> 不再是当前状态。详见 §19.3 的数量矛盾根因。
+> **HISTORICAL**：本块早前记录的 `24 / 24`（R1 时）与 `37 / 37`（CFG 时）
+> 是历史值，**不是当前状态**。更早的 `39` / `16` / `19` 同理，根因见 §19.3。
 
 ## 6. Provider Architecture
 
@@ -207,7 +214,11 @@ Named provider scenarios      : 24   (20 个 P 标签 + 4 个 V 场景，与 JUn
 > 该问题已于 R1 修复（显式 `: Unit`），六个用例现已真实运行。
 > **教训**：JUnit 方法必须显式 `Unit` 返回，否则失败会被静默吞掉。
 
-## 11. Live API Evidence
+## 11. Live API Evidence — PRE-LIVE HISTORICAL SNAPSHOT
+
+> **HISTORICAL ONLY。** 本节记录 `AG.PROVIDER-0` 与 `AG.PROVIDER-0.LIVE`
+> 阶段（`AG.PROVIDER-0.CFG` / §22 之前）的状态：凭据缺失、live 未执行。
+> **当前最终 live 证据见 §22–§24。**
 
 ```text
 L1 real final answer                NOT EXECUTED
@@ -245,6 +256,15 @@ liveTest requires environment variables: AG_OPENAI_BASE_URL, AG_OPENAI_MODEL
 因为连一次真实调用都没发生。
 
 ## 12. Contract Gaps
+
+> **本节主体为 PRE-LIVE HISTORICAL 判断。**
+> 当前状态：
+> ```text
+> GAP-1 = CLOSED
+> GAP-2 = CLOSED FOR CURRENT EMG ENDPOINT
+> ```
+> 见 §22（首次真实 live）、§23（R2 加固）、§24（最终冻结）。
+> 以下保留当时的判断与证据，不删除审计轨迹。
 
 ### GAP-1 ✅ **RESOLVED by AG.PROVIDER-0.R1** ModelTurn 无法表达 prose + tool_calls
 
@@ -287,6 +307,10 @@ Provider 现在映射 `ModelTurn.ToolCalls(calls, content = assistantContent)`�
 Live L5 尚未执行，无法确认当前模型的实际倾向。
 
 ### GAP-2（Deferred）partial tool-turn history 未获真实 API 验证
+
+> **HISTORICAL ONLY（PRE-LIVE）**：本小节记录当时的「未验证」判断。
+> 当前状态：**GAP-2 = CLOSED FOR CURRENT EMG ENDPOINT**，
+> 证据见 §22（L6 `PARTIAL_HISTORY_ACCEPTED`）、§23、§24.5。
 
 AG.0.R1 已冻结：中止的 Run 可能留下部分完成的 tool turn。
 真实 OpenAI-compatible API 是否接受这种 history，**尚无证据**。
@@ -363,50 +387,63 @@ M ag-core/src/test/kotlin/com/androidagent/core/AgentLoopTest.kt
 > `AG.PROVIDER-0.LIVE` 阶段未再修改任何 production/test 代码，
 > 仅补齐 `LiveApiTest` 的 L6 测试（live-only，不影响 offline 数量）。
 
-## 15. Deferred
+## 15. Deferred — Current
+
+> 当前**真正**仍未实现的事项：
 
 ```text
-live L1–L7 真实 API 证据（缺凭据）
-typed ToolCall arguments schema
-partial tool-turn history 的真实 API 接受度（GAP-2）
-Responses API / streaming / SSE
-retry / rate-limit / token accounting
+typed Tool argument / schema contract
+Responses API
+streaming / SSE
+retry / rate-limit policy
+token accounting
 provider routing / fallback
-EMG / AIController provider
-ShellTool / Android Tools / AT 集成
+additional concrete providers（EMG / AIController / 其他）
+ShellTool / Android Tools / AT integration
 AGA / AGC
 Skills / MCP / RAG / persistence / multi-agent / plugin framework
-UniversalProviderAdapter / ProviderBackend
 ```
 
-> `ModelTurn prose+toolCalls 表达` 已于 `AG.PROVIDER-0.R1` **解决并移出 Deferred**（见 §19）。
+> **HISTORICAL — 现已关闭**（曾列于本节，现移出）：
+> `live L1–L7 真实 API 证据（缺凭据）` → 见 §22–§24，已真实执行
+> `partial tool-turn history 真实 API 接受度（GAP-2）` → §22/§23 已验证，状态见 §24.5
+> `ModelTurn prose+toolCalls 表达` → 由 `AG.PROVIDER-0.R1` 解决，见 §19
 
-## 16. Risks（R1 更新）
+## 16. Risks — Current
 
 | # | 风险 | 状态 |
 |---|---|---|
-| R1 | GAP-1 未解前，倾向「先说一句再调工具」的模型会直接失败 | ✅ **已解除**（R1） |
-| R2 | permissive tool schema 意味着模型可传任意结构参数，真实 Tool 需自行校验 | 仍存在 |
-| R3 | GAP-2 未验证，partial history 可能被真实 API 拒绝 | 仍存在（live 待凭据） |
-| R4 | 未实现 retry，429/5xx 直接失败（符合本 Step 范围） | 仍存在 |
-| R5 | live 路径完全未执行，真实 endpoint 的 header/编码差异未知 | 仍存在 |
-| R6 | JUnit 非 `void` 返回类型的方法被静默跳过（曾隐藏 6 个用例） | ✅ **已修**，后续新增测试须显式 `: Unit` |
+| R1 | mixed turn 导致 Run 失败 | **CLOSED**（R1 修复；§23/§24 真实观测 same-turn mixed） |
+| R2 | permissive tool schema，真实 Tool 需自行校验参数 | **OPEN / DEFERRED** |
+| R3 | GAP-2：partial history 可能被真实 API 拒绝 | **CLOSED FOR CURRENT EMG ENDPOINT**（§22 L6 ACCEPTED） |
+| R4 | 无 retry，429/5xx 直接失败 | **OPEN / DEFERRED** |
+| R5 | live 路径未执行，真实 endpoint 差异未知 | **CLOSED**（§22–§24 已多次真实执行） |
+| R6 | JUnit 非 `void` / 局部 `@Test` 被静默跳过 | **REMEDIATED**，规则已冻结进 `AGENTS.md` |
 
 ## 17. Verdict
 
-### 当前 verdict
+### Current final verdict
+
+```text
+AG_PROVIDER-0_COMPLETE / FROZEN
+```
+
+commit `80d67a7` · tag `ag-provider-0` · AG Core 41/41 · Provider offline 46/46 ·
+Provider live 6/6 · GAP-1 CLOSED · GAP-2 CLOSED FOR CURRENT EMG ENDPOINT。
+
+### Historical verdict — PRE-CFG / PRE-LIVE
+
+> **HISTORICAL ONLY**，以下为 CFG 与 live 执行之前的阶段结论，保留作审计：
 
 ```text
 AG.PROVIDER-0_LIVE_BLOCKED_CREDENTIALS
 ```
 
-原因：Live Gate 所需的三个环境变量在本机 **Process / User / Machine
-三个作用域均不存在**，L1–L7 无法执行（0 / 7）。
-因此 `AG.PROVIDER-0` **不能冻结**。
+原理由：Live Gate 所需环境变量在本机三个作用域均不存在，L1–L7 无法执行
+（0 / 7），因此当时 `AG.PROVIDER-0` 不能冻结。
 
-工程侧已就绪：module、wire 映射、错误分类、live 测试（L1–L6）齐备，
-offline 41/41 + 24/24 全绿，依赖方向正确，凭据门禁可靠。
-**唯一缺口是外部凭据。**
+该阻塞已由 `AG.PROVIDER-0.CFG`（提供 AG-owned local JSON 配置）与随后的真实
+live 执行解除，详见 §21–§24。
 
 ### 历史 verdict（PRE-R1 HISTORICAL STATE）
 
@@ -426,6 +463,31 @@ mixed content 证明 Core contract 需要变化
 保留于此仅作审计记录，不再是当前状态。
 
 ## 18. Handoff
+
+### Final handoff（当前）
+
+```text
+AG.PROVIDER-0
+  CLOSED / FROZEN
+  commit 80d67a7 · tag ag-provider-0
+
+GAP-1  CLOSED
+GAP-2  CLOSED FOR CURRENT EMG ENDPOINT
+
+AG Core JUnit 41 / 41
+Provider offline 46 / 46
+Provider live 6 / 6 verified
+build SUCCESS
+
+NEXT:
+  First Real Android Tool Boundary
+  candidate: ShellTool -> AT Runtime / AT Core
+  STATUS: PENDING ARCHITECTURE STEP DESIGN（实现未开始）
+```
+
+### PRE-LIVE HISTORICAL HANDOFF
+
+> **HISTORICAL ONLY**，以下为 live 执行之前的交接状态：
 
 ```text
 GAP-1  RESOLVED
@@ -689,7 +751,10 @@ R1 之前的旧状态。按 R1 §15，等 `AG.PROVIDER-0` 真正通过 Live Gate
 
 ---
 
-## 20. Live Gate Evidence（AG.PROVIDER-0.LIVE）
+## 20. Live Gate Preparation — HISTORICAL PRE-CFG STATE
+
+> **HISTORICAL ONLY。** 本节记录凭据缺失、live 未执行的阶段状态。
+> **当前最终结果见 §22–§24。**
 
 本节记录 Live Gate 的执行状态。**未执行任何 live 调用，未伪造任何证据。**
 
@@ -705,6 +770,10 @@ AG_OPENAI_API_KEY  = ABSENT   (process / User / Machine 三处均无)
 （`OPENAI|ANTHROPIC|GEMINI|GROQ|API_KEY|BASE_URL|LLM|MODEL|EMG|AICONTROLLER`）。
 
 ### 20.2 各 Live 用例状态
+
+> **HISTORICAL ONLY**（PRE-CFG）：以下 L1–L7 全部 NOT EXECUTED。
+> **当前最终 live 结果见 §22–§24**（L1/L2/L3 PASS、L4 DIRECTLY ASSERTED、
+> L5 TRUE SAME-TURN MIXED OBSERVED、L6 PARTIAL_HISTORY_ACCEPTED）。
 
 ```text
 L1 real final answer              NOT EXECUTED  (no credentials)
@@ -1174,8 +1243,8 @@ provider-openai-compatible  ──implements──▶  ag-core ModelProvider
 ag-core                    ─X─▶            provider-openai-compatible
 ```
 
-AG Core 不���道：OpenAI / EMG / HTTP / JSON / API key /
-`provider.local.json` / Android / AT Core / ADB / JNI。
+AG Core 不知道：OpenAI / EMG / HTTP / JSON / API key /
+`provider.local.json` / Android / AT Core / ADB / JNI
 
 ### 24.3 冻结的 ModelTurn 契约
 

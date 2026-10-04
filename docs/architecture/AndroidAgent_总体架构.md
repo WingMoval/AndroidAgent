@@ -35,10 +35,17 @@ Tool Registry
 与 GUI / TUI 无关的 event/result contract
 ```
 
-当前实现状态：**AG Core v0 已实现**（`AG.0`）。位于
+当前实现状态：**AG Core v0 已实现并冻结**（`AG.0`，tag `ag-0`）。位于
 `com.androidagent.core`，包含 Agent Loop、Session/Run、ModelProvider 与 Tool
 contract、Tool Registry、审批策略、事件出口、Run 结果模型。
-Skills、真实 provider、具体 Android Tool 仍为**未实现**。
+
+- **Skills** 与**具体 Android Tool** 仍为**未实现**。
+- 首个真实 **OpenAI-compatible Provider** 已在 **AG Core 之外**实现、验证并冻结
+  （`:provider-openai-compatible`，tag `ag-provider-0`）。
+
+> 区分两件不同的事：
+> `:ag-core` 模块内**没有**任何 concrete Provider；
+> 但 AndroidAgent repository **已经有**一个位于 Core 之外的 concrete Provider module。
 
 ### 异步边界（AG.0.R1 冻结）
 
@@ -192,9 +199,19 @@ RUNTIME CALL / REGISTRATION FLOW（运行时，事件怎么走）
 而不是「不依赖 AG Core」。所谓"倒置"指的是**方向**：
 依赖从实现指向 contract，AG Core 不指向实现。
 
-当前状态：**contract 与 Tool Registry 已实现**（`AG.0`）。
-Concrete Tool 实现仍为**未实现**。AG.0 的 production 代码中不存在任何
-concrete Tool / concrete Provider；测试用的 fake 只存在于 test source set。
+当前状态：
+
+```text
+Tool contract + Tool Registry（:ag-core）   IMPLEMENTED / FROZEN
+Concrete Android Tool                      NOT IMPLEMENTED
+```
+
+`AG Core（:ag-core）` 自身**不包含**任何 concrete Tool 或 concrete Provider；
+测试用的 fake tool 只存在于 test source set。
+
+> 注意区分模块范围与仓库范围：
+> 当前 repository **已包含**位于 Core 之外的 `:provider-openai-compatible`，
+> 即已有一个 concrete **Provider**；但 **concrete Android Tool 仍未实现**。
 
 ### ToolResult 语义（已冻结）
 
@@ -233,11 +250,21 @@ Android Tools  ->  AT Core        （可选）
 Android Tools  ->  Android APIs   （可选）
 ```
 
-Integration（真实 provider、具体 tool、网络传输）全部位于 **AG Core 之外**。
+Integration（provider、具体 tool、网络传输）全部位于 **AG Core 之外**。
 AG Core 内不得出现任何具体实现。
 
-当前状态：**未实现**。归属独立 integration 层，后续可先是 package，
-在出现第二个真实执行后端时才考虑独立 module —— 单一后端不值得抽象。
+当前状态**必须分开陈述**，不可用统一的「未实现」覆盖两者：
+
+```text
+Provider integration            IMPLEMENTED / FROZEN
+                                :provider-openai-compatible（tag ag-provider-0）
+                                真实 endpoint 已验证
+
+Android Tool / execution integ. NOT IMPLEMENTED
+```
+
+Android Tools 归属独立 integration 层；在出现第二个真实执行后端之前，
+不值得再抽象出通用 framework 层。
 
 ## 7. AT Core relationship
 
@@ -263,16 +290,37 @@ AG Core **不得**直接依赖 AT Core。若 AG Core 看起来需要它，说明
 AG Core 定义 ModelProvider contract
         ▲
         │ implements
-  ┌─────┼────────────┐
-OpenAI Provider  EMG Provider  AIController Provider
-        （AG Core 外部实现）
+        │
+OpenAiCompatibleProvider        IMPLEMENTED / VERIFIED / FROZEN
+        │                         (:provider-openai-compatible)
+        └── 可指向 EMG 的 OpenAI-compatible endpoint
+
+Future provider implementations
+        ├── AIController Provider   NOT IMPLEMENTED
+        └── 其他 Provider           NOT IMPLEMENTED
 ```
+
+> **不要误读**：当前**不存在** `EMGProvider` 类。
+> EMG 是 `OpenAiCompatibleProvider` 所连接的 **OpenAI-compatible endpoint**，
+> 而不是一个已实现的独立 provider 实现。
 
 AG Core 不含 HTTP client、不含 JSON protocol mapping、不认识任何具体 provider
 的 wire schema。`ModelTurn` 保持 provider-neutral（final answer 或 tool calls），
-不复制任何厂商 chat-completion 结构。
+不复制任何厂商 chat-completion 结构。HTTP 与 JSON 只存在于 Core 之外的
+`:provider-openai-compatible`。
 
-当前状态：**contract 已实现，真实 provider 未实现**（`AG.0`）。
+当前状态：
+
+```text
+ModelProvider contract
+= IMPLEMENTED / FROZEN  in :ag-core
+
+OpenAI-compatible concrete Provider
+= IMPLEMENTED / VERIFIED / FROZEN  in :provider-openai-compatible
+
+Other concrete Providers
+= NOT IMPLEMENTED
+```
 
 ## 8. Dependency direction
 
