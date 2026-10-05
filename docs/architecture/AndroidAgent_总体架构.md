@@ -47,6 +47,34 @@ contract、Tool Registry、审批策略、事件出口、Run 结果模型。
 > `:ag-core` 模块内**没有**任何 concrete Provider；
 > 但 AndroidAgent repository **已经有**一个位于 Core 之外的 concrete Provider module。
 
+### 四层边界（AGA-0.ARCH 冻结）
+
+```text
+AG Core        = Agent 语义核心
+                 Agent Loop / Session-Run / History / contracts / Events / RunOutcome
+
+Agent Runtime  = Host-neutral 的可运行 Agent 生命周期（:ag-runtime）
+                 当前 Session 选择 + 单 active Run 串行化
+                 不是第二个智能核心：history SSOT 仍在 AG Core Session
+
+Composition Root = environment-specific assembly
+                 选择 Provider / Transport / Tool 实现并装配
+
+Frontend (AGA / AGC) = 输入、显示、平台 lifecycle、配置输入、render
+```
+
+```text
+:app(AGA) ──▶ :ag-runtime ──▶ :ag-core
+   │
+   └────────▶ :provider-openai-compatible ──▶ :ag-core
+
+:ag-runtime -X-> Android / UI / concrete Provider / transport
+:ag-core     -X-> :ag-runtime / :app / provider 实现
+```
+
+依赖方向是单向的：可复用的 Session/Run host 生命周期属于 `:ag-runtime`，
+frontend 保持轻薄。
+
 ### 异步边界（AG.0.R1 冻结）
 
 ```text
@@ -438,25 +466,30 @@ AG.0.R1         Runtime Async Boundary Freeze          DONE
 AG.PROVIDER-0   真实验证的 OpenAI-compatible Provider  DONE / FROZEN
    |
    v
-NEXT            First Real Android Tool Boundary
-                candidate: ShellTool -> AT Runtime / AT Core
-                STATUS: PENDING SHELLTOOL STEP DESIGN
+AGA-0           最小 Android Chat Host 垂直切片        DONE
+   |             （真实对话 PASS；严格跨轮记忆 PENDING）
+   v
+AGA-0.ARCH      Agent Runtime / AGA UI 物理分离       DONE
+   |
+   v
+NEXT            PENDING ARCHITECTURE STEP DESIGN
 ```
 
-> `PENDING DESIGN` —— **实现尚未开始**。不得据此预建任何 module，
-> 也不得默认视为已开始 ShellTool 开发。
-
-本工程当前存在两个 module：
+本工程当前存在的 module：
 
 ```text
 :ag-core                       已实现 / 已冻结
+:ag-runtime                    已实现（Host-neutral Agent lifecycle）
 :provider-openai-compatible    已实现 / 已冻结
+:provider-openai-compatible-jdk  已实现（JDK transport）
+:app                           已实现（AGA Host / frontend）
 ```
 
 以下均**不在**本工程内，且未被预建：
 
 ```text
-:app (AGA)   :android-tools   :agc   :at-core
+:agc           :android-tools   :at-core   :skills
+:provider-openai-compatible-android   （等第二个 Android consumer）
 ```
 
 依赖决策：

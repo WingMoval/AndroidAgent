@@ -1,4 +1,10 @@
-package com.androidagent.provider.openai
+package com.androidagent.provider.openai.jdk
+
+import com.androidagent.provider.openai.OpenAiCompatibleConfig
+import com.androidagent.provider.openai.OpenAiCompatibleProvider
+import com.androidagent.provider.openai.OpenAiProviderException
+import com.androidagent.provider.openai.ProviderConfigResolver
+import com.androidagent.provider.openai.ResolvedProviderConfig
 
 import com.androidagent.core.AgentCore
 import com.androidagent.core.AgentEvent
@@ -61,7 +67,7 @@ class LiveApiTest {
         }
     }
 
-    private fun provider(): OpenAiCompatibleProvider = OpenAiCompatibleProvider(resolved.config)
+    private fun provider(): OpenAiCompatibleProvider = OpenAiCompatibleProvider(resolved.config, JdkOpenAiHttpTransport())
 
     /** Host, port and path only. Never prints a credential. */
     private fun safeEndpoint(cfg: OpenAiCompatibleConfig = resolved.config): String =

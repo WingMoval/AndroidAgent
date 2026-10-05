@@ -4,25 +4,26 @@ AndroidAgent is the **Agent intelligence / runtime** project for future Android
 autonomous interaction.
 
 This repository is the **development source of truth** for AndroidAgent.
-It holds two pure-Kotlin/JVM modules: `:ag-core` (the Agent runtime) and
-`:provider-openai-compatible` (the first real, verified ModelProvider).
+It holds five modules: the Agent runtime (`:ag-core`, `:ag-runtime`), the
+verified OpenAI-compatible provider (`:provider-openai-compatible` and its JDK
+transport), and `:app` (the AGA Android host).
 
 ## Current status
 
 | Item | State |
 |---|---|
-| Stage | `AG.0` **FROZEN** · `AG.PROVIDER-0` **FROZEN** |
-| Modules | `:ag-core` (pure Kotlin/JVM), `:provider-openai-compatible` |
-| Tests | AG Core **41 passing**, Provider offline **46 passing**, Provider live **6 verified** |
+| Stage | `AG.0` / `AG.PROVIDER-0` **FROZEN** · `AGA-0` done · `AGA-0.ARCH` done |
+| Modules | `:ag-core`, `:ag-runtime`, `:provider-openai-compatible`, `:provider-openai-compatible-jdk`, `:app` |
+| Tests | AG Core **41**, Agent Runtime **8**, Provider offline **46**, Provider live **6 verified** |
 | AG Core v0 | **FROZEN** — Agent Loop, Session/Run, ModelProvider + Tool contracts, Tool Registry, allow/deny policy, events, Run outcomes |
+| Agent Runtime | **Implemented** — host-neutral session selection and single-active-run lifecycle |
 | OpenAI-compatible Provider | **IMPLEMENTED / VERIFIED** against a real endpoint |
 | Real Model → Tool → Model loop | **VERIFIED** end to end (not fixture-only) |
-| `AgentCore.run` | **`suspend fun`** — AG Core ships no blocking wrapper |
-| AG Core production dependencies | **None** beyond the Kotlin standard library |
-| Android Tools | **NOT IMPLEMENTED.** Belongs outside AG Core. |
-| AT integration | **NOT STARTED** |
-| AGA | **NOT STARTED** |
-| Next step | **First Real Android Tool Boundary** (candidate: ShellTool → AT Runtime / AT Core) — **PENDING ARCHITECTURE STEP DESIGN**, not started |
+| AGA Android host | **IMPLEMENTED** — builds, installs, launches, real chat **PASS** on device |
+| Strict real multi-turn memory | **PENDING** — blocked while EMG is busy |
+| AGA UI does not own Session / Run lifecycle | **true** — that lives in `:ag-runtime` |
+| Android Tools / AT integration / AGA beyond the minimal host | **NOT STARTED** |
+| Next step | **PENDING ARCHITECTURE STEP DESIGN** |
 
 Nothing beyond the table above is implemented. Any capability table must not
 claim features that do not exist.
@@ -108,15 +109,17 @@ AG.0.R1         runtime async boundary freeze               DONE
 AG.PROVIDER-0   verified OpenAI-compatible provider         DONE / FROZEN
    |
    v
-NEXT            First Real Android Tool Boundary
-                candidate: ShellTool -> AT Runtime / AT Core
-                STATUS: PENDING SHELLTOOL STEP DESIGN
+AGA-0           minimal Android chat host                   DONE
+   |
+   v
+AGA-0.ARCH      agent runtime / UI physical separation      DONE
+   |
+   v
+NEXT            PENDING ARCHITECTURE STEP DESIGN
 ```
 
-`PENDING DESIGN` — implementation has **not** started.
-
-Not planned here, and deliberately not scaffolded: `:app`, `:android-tools`,
-`:agc`, `:at-core`.
+Not planned here, and deliberately not scaffolded: `:agc`, `:android-tools`,
+`:at-core`, `:skills`.
 
 ## Provider configuration
 

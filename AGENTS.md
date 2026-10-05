@@ -86,6 +86,8 @@ project.
 ```text
 AG.0            FROZEN   (tag ag-0)
 AG.PROVIDER-0   FROZEN   (tag ag-provider-0)
+AGA-0           device chat PASS (strict multi-turn memory PENDING)
+AGA-0.ARCH      DONE
 ```
 
 Implemented and **not** to be described as pending:
@@ -95,11 +97,15 @@ Implemented and **not** to be described as pending:
                                ModelProvider contract, Tool contract
                                Tool Registry, Allow / Deny policy
                                Events, RunOutcome
-:provider-openai-compatible    OpenAiCompatibleProvider
-                               OpenAiCompatibleConfigLoader
-                               ProviderConfigResolver
-                               config/provider.example.json (tracked)
-                               config/provider.local.json   (ignored)
+:ag-runtime                    AgentRuntime — host-neutral session selection
+                               and single-active-run lifecycle
+:provider-openai-compatible    OpenAiCompatibleProvider, config loader/resolver,
+                               OpenAiHttpTransport contract
+:provider-openai-compatible-jdk JdkOpenAiHttpTransport (java.net.http)
+:app                           AGA host: AndroidOpenAiHttpTransport
+                               (HttpsURLConnection), minimal chat UI
+config/provider.example.json   tracked, no secret
+config/provider.local.json     ignored, real key
 ```
 
 `AgentCore.run`, `ModelProvider.complete`, and `Tool.execute` are all `suspend`.
@@ -109,6 +115,20 @@ config files, OpenAI, EMG, Android, or AT Core.
 
 `ModelTurn.ToolCalls` carries `content`, so a single assistant turn can hold
 prose and tool calls together. Verified against a real endpoint.
+
+## Frontend boundary
+
+```text
+Frontend must not own reusable Agent runtime semantics.
+
+Reusable Session / Run host lifecycle belongs in :ag-runtime.
+
+AGA / AGC should remain thin frontends: input, rendering, platform lifecycle.
+
+Do not move Android or Provider implementation details into :ag-runtime.
+A frontend must not call AgentCore.session/run directly, must not generate
+Session ids, and must not implement its own busy guard.
+```
 
 ## Still forbidden without an explicitly opened Step
 

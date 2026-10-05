@@ -1,5 +1,6 @@
-package com.androidagent.provider.openai
+package com.androidagent.provider.openai.jdk
 
+import com.androidagent.provider.openai.OpenAiCompatibleConfig
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.serialization.json.JsonArray

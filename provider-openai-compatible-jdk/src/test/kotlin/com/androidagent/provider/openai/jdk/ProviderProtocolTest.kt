@@ -1,4 +1,8 @@
-package com.androidagent.provider.openai
+package com.androidagent.provider.openai.jdk
+
+import com.androidagent.provider.openai.OpenAiCompatibleConfig
+import com.androidagent.provider.openai.OpenAiCompatibleProvider
+import com.androidagent.provider.openai.OpenAiProviderException
 
 import com.androidagent.core.Message
 import com.androidagent.core.ModelProvider
@@ -47,7 +51,7 @@ class ProviderProtocolTest {
     @Test
     fun `P1 final answer content maps exactly`() = runBlocking {
         FixtureServer(rawBody = FixtureServer.finalAnswerBody("the answer is 42")).use { server ->
-            val provider = OpenAiCompatibleProvider(FixtureServer.configFor(server))
+            val provider = OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport())
             val turn = provider.complete(request(history = listOf(UserMessage("hi"))))
 
             assertEquals(ModelTurn.FinalAnswer("the answer is 42"), turn)
@@ -69,7 +73,7 @@ class ProviderProtocolTest {
                 FixtureServer.toolCall("call_abc", "probe", rawArguments),
             ),
         ).use { server ->
-            val provider = OpenAiCompatibleProvider(FixtureServer.configFor(server))
+            val provider = OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport())
             val turn = provider.complete(request(history = listOf(UserMessage("use the tool"))))
 
             val calls = (turn as ModelTurn.ToolCalls).calls
@@ -89,7 +93,7 @@ class ProviderProtocolTest {
     @Test
     fun `P3 outbound messages preserve role order and required fields`() = runBlocking {
         FixtureServer(rawBody = FixtureServer.finalAnswerBody("ok")).use { server ->
-            val provider = OpenAiCompatibleProvider(FixtureServer.configFor(server))
+            val provider = OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport())
             provider.complete(
                 request(
                     instructions = "be terse",
@@ -142,7 +146,7 @@ class ProviderProtocolTest {
     @Test
     fun `P3b no instructions field means no system message`() = runBlocking {
         FixtureServer(rawBody = FixtureServer.finalAnswerBody("ok")).use { server ->
-            OpenAiCompatibleProvider(FixtureServer.configFor(server))
+            OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport())
                 .complete(request(history = listOf(UserMessage("hi"))))
 
             val messages = Json.parseToJsonElement(server.requestBodies.single())
@@ -163,7 +167,7 @@ class ProviderProtocolTest {
                 FixtureServer.toolCall("id_c", "gamma", """{"n":3}"""),
             ),
         ).use { server ->
-            val provider = OpenAiCompatibleProvider(FixtureServer.configFor(server))
+            val provider = OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport())
             val calls = (provider.complete(request()) as ModelTurn.ToolCalls).calls
 
             assertEquals(3, calls.size)
@@ -187,7 +191,7 @@ class ProviderProtocolTest {
                 FixtureServer.toolCall("call_b", "beta", """{"n":2}"""),
             ),
         ).use { server ->
-            val provider = OpenAiCompatibleProvider(FixtureServer.configFor(server))
+            val provider = OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport())
 
             val turn = provider.complete(request()) as ModelTurn.ToolCalls
 
@@ -204,7 +208,7 @@ class ProviderProtocolTest {
         FixtureServer(
             rawBody = FixtureServer.toolCallsBody(FixtureServer.toolCall("call_a", "alpha", "{}")),
         ).use { server ->
-            val turn = OpenAiCompatibleProvider(FixtureServer.configFor(server))
+            val turn = OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport())
                 .complete(request()) as ModelTurn.ToolCalls
             assertEquals("", turn.content)
             assertEquals(1, turn.calls.size)
@@ -217,7 +221,7 @@ class ProviderProtocolTest {
     fun `P6 401 maps to HttpStatus with status and safe endpoint`() = runBlocking {
         FixtureServer(statusCode = 401, rawBody = """{"error":"invalid api key"}""").use { server ->
             val error = assertThrows(OpenAiProviderException.HttpStatus::class.java) {
-                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server)).complete(request()) }
+                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()).complete(request()) }
             }
             assertEquals(401, error.statusCode)
             assertTrue(error.endpoint.startsWith("http://127.0.0.1:"))
@@ -229,7 +233,7 @@ class ProviderProtocolTest {
     fun `P7 500 maps to HttpStatus`() = runBlocking {
         FixtureServer(statusCode = 500, rawBody = """{"error":{"message":"upstream exploded"}}""").use { server ->
             val error = assertThrows(OpenAiProviderException.HttpStatus::class.java) {
-                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server)).complete(request()) }
+                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()).complete(request()) }
             }
             assertEquals(500, error.statusCode)
         }
@@ -239,7 +243,7 @@ class ProviderProtocolTest {
     fun `P7b 429 is distinguished as its own status, not collapsed`() = runBlocking {
         FixtureServer(statusCode = 429, rawBody = """{"error":"slow down"}""").use { server ->
             val error = assertThrows(OpenAiProviderException.HttpStatus::class.java) {
-                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server)).complete(request()) }
+                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()).complete(request()) }
             }
             assertEquals(429, error.statusCode)
         }
@@ -251,7 +255,7 @@ class ProviderProtocolTest {
     fun `P8 malformed JSON maps to Parse`(): Unit = runBlocking {
         FixtureServer(rawBody = "{ this is not json ").use { server ->
             assertThrows(OpenAiProviderException.Parse::class.java) {
-                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server)).complete(request()) }
+                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()).complete(request()) }
             }
         }
     }
@@ -262,7 +266,7 @@ class ProviderProtocolTest {
     fun `P9 missing choices maps to Protocol`(): Unit = runBlocking {
         FixtureServer(rawBody = """{"id":"x"}""").use { server ->
             assertThrows(OpenAiProviderException.Protocol::class.java) {
-                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server)).complete(request()) }
+                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()).complete(request()) }
             }
         }
     }
@@ -271,7 +275,7 @@ class ProviderProtocolTest {
     fun `P9b empty choices maps to Protocol`(): Unit = runBlocking {
         FixtureServer(rawBody = """{"choices":[]}""").use { server ->
             assertThrows(OpenAiProviderException.Protocol::class.java) {
-                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server)).complete(request()) }
+                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()).complete(request()) }
             }
         }
     }
@@ -280,7 +284,7 @@ class ProviderProtocolTest {
     fun `P9c choice without message maps to Protocol`(): Unit = runBlocking {
         FixtureServer(rawBody = """{"choices":[{"index":0}]}""").use { server ->
             assertThrows(OpenAiProviderException.Protocol::class.java) {
-                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server)).complete(request()) }
+                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()).complete(request()) }
             }
         }
     }
@@ -293,7 +297,7 @@ class ProviderProtocolTest {
         ).jsonObject
         FixtureServer(rawBody = FixtureServer.toolCallsBody(noId)).use { server ->
             assertThrows(OpenAiProviderException.InvalidToolCall::class.java) {
-                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server)).complete(request()) }
+                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()).complete(request()) }
             }
         }
     }
@@ -307,7 +311,7 @@ class ProviderProtocolTest {
         ).jsonObject
         FixtureServer(rawBody = FixtureServer.toolCallsBody(noArgs)).use { server ->
             assertThrows(OpenAiProviderException.InvalidToolCall::class.java) {
-                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server)).complete(request()) }
+                runBlocking { OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()).complete(request()) }
             }
         }
     }
@@ -319,7 +323,7 @@ class ProviderProtocolTest {
         FixtureServer(rawBody = FixtureServer.finalAnswerBody("late"), delayMillis = 1500).use { server ->
             val config = FixtureServer.configFor(server, timeoutSeconds = 1)
             val error = assertThrows(OpenAiProviderException.Timeout::class.java) {
-                runBlocking { OpenAiCompatibleProvider(config).complete(request()) }
+                runBlocking { OpenAiCompatibleProvider(config, JdkOpenAiHttpTransport()).complete(request()) }
             }
             assertTrue(error.message!!.contains("timed out"))
         }
@@ -331,7 +335,7 @@ class ProviderProtocolTest {
     fun `P11 cancellation propagates as CancellationException not a provider failure`() = runBlocking {
         FixtureServer(rawBody = FixtureServer.finalAnswerBody("late"), delayMillis = 1500).use { server ->
             val provider: ModelProvider =
-                OpenAiCompatibleProvider(FixtureServer.configFor(server, timeoutSeconds = 30))
+                OpenAiCompatibleProvider(FixtureServer.configFor(server, timeoutSeconds = 30), JdkOpenAiHttpTransport())
 
             var caught: Throwable? = null
             val job = launch(Dispatchers.Default) {
@@ -369,7 +373,7 @@ class ProviderProtocolTest {
                 model = "fixture-model",
             )
             val error = assertThrows(OpenAiProviderException.HttpStatus::class.java) {
-                runBlocking { OpenAiCompatibleProvider(config).complete(request()) }
+                runBlocking { OpenAiCompatibleProvider(config, JdkOpenAiHttpTransport()).complete(request()) }
             }
             val rendered = error.toString() + " " + error.message
             assertFalse(rendered.contains(secret), "api key must never appear in an exception")
