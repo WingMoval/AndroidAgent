@@ -12,21 +12,25 @@ transport), and `:app` (the AGA Android host).
 
 | Item | State |
 |---|---|
-| Stage | `AG.0` / `AG.PROVIDER-0` **FROZEN** · `AGA-0` done · `AGA-0.ARCH` done |
+| Stage | `AG.0` / `AG.PROVIDER-0` / `AGA-0` **all DONE / FROZEN** |
 | Modules | `:ag-core`, `:ag-runtime`, `:provider-openai-compatible`, `:provider-openai-compatible-jdk`, `:app` |
 | Tests | AG Core **41**, Agent Runtime **8**, Provider offline **46**, Provider live **6 verified** |
-| AG Core v0 | **FROZEN** — Agent Loop, Session/Run, ModelProvider + Tool contracts, Tool Registry, allow/deny policy, events, Run outcomes |
-| Agent Runtime | **Implemented** — host-neutral session selection and single-active-run lifecycle |
-| OpenAI-compatible Provider | **IMPLEMENTED / VERIFIED** against a real endpoint |
+| AG Core v0 | **FROZEN** (tag `ag-0`) — Agent Loop, Session/Run, ModelProvider + Tool contracts, Tool Registry, allow/deny policy, events, Run outcomes |
+| Agent Runtime | **IMPLEMENTED / FROZEN** (in tag `ag-aga-0`) — host-neutral session selection and single-active-run lifecycle |
+| OpenAI-compatible Provider | **IMPLEMENTED / VERIFIED / FROZEN** (tag `ag-provider-0`) against a real endpoint |
 | Real Model → Tool → Model loop | **VERIFIED** end to end (not fixture-only) |
-| AGA Android host | **IMPLEMENTED** — builds, installs, launches, real chat **PASS** on device |
-| Strict real multi-turn memory | **PENDING** — blocked while EMG is busy |
-| AGA UI does not own Session / Run lifecycle | **true** — that lives in `:ag-runtime` |
-| Android Tools / AT integration / AGA beyond the minimal host | **NOT STARTED** |
-| Next step | **PENDING ARCHITECTURE STEP DESIGN** |
+| AGA Android host | **IMPLEMENTED / FROZEN** (tag `ag-aga-0`) — builds, installs, launches |
+| Real Android chat | **PASS** on a real device against a real endpoint |
+| Strict real multi-turn memory | **PENDING** — see note below |
+| AGA UI owns Session / Run lifecycle | **No** — that lives in `:ag-runtime` |
+| Android Tools | **NOT STARTED** |
+| AT integration | **NOT STARTED** — integration mechanism not frozen |
+| Next step | **Android Tool / AT integration architecture design** (`AG.SHELL-0.DESIGN`) — not started |
 
-Nothing beyond the table above is implemented. Any capability table must not
-claim features that do not exist.
+**On "strict real multi-turn memory"**: real Android chat already **PASS** — a real
+request reached a real endpoint and the model answered. What is still pending is
+narrower: proving that a Round-2 answer *semantically depends* on a fact
+introduced only in Round 1.
 
 ## Layering
 
@@ -36,24 +40,39 @@ only through tools.
 Runtime call flow (NOT a code dependency graph):
 
 ```text
-            AGA
-             |
-             v
-          AG Core
-             |
-             v
-        Tool Registry
-             |
-             v
-        Concrete Tools
-             |
-        Android Tools
-             |
-             v
-       Stable AT Core
-             |
-             v
-          Android
+              AGA
+               |
+               v
+        Agent Runtime
+               |
+               v
+            AG Core
+               |
+               v
+          Tool Registry
+               |
+               v
+          Concrete Tools
+               |
+          Android Tools
+               |
+               v
+         Stable AT Core
+               |
+               v
+            Android
+```
+
+A future CLI/TUI frontend shares the same runtime path:
+
+```text
+              AGC
+               |
+               v
+        Agent Runtime
+               |
+               v
+            AG Core
 ```
 
 Code dependency runs the other way — implementations depend on AG Core
@@ -97,29 +116,27 @@ AT Core. It is not AG Core.
 ## Roadmap
 
 ```text
-AG.BASELINE-0   project init + baseline freeze              DONE
+AG.BASELINE-0   project init + baseline freeze              DONE / FROZEN
    |
    v
-AG.0            AG Core v0 architecture + Agent Loop         DONE / FROZEN
+AG.0            AG Core v0 architecture + Agent Loop         DONE / FROZEN  (ag-0)
    |
    v
-AG.0.R1         runtime async boundary freeze               DONE
+AG.PROVIDER-0   verified OpenAI-compatible provider         DONE / FROZEN  (ag-provider-0)
    |
    v
-AG.PROVIDER-0   verified OpenAI-compatible provider         DONE / FROZEN
+AGA-0           DONE / FROZEN  (ag-aga-0)
+   ├─ Android Host (:app)
+   ├─ Android-compatible Provider Transport (HttpsURLConnection)
+   └─ Agent Runtime / UI physical separation (:ag-runtime)
    |
    v
-AGA-0           minimal Android chat host                   DONE
-   |
-   v
-AGA-0.ARCH      agent runtime / UI physical separation      DONE
-   |
-   v
-NEXT            PENDING ARCHITECTURE STEP DESIGN
+NEXT            Android Tool / AT integration architecture design
+                AG.SHELL-0.DESIGN — design only, not started
 ```
 
 Not planned here, and deliberately not scaffolded: `:agc`, `:android-tools`,
-`:at-core`, `:skills`.
+`:at-core`, `:skills`, `:provider-openai-compatible-android`.
 
 ## Provider configuration
 
@@ -139,8 +156,9 @@ otherwise `AG_OPENAI_*` environment variables. Fields are never mixed across
 sources.
 
 ```bash
-# live verification (requires a filled config/provider.local.json)
-./gradlew :provider-openai-compatible:liveTest
+# live verification through the JDK transport
+# (requires a filled config/provider.local.json)
+./gradlew :provider-openai-compatible-jdk:liveTest
 ```
 
 `config/provider.local.json` is development/bootstrap configuration only. It is
@@ -173,17 +191,32 @@ node, such as AG Core v0.1.
 
 ## Dependencies
 
-**AG Core has no production dependency beyond the Kotlin standard library.**
+Architecture-level boundaries, per module. Transitive AndroidX artifacts are
+not listed.
 
 ```text
-:ag-core  runtimeClasspath = kotlin-stdlib
-          testRuntime      = kotlin-stdlib + kotlinx-coroutines-core + JUnit 5
+:ag-core
+  pure JVM · stdlib only in production
+  test: + kotlinx-coroutines-core + JUnit 5
+
+:ag-runtime
+  project(:ag-core) + kotlin-stdlib
+  Android-free · no provider implementation · no HTTP · no JSON
 
 :provider-openai-compatible
-          = kotlin-stdlib + project(:ag-core)
-          + kotlinx-serialization-json
-          + kotlinx-coroutines-core
-          + JDK java.net.http (no OkHttp / Retrofit)
+  project(:ag-core) + kotlinx-serialization-json + kotlinx-coroutines-core
+  holds the OpenAiHttpTransport **contract** only
+  java.net.http = NO · Android = NO
+
+:provider-openai-compatible-jdk
+  project(:provider-openai-compatible)
+  JDK java.net.http — the only JDK HTTP implementation
+
+:app
+  Android frontend
+  project(:ag-core) + project(:ag-runtime) + project(:provider-openai-compatible)
+  AndroidOpenAiHttpTransport (HttpsURLConnection)
+  must NOT depend on :provider-openai-compatible-jdk
 ```
 
 `Tool.execute`, `ModelProvider.complete` and `AgentCore.run` are `suspend`, but
@@ -193,10 +226,5 @@ lifecycle belongs to the host, which can bridge with `runBlocking { }` if it
 needs to block. Coroutines are therefore needed only to drive suspending calls
 from plain JVM tests.
 
-AG Core does not depend on JSON/serialization, HTTP clients, DI, or logging
-frameworks.
-
-The concrete OpenAI-compatible Provider, which lives **outside** AG Core, does
-use `kotlinx-serialization-json` and the JDK `java.net.http.HttpClient`.
-
-No DI framework and no logging framework has been introduced anywhere.
+No OkHttp / Retrofit, no DI framework, and no logging framework has been
+introduced anywhere.

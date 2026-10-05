@@ -257,9 +257,20 @@ status: Ready.
 
 ```text
 设备端真实两轮对话（待用户输入 Key）
-instrumented / UI automated tests
-持久化 Settings、secure credential storage
-ShellTool / AT Core 集成
+→ **已由 §14 真实聊天证据推翻，改列如下：**
+
+```text
+strict real cross-turn memory verification
+    真实 Android Chat 已经 PASS。待办项具体指：
+    Round 2 的回答必须在语义上依赖仅在 Round 1 引入的信息。
+    例如：
+      Round 1: 记住测试代号 AGAZERO42
+      Round 2: 我刚才告诉你的测试代号是什么？
+    （未执行；需 EMG 空闲）
+
+instrumented / UI automated tests（A1–A6）
+持久化 Settings / secure credential storage
+ShellTool / AT Core 集成（接入机制未冻结，见 AG.SHELL-0.DESIGN）
 Screenshot / UI hierarchy / Tap / Swipe / Input 等工具
 Skills / MCP / RAG / persistence / multi-agent
 :provider-openai-compatible-android 独立 module（等第二个 Android consumer）
@@ -269,6 +280,16 @@ Skills / MCP / RAG / persistence / multi-agent
 
 ```text
 AGA-0.R1_DEVICE_CHAT_PASS_MEMORY_PENDING
+→ AGA 阶段已冻结，canonical ref = tag `ag-aga-0`：
+
+```text
+AGA-0 DONE / FROZEN
+
+REAL_ANDROID_CHAT               = PASS
+STRICT_REAL_MULTI_TURN_MEMORY   = PENDING
+ANDROID_TOOLS                   = NOT STARTED
+AT_INTEGRATION                  = NOT STARTED（机制未冻结）
+```
 ```
 
 （Android build / install / launch / 真实对话已 PASS；严格跨轮记忆待 EMG 空闲后补做。）

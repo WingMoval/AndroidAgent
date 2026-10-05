@@ -130,6 +130,29 @@ A frontend must not call AgentCore.session/run directly, must not generate
 Session ids, and must not implement its own busy guard.
 ```
 
+## AT integration boundary
+
+```text
+AG Core       -X-> AT implementation
+Agent Runtime -X-> AT implementation
+AGA           -X-> AT implementation
+```
+
+`Concrete Android Tool` is the only AndroidAgent execution layer allowed to
+integrate an Android-specific execution backend. A concrete tool may use the
+Android APIs directly, connect to the AndroidTerminal execution boundary, or
+combine both. It must not be written as "all Android Tools must depend on AT
+Core" — that is wrong.
+
+AndroidAgent must **not** vendor AT source, copy AT source, reimplement AT Core,
+or push an AT implementation into `:ag-core`, `:ag-runtime` or `:app`.
+
+**The AT integration mechanism is not frozen yet.** Do not assume direct AT Core
+linking, an Android runtime service, or Binder / AIDL before `AG.SHELL-0.DESIGN`
+decides. AT does not have to escape the Android device, but its execution
+capability must eventually be usable by Android consumers other than the AT
+APK's own UI.
+
 ## Still forbidden without an explicitly opened Step
 
 Do not begin any of the following unless a Step explicitly authorizes it:

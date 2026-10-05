@@ -75,6 +75,22 @@ Frontend (AGA / AGC) = 输入、显示、平台 lifecycle、配置输入、rende
 依赖方向是单向的：可复用的 Session/Run host 生命周期属于 `:ag-runtime`，
 frontend 保持轻薄。
 
+**运行时调用流（与代码依赖图不同，不可混读）：**
+
+```text
+AGA
+ ↓
+Agent Runtime
+ ↓
+AG Core
+ ↓
+Tool Registry
+ ↓
+Concrete Tools
+```
+
+AGC 走同一条路径（见 §4）。
+
 ### 异步边界（AG.0.R1 冻结）
 
 ```text
@@ -170,18 +186,39 @@ AG Core  -X->  com.androidterminal.*
 
 ## 3. AGA
 
-AGA 是 AndroidAgent 的 GUI 产品形态（未来 `AG.apk`）。
+AGA 是 AndroidAgent 的 Android GUI / Host 产品形态。
 
-当前状态：**未实现**。本工程当前**没有** `:app` module，也不计划在
-`AG.BASELINE-0` 预建。AGA 将消费 AG Core + Android Tools。
+当前状态：
+
+```text
+:app                              已实现
+AGA-0                             DONE / FROZEN（tag ag-aga-0）
+Android build / install / launch   已验证
+real Android chat                 PASS
+strict real multi-turn memory     PENDING
+Android Tools / AT integration    尚未开始
+```
+
+AGA 是**前端**：只负责输入、显示、Android lifecycle bridge 与开发期配置输入。
+它**不拥有** Agent 业务生命周期（Session 身份 / Run 驱动 / busy 语义）——
+那些在 `:ag-runtime`。
 
 ## 4. AGC
 
-AGC 是未来的 CLI / TUI 前端，与 AGA **共享同一个 AG Core**。
+AGC 是未来的 CLI / TUI 前端，与 AGA **共享同一个 Agent Runtime**：
 
-当前状态：**未实现**。是否能让 stock Android 在无 root 条件下承载一个真正
-独立的 `androidagent` CLI/TUI，属于独立的 host feasibility 轨道，
-**不阻塞** AG Core 与 AGA。
+```text
+AGC
+ ↓
+Agent Runtime (:ag-runtime)
+ ↓
+AG Core (:ag-core)
+```
+
+AGC 尚未开始。
+
+是否能让 stock Android 在无 root 条件下承载一个真正独立的 `androidagent`
+CLI/TUI，属于独立的 host feasibility 轨道，**不阻塞** AG Core、Agent Runtime 与 AGA。
 
 ## 5. Tool System
 
@@ -264,18 +301,23 @@ Concrete Tool 的实现层，例如未来的 shell tool、push tool、pull tool�
 具体的 Android 执行请求
 ```
 
-Android Tools 是**唯一**允许同时依赖 AG Core 与 AT Core 的层。
+**Concrete Android Tools 是 AndroidAgent 中唯一允许跨越 Agent execution boundary
+的实现层。** 具体 Tool 可按真实需求三选一或组合：
 
 ```text
-AG Core      ->  Tool Registry  ->  Android Tools  ->  AT Core
+1. 直接使用 Android API
+2. 接入 AndroidTerminal 的 execution boundary
+3. 同时组合两者
 ```
 
-Android Tools 的执行后端**不限于** AT Core —— 它可以直接使用 Android API，
-也可以使用 AT Core，由具体工具按需选择：
+> **不要**写成「所有 Android Tools 必须直接依赖 AT Core」——这是错误的。
+> AG Core / Agent Runtime 不知道这些实现细节。
 
 ```text
-Android Tools  ->  AT Core        （可选）
-Android Tools  ->  Android APIs   （可选）
+AG Core            -X-> AT implementation
+Agent Runtime      -X-> AT implementation
+AGA                -X-> AT implementation
+Concrete Tool       允许接入（机制尚未冻结）
 ```
 
 Integration（provider、具体 tool、网络传输）全部位于 **AG Core 之外**。
@@ -285,8 +327,9 @@ AG Core 内不得出现任何具体实现。
 
 ```text
 Provider integration            IMPLEMENTED / FROZEN
-                                :provider-openai-compatible（tag ag-provider-0）
-                                真实 endpoint 已验证
+                                  :provider-openai-compatible（tag ag-provider-0）
+                                  真实 endpoint 已验证
+
 
 Android Tool / execution integ. NOT IMPLEMENTED
 ```
@@ -301,10 +344,37 @@ AT Core 是 AndroidTerminal 工程的 **Android 执行内核**（ADB 连接 / �
 
 ```text
 AT Core 属于 AndroidTerminal 工程
-AndroidAgent 不 import、不 vendor、不复制 AT Core
 ```
 
-AG Core **不得**直接依赖 AT Core。若 AG Core 看起来需要它，说明设计错了 ——
+AndroidAgent **不得**：
+
+```text
+vendor AT source
+copy AT source
+reimplement AT Core
+把 AT implementation 塞进 AG Core / Agent Runtime / AGA
+```
+
+```text
+AG Core       -X-> AT implementation
+Agent Runtime -X-> AT implementation
+AGA           -X-> AT implementation
+```
+
+只有 **Concrete Android Tools** 允许接入 AndroidTerminal 的 execution boundary。
+
+> **接入机制尚未冻结。** 以下都留待 `AG.SHELL-0.DESIGN` 决定，本阶段不预设：
+> direct Android library · Android runtime service · Binder / AIDL · 其他 IPC。
+
+AT 的一个重要性质（不是本阶段决定，仅记录）：
+
+```text
+AT 不要求脱离 Android device，
+但其执行能力最终必须能够脱离 AT.apk 的 UI，
+被其他 Android consumer 复用。
+```
+
+AG Core **不得**直接依赖 AT 实现。若 AG Core 看起来需要它，说明设计错了 ——
 正确做法是引入一个 tool。
 
 注意：AndroidTerminal 侧的 AT Core 当前尚未完成物理模块化。
@@ -454,25 +524,23 @@ AndroidAgent-Public   发布目录，只在明确 release 节点由开发目录�
 ## 10. Current roadmap
 
 ```text
-AG.BASELINE-0   独立开发工程初始化与基线冻结            DONE
+AG.BASELINE-0   独立开发工程初始化与基线冻结            DONE / FROZEN
    |
    v
-AG.0            AG Core v0 架构与 Agent Loop          DONE / FROZEN
+AG.0            AG Core v0 架构与 Agent Loop          DONE / FROZEN  (tag ag-0)
    |
    v
-AG.0.R1         Runtime Async Boundary Freeze          DONE
+AG.PROVIDER-0   真实验证的 OpenAI-compatible Provider  DONE / FROZEN  (tag ag-provider-0)
    |
    v
-AG.PROVIDER-0   真实验证的 OpenAI-compatible Provider  DONE / FROZEN
+AGA-0           DONE / FROZEN  (tag ag-aga-0)
+   ├─ Android Host（:app）
+   ├─ Android-compatible Provider Transport（HttpsURLConnection）
+   └─ Agent Runtime 与 UI 物理分离（:ag-runtime）
    |
    v
-AGA-0           最小 Android Chat Host 垂直切片        DONE
-   |             （真实对话 PASS；严格跨轮记忆 PENDING）
-   v
-AGA-0.ARCH      Agent Runtime / AGA UI 物理分离       DONE
-   |
-   v
-NEXT            PENDING ARCHITECTURE STEP DESIGN
+NEXT            Android Tool / AT Integration Architecture Design
+                 （设计阶段，尚未开始实现）
 ```
 
 本工程当前存在的 module：
@@ -502,24 +570,42 @@ NEXT            PENDING ARCHITECTURE STEP DESIGN
           允许       project(:ag-core)
                      kotlinx-serialization-json
                      kotlinx-coroutines-core
-                     JDK java.net.http
-          禁止       Android / AT Core / ADB / JNI / ShellTool
+          禁止       JDK java.net.http（已移至 :provider-openai-compatible-jdk）
+                     Android / AT Core / ADB / JNI / ShellTool
 ```
 
 依赖按模块区分，不做 repository-wide 断言：
 
 ```text
 :ag-core
+  生产  无（仅 Kotlin 标准库）
+  测试  kotlinx-coroutines-core（从 JVM 测试驱动 suspend 调用）
   不引入 JSON / serialization、HTTP client、DI、logging 或 reactive framework。
 
-:provider-openai-compatible
-  已引入：
-    - kotlinx-serialization-json
-    - JDK java.net.http
+:ag-runtime
+  生产  project(:ag-core) + kotlin-stdlib
+  不引入 Android / AndroidX / provider 实现 / HTTP / JSON
 
-除上述 Provider 的既有真实依赖外，当前未引入：
-  - 其它 HTTP client（OkHttp / Retrofit 等）
-  - DI framework
-  - logging framework
-  - reactive framework
+:provider-openai-compatible
+  生产  project(:ag-core)
+        kotlinx-serialization-json
+        kotlinx-coroutines-core
+        （仅 OpenAiHttpTransport **contract**，不含任何平台 HTTP 实现）
+  java.net.http = NO
+  Android       = NO
+  禁止          Android / AT Core / ADB / JNI / ShellTool
+
+:provider-openai-compatible-jdk
+  生产  project(:provider-openai-compatible)
+        JDK java.net.http（唯一的 JDK HTTP 实现）
+  禁止  依赖 :app / Android
+
+:app
+  生产  project(:ag-core) + project(:ag-runtime)
+        project(:provider-openai-compatible)
+        AndroidOpenAiHttpTransport（基于 HttpsURLConnection）
+  禁止  依赖 :provider-openai-compatible-jdk
 ```
+
+除上述各模块的真实依赖外，当前未引入：
+其它 HTTP client（OkHttp / Retrofit 等）· DI framework · logging framework · reactive framework。
