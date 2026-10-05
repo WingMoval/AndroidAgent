@@ -16,11 +16,27 @@
 | 工程 | AndroidAgent |
 | 根目录 | `D:\codebank\AndCode\AndroidAgent` |
 | 类型 | 首个真实 Provider 纵向集成 |
-| **结果** | **`AG.PROVIDER-0_COMPLETE` / FROZEN** |
-| **Freeze commit** | `80d67a77f2afed64e6d43f625ca9ea2839c221cc` |
-| **Tag** | `ag-provider-0` |
-| Push | **无**（无 remote，从未发布） |
-| Step baseline | `2174499`（parent `9d43598` = tag `ag-0`）— 这是**步骤起点**，不是当前 HEAD |
+| **Result** | **`AG.PROVIDER-0_COMPLETE` / FROZEN** |
+| **Implementation freeze commit** | `80d67a77f2afed64e6d43f625ca9ea2839c221cc` |
+| **SSOT correction R1 commit** | `7ae58133b5a2509570f93feb993ecadb6c50351a` |
+| **Canonical freeze ref** | **tag `ag-provider-0`** |
+| Push | **none / no remote**（从未发布） |
+| Step baseline | `2174499`（parent `9d43598` = tag `ag-0`）— 步骤起点，非当前 HEAD |
+
+### Canonical freeze reference rule
+
+本工程区分三种引用，tracked SSOT **只使用 symbolic tag**：
+
+```text
+Implementation freeze commit   实现冻结点，hash 固定不变
+SSOT correction commit(s)      文档一致性修正，hash 每次修正都会变
+Canonical freeze ref           = tag ag-provider-0（符号引用，永不失效）
+```
+
+> **不要在 tracked 文档中硬编码「`ag-provider-0` 当前等于哪个 commit hash」。**
+> 原因是自引用失效：修改文档 → 产生新 commit → 文档中记录的 hash 立刻过期。
+> 因此 tracked SSOT 写 `tag ag-provider-0`；
+> 实际 tag → hash 解析结果只记录在 **execution report** 与 **git history** 中。
 
 ## 2. Baseline
 
@@ -425,11 +441,26 @@ Skills / MCP / RAG / persistence / multi-agent / plugin framework
 ### Current final verdict
 
 ```text
-AG_PROVIDER-0_COMPLETE / FROZEN
+AG.PROVIDER-0_COMPLETE / FROZEN
 ```
 
-commit `80d67a7` · tag `ag-provider-0` · AG Core 41/41 · Provider offline 46/46 ·
-Provider live 6/6 · GAP-1 CLOSED · GAP-2 CLOSED FOR CURRENT EMG ENDPOINT。
+```text
+implementation freeze commit = 80d67a7
+
+SSOT correction history:
+  7ae5813
+
+canonical freeze ref:
+  tag ag-provider-0
+```
+
+```text
+AG Core 41/41
+Provider offline 46/46
+Provider live 6/6
+GAP-1 CLOSED
+GAP-2 CLOSED FOR CURRENT EMG ENDPOINT
+```
 
 ### Historical verdict — PRE-CFG / PRE-LIVE
 
@@ -469,7 +500,15 @@ mixed content 证明 Core contract 需要变化
 ```text
 AG.PROVIDER-0
   CLOSED / FROZEN
-  commit 80d67a7 · tag ag-provider-0
+
+  implementation freeze commit:
+  80d67a7
+
+  SSOT correction R1:
+  7ae5813
+
+  canonical freeze ref:
+  ag-provider-0
 
 GAP-1  CLOSED
 GAP-2  CLOSED FOR CURRENT EMG ENDPOINT

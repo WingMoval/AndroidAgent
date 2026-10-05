@@ -408,7 +408,7 @@ AG Core  -X->  concrete implementations
 ```
 
 读图要点：上面那张是**运行时事件流向**——AG Core 在 Run 内经 registry 调用
-已注册的 tool 实例。面那张是**编译期依赖**——方向相反，实现依赖 contract，
+已注册的 tool 实例。下面那张是**编译期依赖**——方向相反，实现依赖 contract，
 AG Core 不依赖实现。两张图不能混读。
 
 ## 9. Development / Public directory relationship
@@ -473,5 +473,20 @@ NEXT            First Real Android Tool Boundary
           禁止       Android / AT Core / ADB / JNI / ShellTool
 ```
 
-JSON / serialization、DI、其它 HTTP client、logging framework、
-reactive framework 一律未引入，且在出现真实 consumer 前不应引入。
+依赖按模块区分，不做 repository-wide 断言：
+
+```text
+:ag-core
+  不引入 JSON / serialization、HTTP client、DI、logging 或 reactive framework。
+
+:provider-openai-compatible
+  已引入：
+    - kotlinx-serialization-json
+    - JDK java.net.http
+
+除上述 Provider 的既有真实依赖外，当前未引入：
+  - 其它 HTTP client（OkHttp / Retrofit 等）
+  - DI framework
+  - logging framework
+  - reactive framework
+```
