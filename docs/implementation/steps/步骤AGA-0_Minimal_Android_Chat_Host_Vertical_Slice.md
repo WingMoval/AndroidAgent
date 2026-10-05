@@ -231,10 +231,10 @@ UI 实测渲染 : "AndroidAgent"
 
 ### 14.1 状态（依据已取得的真实证据）
 
-`	ext
-REAL_ANDROID_CHAT               = PASS
+```text
+REAL_ANDROID_CHAT              = PASS
 STRICT_REAL_MULTI_TURN_MEMORY  = PENDING
-`
+```
 
 实际完成的真实对话（设备 uiautomator 取证）：
 
@@ -256,17 +256,13 @@ status: Ready.
 ## 15. Deferred
 
 ```text
-设备端真实两轮对话（待用户输入 Key）
-→ **已由 §14 真实聊天证据推翻，改列如下：**
-
-```text
 strict real cross-turn memory verification
-    真实 Android Chat 已经 PASS。待办项具体指：
+    Real Android Chat 已经 PASS。待办项具体指：
     Round 2 的回答必须在语义上依赖仅在 Round 1 引入的信息。
     例如：
       Round 1: 记住测试代号 AGAZERO42
       Round 2: 我刚才告诉你的测试代号是什么？
-    （未执行；需 EMG 空闲）
+    未执行；需 EMG 空闲
 
 instrumented / UI automated tests（A1–A6）
 持久化 Settings / secure credential storage
@@ -276,11 +272,10 @@ Skills / MCP / RAG / persistence / multi-agent
 :provider-openai-compatible-android 独立 module（等第二个 Android consumer）
 ```
 
-## 16. Verdict
+> Historical note：早期 Deferred 曾写「设备端真实两轮对话（待用户输入 Key）」。
+> 该状态已被 §14 的真实设备聊天证据推翻。
 
-```text
-AGA-0.R1_DEVICE_CHAT_PASS_MEMORY_PENDING
-→ AGA 阶段已冻结，canonical ref = tag `ag-aga-0`：
+## 16. Verdict
 
 ```text
 AGA-0 DONE / FROZEN
@@ -290,11 +285,11 @@ STRICT_REAL_MULTI_TURN_MEMORY   = PENDING
 ANDROID_TOOLS                   = NOT STARTED
 AT_INTEGRATION                  = NOT STARTED（机制未冻结）
 ```
-```
 
-（Android build / install / launch / 真实对话已 PASS；严格跨轮记忆待 EMG 空闲后补做。）
+Canonical freeze reference：`ag-aga-0`
 
-Android build 与 device 启动已真实通过；真实多轮对话待用户在设备输入 Key。
+（Android build / install / launch / real Android chat 已 PASS；
+唯一待补的真实对话验收项是 strict real cross-turn memory verification。）
 
 ---
 

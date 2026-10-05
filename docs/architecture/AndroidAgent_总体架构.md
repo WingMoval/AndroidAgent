@@ -404,8 +404,15 @@ Future provider implementations
 
 AG Core 不含 HTTP client、不含 JSON protocol mapping、不认识任何具体 provider
 的 wire schema。`ModelTurn` 保持 provider-neutral（final answer 或 tool calls），
-不复制任何厂商 chat-completion 结构。HTTP 与 JSON 只存在于 Core 之外的
-`:provider-openai-compatible`。
+不复制任何厂商 chat-completion 结构。HTTP 与 JSON 全部位于 AG Core 之外，
+按模块分列：
+
+```text
+JSON / OpenAI wire      -> :provider-openai-compatible
+OpenAiHttpTransport    -> :provider-openai-compatible   仅 contract
+JDK HTTP 实现           -> :provider-openai-compatible-jdk   java.net.http
+Android HTTP 实现       -> :app   AndroidOpenAiHttpTransport / HttpsURLConnection
+```
 
 当前状态：
 
@@ -424,23 +431,31 @@ Other concrete Providers
 
 ```text
 ALLOWED
-  AGA ---------→ AG Core
-  AGC ---------→ AG Core
+  AGA ---------→ Agent Runtime (:ag-runtime)
+  AGC ---------→ Agent Runtime (:ag-runtime)
+  Agent Runtime → AG Core
   AG Core ----→ Tool contract（AG Core 定义，AG Core 内部持有）
   AG Core ----→ ModelProvider contract（AG Core 定义，AG Core 内部持有）
-  Android Tools → AT Core          (可选)
-  Android Tools → Android APIs     (可选)
+  Concrete Android Tool → Android APIs              (可选)
+  Concrete Android Tool → AndroidTerminal
+                            execution boundary      (可选；机制 NOT FROZEN)
   AT Core ----→ adbd / Android
 
 FORBIDDEN
-  AG Core       -X-> AT Core
+  AG Core       -X-> AT implementation
+  Agent Runtime -X-> AT implementation
+  AGA           -X-> AT implementation
   AG Core       -X-> Android framework
   AG Core       -X-> ADB / JNI
   AG Core       -X-> 具体 Tool 实现
   AG Core       -X-> 具体 ModelProvider 实现
   AT Core       -X-> AG Core
-  AGA           -X-> AT Core        (必须经 Android Tools)
 ```
+
+> `:app` 的 Composition Root **确实**构造 `AgentCore`、`AgentRuntime` 与 Provider，
+> 这属于 module 依赖，成立。上面禁止的是把 **AT 实现**引入这些层。
+> `Concrete Android Tool → AndroidTerminal execution boundary` 是**可能的未来机制**，
+> **尚未冻结**，不得当作已确定的 direct code dependency。
 
 代码依赖方向（**编译期**）：
 
@@ -469,27 +484,40 @@ Run 内 AG Core 通过 registry 调用已注册的 tool 实例
 架构图（**runtime call flow，NOT code dependency**）：
 
 ```text
-            AGA
-             |
-             v
-          AG Core
-             |
-             v
-        Tool Registry
-             |
-             v
-        Concrete Tools
-             |
-        Android Tools
-             |
-             v
-       Stable AT Core
-             |
-             v
-          Android
-
-  AGC ---→ AG Core
+                 AGA
+                  |
+                  v
+            Agent Runtime
+                  |
+                  v
+               AG Core
+                  |
+                  v
+            Tool Registry
+                  |
+                  v
+        Concrete Android Tool
+           /              \
+          v                v
+   Android APIs     AndroidTerminal
+                    execution boundary
+                           |
+                           v
+                        Android
 ```
+
+```text
+AGC
+ |
+ v
+Agent Runtime
+ |
+ v
+AG Core
+```
+
+> 上述两张图是 **runtime call flow**，**不是 code dependency graph**。
+> `AndroidTerminal integration mechanism` **NOT FROZEN**。
 
 代码依赖图（**CODE DEPENDENCY，编译期**）：
 

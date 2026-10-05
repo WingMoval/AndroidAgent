@@ -30,12 +30,22 @@ AG Core  -X->  ADB / JNI
 AG Core  -X->  com.androidterminal.*
 ```
 
-AG Core reaches Android execution only through the Tool system.
-`Android Tools` is the only layer allowed to depend on both AG Core and AT Core.
+AG Core reaches Android execution only through the Tool contracts.
 
-`AT Core` lives in the AndroidTerminal project. AndroidAgent must not import,
-vendor, copy, or re-implement it. If AG Core appears to need it, the design is
-wrong: introduce a tool instead.
+Concrete Android Tool is the only AndroidAgent execution layer allowed to connect
+to an Android-specific execution backend. It may use the Android APIs directly,
+connect to the AndroidTerminal execution boundary, or combine both.
+
+```text
+AG Core / Agent Runtime / AGA   must not depend on AT implementation
+```
+
+`AT Core` lives in the AndroidTerminal project. AndroidAgent must not vendor,
+copy, or re-implement it. If AG Core appears to need it, the design is wrong:
+introduce a tool instead.
+
+The exact AT integration mechanism is deferred to `AG.SHELL-0.DESIGN`. Do not
+assume a direct code dependency on AT Core.
 
 ## Package boundary
 
@@ -158,12 +168,16 @@ APK's own UI.
 Do not begin any of the following unless a Step explicitly authorizes it:
 
 ```text
-ShellTool / any Android Tool    AT Runtime / AT Core integration
-AGA / AGC                       Skills loader
-MCP                             persistence / RAG
-multi-agent                     plugin framework
-provider routing                AIController integration
+ShellTool / any Android Tool          AT Runtime / AT Core integration
+additional AGA feature development     AGC / further frontend expansion
+Skills loader                         MCP
+persistence / RAG                     multi-agent
+plugin framework                      provider routing
+AIController integration
 ```
+
+Note: AGA itself is **implemented and frozen**. What is forbidden is new AGA
+feature work and any additional frontend — not AGA's existence.
 
 ## Test hygiene
 

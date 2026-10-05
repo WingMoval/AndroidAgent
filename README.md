@@ -34,8 +34,15 @@ introduced only in Round 1.
 
 ## Layering
 
-AG Core is the product-independent Agent runtime. It reaches Android execution
-only through tools.
+AG Core is the product-independent **Agent semantic core**. It reaches Android
+execution only through tools.
+
+Terminology, used consistently below:
+
+```text
+AG Core        = Agent semantics  (loop, session/run, history, contracts, events)
+Agent Runtime  = Host-neutral runnable lifecycle  (which session, one run at a time)
+```
 
 Runtime call flow (NOT a code dependency graph):
 
@@ -49,18 +56,17 @@ Runtime call flow (NOT a code dependency graph):
             AG Core
                |
                v
-          Tool Registry
+         Tool Registry
                |
                v
-          Concrete Tools
-               |
-          Android Tools
-               |
-               v
-         Stable AT Core
-               |
-               v
-            Android
+  Concrete Android Tool
+        /            \
+       v              v
+ Android APIs   AndroidTerminal
+                execution boundary
+                       |
+                       v
+                    Android
 ```
 
 A future CLI/TUI frontend shares the same runtime path:
@@ -84,12 +90,6 @@ Concrete Provider --implements-->  ModelProvider    (AG Core)
 AG Core  -X->  concrete implementations
 ```
 
-A future CLI/TUI frontend reuses the same Core:
-
-```text
-AGC  --->  AG Core
-```
-
 ## Hard rules
 
 ```text
@@ -108,10 +108,14 @@ AdbManager           AdbClient         shell_v2 / TLS
 
 This is not a convention only. `:ag-core` is built with the `kotlin("jvm")`
 plugin, so an `android.*` import is a **compile error**, and `google()` is
-deliberately absent from `settings.gradle.kts`.
+deliberately absent from the pure-JVM modules' repository list.
 
-`Android Tools` is the only layer permitted to depend on both AG Core and
-AT Core. It is not AG Core.
+Concrete Android Tools are the only AndroidAgent execution layer allowed to
+connect to an Android-specific execution backend. They may use the Android APIs
+directly, or connect to the AndroidTerminal execution boundary, or combine both.
+
+The exact AT integration mechanism is **not frozen**; it is deferred to
+`AG.SHELL-0.DESIGN`. Do not assume a direct code dependency on AT Core.
 
 ## Roadmap
 
