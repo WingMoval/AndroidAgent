@@ -271,6 +271,23 @@ label       : AndroidAgent
 native libs : 无
 ```
 
+### 重做复验（REDO RE-VERIFICATION）
+
+```text
+2026-10-06 全量重跑（--rerun-tasks 强制，绕过 org.gradle.caching=true 缓存）：
+  4 模块测试 + :app:assembleDebug 全部 BUILD SUCCESSFUL
+  测试数不变：41 / 8 / 22 / 24 = 95/95 PASS
+APK 重建后：
+  size  : 3,568,437 bytes
+  SHA256: A1DD32D0BAF36FD0C575BC73B0B17D644E0525B971DFF410C46D38D4AC7ACA67
+  package 身份不变（com.androidagent.app v0.1.0(1)，minSdk 26 / target 34）
+  内部结构不变（7 个 dex，无 native lib）
+
+已验证事实：
+  APK 非字节可复现 —— 同源码两次构建 SHA256 / size 不同（差 4 字节）。
+  因此上方 SHA 是「冻结时刻的证据快照」，不是可复现性承诺。
+  回退/比对 APK 时以 package 身份 + 构建 provenance 为准，不要求 SHA 一致。
+
 ---
 
 ## 10. Dependency Audit（无反向依赖）
@@ -331,10 +348,15 @@ API Key 持久化 / Keystore / Settings            0
 ## 13. Files Changed
 
 ```text
+首次冻结 commit（2fa5f2d）:
 新增  docs/baseline/AG.BASELINE-FREEZE-0.md              （本文件）
 随冻结提交纳入此前两步已完成但未提交的设计文档：
       docs/design/AGENT-0_First_Real_Android_Agent_Vertical_Slice.md
       docs/design/AG.SHELL-0_INTEGRATION_DESIGN.md
+
+重做 commit（本轮回退锚点）:
+修改  docs/baseline/AG.BASELINE-FREEZE-0.md
+      —— 追加 redo 复验证据 + APK 非字节可复现事实
 ```
 
 > 两份 design 文档是 `AGENT-0.DESIGN`(PASS) 与 `AG.SHELL-0.INTEGRATION-DESIGN`(PASS)
