@@ -98,6 +98,9 @@ AG.0            FROZEN   (tag ag-0)
 AG.PROVIDER-0   FROZEN   (tag ag-provider-0)
 AGA-0           device chat PASS (strict multi-turn memory PENDING)
 AGA-0.ARCH      DONE
+AG.STABLE-1     FROZEN   (tag ag-stable-1)  current working baseline
+AG.ENGINE-0     FROZEN   (tag ag-engine-0)  Engine = Runtime + Core, logical
+                                boundary audited, no production normalization
 ```
 
 Implemented and **not** to be described as pending:
