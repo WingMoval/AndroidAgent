@@ -45,9 +45,19 @@ class AndroidShellToolImpl internal constructor(
     override val spec: ToolSpec = ToolSpec(
         name = TOOL_NAME,
         description =
-            "Run one non-interactive shell command on the Android device and return " +
-                "its output. Arguments must be a JSON object with a single string " +
-                "field \"command\" containing the shell command to execute.",
+            "WHAT: Execute one non-interactive shell command on the connected Android " +
+                "device and return its result.\n" +
+                "WHEN: Use when the task depends on actual Android device state or a " +
+                "shell-accessible Android operation, and the answer is not already known " +
+                "from earlier observations.\n" +
+                "INPUT: A single JSON object with one string field \"command\", " +
+                "for example {\"command\":\"id\"}. No other fields are supported.\n" +
+                "OUTPUT: A JSON object with fields \"outcome\", \"exitCode\", \"stdout\", " +
+                "\"stderr\", \"hasError\", and \"error\" (only on a mechanism failure). " +
+                "A completed command reports success even when exitCode is non-zero; " +
+                "the exitCode, stdout and stderr carry the real result. Only a tool " +
+                "mechanism failure (transport / protocol / unsupported / timeout / " +
+                "cancelled) reports success = false with an \"error\" field.",
     )
 
     override suspend fun execute(call: ToolCall): ToolResult = withContext(Dispatchers.IO) {

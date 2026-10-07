@@ -1,6 +1,7 @@
 package com.androidagent.app
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -10,6 +11,8 @@ import com.androidagent.core.RunFailure
 import com.androidagent.core.RunOutcome
 import com.androidagent.runtime.AgentRuntime
 import com.androidagent.provider.openai.OpenAiCompatibleConfig
+import com.androidagent.app.trace.AgentTrace
+import com.androidagent.app.trace.TraceFormatter
 import kotlinx.coroutines.launch
 import java.time.Duration
 
@@ -37,6 +40,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var apiKeyField: EditText
     private lateinit var timeoutField: EditText
 
+    private var root: ChatCompositionRoot? = null
     private var runtime: AgentRuntime? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,8 +84,8 @@ class ChatActivity : AppCompatActivity() {
             return
         }
 
-val root = ChatCompositionRoot(cfg, applicationContext)
-        runtime = root.runtime
+        root = ChatCompositionRoot(cfg, applicationContext)
+        runtime = root?.runtime
         // Clear the field so the key is not left sitting in the view hierarchy.
         apiKeyField.setText("")
         setStatus(
@@ -92,9 +96,12 @@ val root = ChatCompositionRoot(cfg, applicationContext)
         // AG.SHELL-1: wire the AT Engine lifecycle (Host owns the policy; the
         // composition-root ShellConnection performs the calls off the main thread).
         // Minimal status display only — no dedicated settings UI in this step.
+        val shellConnection = root?.shell
         lifecycleScope.launch {
-            val status = root.shell.connect()
-            if (status.ready) {
+            val status = shellConnection?.connect()
+            if (status == null) {
+                setStatus("AT Engine: not connected.")
+            } else if (status.ready) {
                 setStatus("AT Engine ready.")
             } else {
                 setStatus("AT Engine: ${status.message}")
@@ -133,6 +140,10 @@ val root = ChatCompositionRoot(cfg, applicationContext)
 
         lifecycleScope.launch {
             val outcome = r.send(text)
+            // AGENT-0.PREFLIGHT: the composition-root collector has reconstructed
+            // this Run from the AgentEvent stream. Render the redacted trace so the
+            // run's tool calls, arguments, results and outcome can be replayed.
+            logTrace()
             when (outcome) {
                 is RunOutcome.Answer -> {
                     append("Agent", outcome.content)
@@ -150,6 +161,20 @@ val root = ChatCompositionRoot(cfg, applicationContext)
     private fun setBusy(busy: Boolean) {
         send.isEnabled = !busy
         newSession.isEnabled = !busy
+    }
+
+    /**
+     * Logs the redacted trace of the most recent Run. The content is the
+     * [AgentTrace] rendered by [TraceFormatter], which redacts any secret-bearing
+     * value before it reaches the log. A rejected (busy) Run produced no trace.
+     */
+    private fun logTrace() {
+        val collector = root?.traceCollector ?: return
+        val trace: AgentTrace = collector.trace ?: return
+        val rendered = TraceFormatter.format(trace)
+        for (line in rendered.lineSequence()) {
+            Log.i("AgentTrace", line)
+        }
     }
 
     /** Safe, user-readable failure text. Never includes a key or header. */

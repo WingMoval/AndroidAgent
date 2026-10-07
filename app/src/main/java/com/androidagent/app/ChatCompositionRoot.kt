@@ -2,7 +2,10 @@ package com.androidagent.app
 
 import android.content.Context
 import com.androidagent.app.provider.AndroidOpenAiHttpTransport
+import com.androidagent.app.trace.AgentTrace
+import com.androidagent.app.trace.AgentTraceCollector
 import com.androidagent.core.AgentCore
+import com.androidagent.core.RunOptions
 import com.androidagent.core.ToolRegistry
 import com.androidagent.provider.openai.OpenAiCompatibleConfig
 import com.androidagent.provider.openai.OpenAiCompatibleProvider
@@ -22,6 +25,12 @@ import com.androidagent.tool.androidshell.ShellConnection
  * registered here in the (previously empty) [ToolRegistry]. The AT Engine
  * lifecycle binding ([ShellConnection]) is created here too and handed to the
  * Host, so no `com.androidterminal.*` type ever appears in Host code.
+ *
+ * AGENT-0.PREFLIGHT: this is also the single SSOT for the Agent Instructions
+ * ([AgentInstructions]) and the minimal Agent Trace. The Instructions content is
+ * Host-owned and injected into every Run's [RunOptions]; the [AgentTraceCollector]
+ * is a Host-side consumer of AG Core's `AgentEvent` stream. Neither the
+ * Instructions content nor the trace lives in AG Core or the Agent Runtime.
  *
  * Credential policy for this step: the API key lives in the calling process's
  * memory only. It is never written to disk, SharedPreferences, DataStore,
@@ -59,6 +68,30 @@ class ChatCompositionRoot(
 
     private val agentCore = AgentCore(provider, toolRegistry)
 
+    /**
+     * AGENT-0.PREFLIGHT: the Agent Instructions are frozen in [AgentInstructions]
+     * and injected into every Run. The same content is reused across Runs, so the
+     * version + hash are stable and auditable in the Trace.
+     *
+     * The [AgentTraceCollector] is a Host-side consumer of AG Core's `AgentEvent`
+     * stream and is installed as the Run's event sink. AGA admits at most one
+     * Run at a time (single Session + Host busy guard), so one collector serves
+     * the process: its [AgentTrace] is rebuilt per admitted Run. The collector
+     * captures the Host-known metadata AG Core cannot supply (model id,
+     * instructions identity, available tools).
+     */
+    val traceCollector = AgentTraceCollector(
+        modelId = config.model,
+        instructionsVersion = AgentInstructions.VERSION,
+        instructionsHash = AgentInstructions.HASH,
+        availableToolNames = toolRegistry.specs().map { it.name },
+    )
+
+    private val runOptions = RunOptions(
+        instructions = AgentInstructions.CONTENT,
+        eventSink = traceCollector,
+    )
+
     /** The runnable Agent lifecycle handed to the UI. */
-    val runtime: AgentRuntime = AgentRuntime(agentCore)
+    val runtime: AgentRuntime = AgentRuntime(agentCore, runOptions = runOptions)
 }

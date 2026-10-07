@@ -75,4 +75,18 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+
+    // AGENT-0.PREFLIGHT: JVM unit tests for the Host-owned Agent Instructions
+    // identity and the minimal Agent Trace (collector / formatter / redaction).
+    // These exercise the pure trace logic against AG Core's event contract and do
+    // not touch Android, the AT Engine, or any live endpoint.
+    testImplementation(project(":ag-core"))
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }

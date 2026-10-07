@@ -44,8 +44,11 @@ AG Core / Agent Runtime / AGA   must not depend on AT implementation
 copy, or re-implement it. If AG Core appears to need it, the design is wrong:
 introduce a tool instead.
 
-The exact AT integration mechanism is deferred to `AG.SHELL-0.DESIGN`. Do not
-assume a direct code dependency on AT Core.
+The AT integration mechanism is frozen and implemented (`AG.SHELL-1`): the
+concrete Android Shell Tool connects to the AT Engine through the vendored
+`third_party/at-engine-handoff-v0` Handoff Bundle v0. AG does not wait for any
+future AT work (Pairing, Wireless Bootstrap, PTY, streaming): the AG mainline
+and the AT mainline evolve independently.
 
 ## Package boundary
 
@@ -104,6 +107,12 @@ AG.ENGINE-0     FROZEN   (tag ag-engine-0)  Engine = Runtime + Core, logical
 AG.SHELL-1      VERIFIED :tool-android-shell integrated with AT Engine Handoff
                                 Bundle v0; AndroidShellToolImpl registered in AGA;
                                 real-device Tool path S1-S5 PASS
+AGENT-0.PREFLIGHT PRE-LIVE READY: AGENT_INSTRUCTIONS_V0 frozen (Host-owned,
+                                version+hash); android_shell ToolSpec audited
+                                (WHAT/WHEN/INPUT/OUTPUT); Model Request Shape +
+                                ToolResult feedback verified; minimal Agent Trace
+                                (AgentTraceCollector in :app, redacted) ready.
+                                AG Core / Agent Runtime / AT Engine unchanged.
 ```
 
 Implemented and **not** to be described as pending:
@@ -169,11 +178,13 @@ Core" — that is wrong.
 AndroidAgent must **not** vendor AT source, copy AT source, reimplement AT Core,
 or push an AT implementation into `:ag-core`, `:ag-runtime` or `:app`.
 
-**The AT integration mechanism is not frozen yet.** Do not assume direct AT Core
-linking, an Android runtime service, or Binder / AIDL before `AG.SHELL-0.DESIGN`
-decides. AT does not have to escape the Android device, but its execution
-capability must eventually be usable by Android consumers other than the AT
-APK's own UI.
+**The AT integration mechanism is frozen and implemented (`AG.SHELL-1`).** The
+concrete Android Shell Tool is the only consumer: it links the AT Engine through
+the vendored `third_party/at-engine-handoff-v0` Handoff Bundle v0 (paired
+`at-runtime` / `at-core` AARs, byte-identical). No direct AT Core linking, no
+runtime service, no Binder / AIDL. AG does not wait for future AT Pairing,
+Wireless Bootstrap, or PTY work — the AG mainline and the AT mainline evolve
+independently.
 
 ## Still forbidden without an explicitly opened Step
 
@@ -188,8 +199,9 @@ AIController integration
 ```
 
 Note: ShellTool / Android Tool and AT Engine integration are **implemented**
-(`AG.SHELL-1` VERIFIED, `:tool-android-shell`). What remains forbidden without a
-Step: AGENT-0 (live model autonomous tool choice), pairing, AGCLI, persistence,
+(`AG.SHELL-1` VERIFIED, `:tool-android-shell`). AGENT-0.PREFLIGHT is **done**
+(instructions/tool/context/trace frozen). What remains forbidden without a Step:
+AGENT-0.LIVE (live model autonomous tool choice), pairing, AGCLI, persistence,
 MCP, multi-agent, AIController.
 
 Note: AGA itself is **implemented and frozen**. What is forbidden is new AGA
