@@ -101,6 +101,9 @@ AGA-0.ARCH      DONE
 AG.STABLE-1     FROZEN   (tag ag-stable-1)  current working baseline
 AG.ENGINE-0     FROZEN   (tag ag-engine-0)  Engine = Runtime + Core, logical
                                 boundary audited, no production normalization
+AG.SHELL-1      VERIFIED :tool-android-shell integrated with AT Engine Handoff
+                                Bundle v0; AndroidShellToolImpl registered in AGA;
+                                real-device Tool path S1-S5 PASS
 ```
 
 Implemented and **not** to be described as pending:
@@ -117,6 +120,12 @@ Implemented and **not** to be described as pending:
 :provider-openai-compatible-jdk JdkOpenAiHttpTransport (java.net.http)
 :app                           AGA host: AndroidOpenAiHttpTransport
                                (HttpsURLConnection), minimal chat UI
+:tool-android-shell            Concrete Android Shell Tool Integration:
+                               AndroidShellToolImpl (Tool) + ShellConnection
+                               (AT Engine lifecycle binding). The ONLY module
+                               that depends on AT Engine (paired AAR bundle).
+third_party/at-engine-handoff-v0/   vendored AT Engine Handoff Bundle v0
+                               (byte-identical; local m2 metadata wrapper)
 config/provider.example.json   tracked, no secret
 config/provider.local.json     ignored, real key
 ```
@@ -171,13 +180,17 @@ APK's own UI.
 Do not begin any of the following unless a Step explicitly authorizes it:
 
 ```text
-ShellTool / any Android Tool          AT Runtime / AT Core integration
 additional AGA feature development     AGC / further frontend expansion
 Skills loader                         MCP
 persistence / RAG                     multi-agent
 plugin framework                      provider routing
 AIController integration
 ```
+
+Note: ShellTool / Android Tool and AT Engine integration are **implemented**
+(`AG.SHELL-1` VERIFIED, `:tool-android-shell`). What remains forbidden without a
+Step: AGENT-0 (live model autonomous tool choice), pairing, AGCLI, persistence,
+MCP, multi-agent, AIController.
 
 Note: AGA itself is **implemented and frozen**. What is forbidden is new AGA
 feature work and any additional frontend — not AGA's existence.

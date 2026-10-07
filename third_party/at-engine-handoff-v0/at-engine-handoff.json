@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "1",
+  "bundleId": "at-engine-handoff-v0",
+  "bundleVersion": "0.1.0",
+  "artifactKind": "versioned-paired-aar-bundle",
+  "atomicity": "The two AARs are an INDIVISIBLE pair. Never replace or swap only one AAR. On ANY AT update, regenerate the ENTIRE bundle from a clean build so the pair, hashes, and metadata stay in lockstep.",
+
+  "engine": {
+    "name": "AT Engine",
+    "version": "0.1.0",
+    "logicalComposition": "AT Engine = AT Runtime + AT Core",
+    "physicalDistributionUnit": "paired AAR bundle (at-runtime.aar + at-core.aar)",
+    "runtimeModule": {
+      "namespace": "com.androidterminal.runtime",
+      "role": "AG-facing stable public contract / lifecycle boundary",
+      "compileSdk": 34,
+      "minSdk": 26,
+      "containsNativeLibs": false,
+      "containsCoreClasses": false
+    },
+    "coreModule": {
+      "namespace": "com.androidterminal",
+      "role": "Frozen implementation + JNI + native libs (reached ONLY via AT Runtime)",
+      "compileSdk": 34,
+      "minSdk": 26,
+      "abIs": ["arm64-v8a"],
+      "containsNativeLibs": true
+    }
+  },
+
+  "artifacts": {
+    "at-runtime.aar": {
+      "sha256": "1affba2eee724e83975034a8d3407d5f0fb8c35ee43269509808ca8ee0e27c22",
+      "sizeBytes": 73033,
+      "sourceAar": "at-runtime/build/outputs/aar/at-runtime-debug.aar"
+    },
+    "at-core.aar": {
+      "sha256": "67015cfa6a7e24fb46f0b51017bcb4384f5fea432d764e06f45aa70856b6d55e",
+      "sizeBytes": 1277257,
+      "sourceAar": "at-core/build/outputs/aar/at-core-debug.aar"
+    }
+  },
+
+  "nativeLibs": {
+    "abi": "arm64-v8a",
+    "location": "at-core.aar:jni/arm64-v8a/",
+    "libs": [
+      {
+        "name": "libandroidterminaladb.so",
+        "sizeBytes": 2156320,
+        "sha256": "6cc13843a357dd2380c28cfbfa07a6d38167c74e42310804df9c975416cc18e4"
+      },
+      {
+        "name": "libc++_shared.so",
+        "sizeBytes": 1292896,
+        "sha256": "92ee8da641b969254cc8723f64aa115d36c8ffa87115e38bc9cb89e3eefee839"
+      },
+      {
+        "name": "libnetwork_probe.so",
+        "sizeBytes": 11200,
+        "sha256": "6cdcb09a494d3385f839bfa39a967fbd6b40524f827d0ef279d49a3d79746c95"
+      }
+    ]
+  },
+
+  "publicContract": {
+    "entryPoint": "com.androidterminal.runtime.AtRuntime (Kotlin object singleton)",
+    "rule": "External consumer production source MUST import ONLY com.androidterminal.runtime.* stable contract. Zero imports of TerminalRuntime, AdbManager, AtWirelessConnector, RecoveryCoordinator, EndpointStore, DiscoveryBackend, NsdManager, _adb-tls-connect, hardcoded ports, or recovery internals.",
+    "stableSurface": [
+      "AtRuntime.initialize(context: Context)",
+      "AtRuntime.readinessState(): AtReadinessState",
+      "AtRuntime.checkReadiness(): AtWirelessDebuggingState",
+      "AtRuntime.connectAuto(keyDir: String): AtRuntimeDiagnostic",
+      "AtRuntime.connect(request: AtConnectionRequest): AtRuntimeDiagnostic",
+      "AtRuntime.execute(command: String, timeoutMs: Int = 0): AtExecutionResult",
+      "AtRuntime.disconnect(): AtRuntimeDiagnostic"
+    ],
+    "resultTypes": [
+      "AtExecutionResult(outcome, stdout, stderr, exitCode, hasError, error)",
+      "AtExecutionOutcome (Completed / TransportError / Unsupported / ProtocolError / Cancelled / TimedOut)",
+      "AtRuntimeDiagnostic(code, message, readiness, transport)",
+      "AtReadinessState (Disconnected / Connecting / Ready / ConnectFailed / EndpointNotFound / UserActionRequired / TransportLost / Recovering / RecoveryFailed)",
+      "AtWirelessDebuggingState (Enabled / Disabled / Unknown)",
+      "AtTransportState (Disconnected / Connecting / Online / ...)",
+      "AtConnectionRequest(host, port, keyDir)"
+    ]
+  },
+
+  "provenance": {
+    "repo": "D:/codebank/AndCode/AndroidTerminal-V2",
+    "branch": "main",
+    "sourceCommit": "726a441acd5d5a7e24c5015adce57e543d1897f7",
+    "sourceDirty": true,
+    "sourceDirtyNote": "Working tree has uncommitted AT.RUNTIME-2A/2B/2D and AT.ENGINE-AG0 sources. HEAD alone does NOT uniquely identify the source identity, so sourceTreeSha256 is provided as the authoritative content fingerprint over the relevant tracked sources (at-core + at-runtime implementation, gradle, manifests). Do NOT forge commit provenance.",
+    "sourceTreeSha256": "ff0a6432b9600f831b12456734a798fdc3802a08cee488bda4cb154be7f9ce3b",
+    "sourceTreeFingerprintFileCount": 162,
+    "atCoreProductionDiff": "empty (0 changes to frozen AT Core)",
+    "builtWith": {
+      "java": "C:/Program Files/Microsoft/jdk-21.0.6.7-hotspot",
+      "gradle": "8.7",
+      "sdkRoot": "C:/android",
+      "ndk": "27.0.12077973",
+      "cmake": "3.22.1",
+      "compileTarget": "arm64-v8a only"
+    },
+    "buildVariant": "debug"
+  },
+
+  "validationStatus": {
+    "inRepoHandoffConsumer": "AT.ENGINE-AG0 VERIFIED (H1-H4 real-device PASS, Golden Chain intact)",
+    "externalStandaloneConsumer": "PENDING — requires the copied-AAR standalone build + static audit + real-device smoke",
+    "realDevice": "APLMUT4312005935 / HONOR ALI-AN00 / Android 15 / API 35 / arm64-v8a (re-attach to run device acceptance)",
+    "assumptions": "Wireless Debugging already enabled + identity already trusted. Test-only authorized adbkey fixture injected at validation time and removed afterwards. No private key committed."
+  }
+}

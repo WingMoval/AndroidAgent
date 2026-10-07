@@ -80,13 +80,26 @@ class ChatActivity : AppCompatActivity() {
             return
         }
 
-        runtime = ChatCompositionRoot(cfg).runtime
+val root = ChatCompositionRoot(cfg, applicationContext)
+        runtime = root.runtime
         // Clear the field so the key is not left sitting in the view hierarchy.
         apiKeyField.setText("")
         setStatus(
             "Provider ready (${cfg.model}, timeout ${cfg.requestTimeout.seconds}s). " +
                 "API_KEY = ${if (cfg.apiKey.isBlank()) "ABSENT" else "PRESENT"}"
         )
+
+        // AG.SHELL-1: wire the AT Engine lifecycle (Host owns the policy; the
+        // composition-root ShellConnection performs the calls off the main thread).
+        // Minimal status display only — no dedicated settings UI in this step.
+        lifecycleScope.launch {
+            val status = root.shell.connect()
+            if (status.ready) {
+                setStatus("AT Engine ready.")
+            } else {
+                setStatus("AT Engine: ${status.message}")
+            }
+        }
     }
 
     private fun onNewSession() {

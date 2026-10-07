@@ -24,6 +24,13 @@ dependencyResolutionManagement {
     repositories {
         mavenCentral()
         google()
+        // AG.SHELL-1: repo-local Maven metadata wrapper for the verified AT Engine
+        // Handoff Bundle v0. The AARs in this repo are byte-identical copies of
+        // third_party/at-engine-handoff-v0/artifacts/*.aar (hashes match SHA256SUMS);
+        // the POMs only describe dependency resolution and never repackage the AARs.
+        maven {
+            url = uri("third_party/at-engine-handoff-v0/m2")
+        }
     }
 }
 
@@ -36,4 +43,5 @@ include(":ag-core")
 include(":ag-runtime")
 include(":provider-openai-compatible")
 include(":provider-openai-compatible-jdk")
+include(":tool-android-shell")
 include(":app")
