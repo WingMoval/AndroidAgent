@@ -110,3 +110,38 @@ object DeviceLocalProviderConfigLoader {
      */
     fun configFile(context: Context): File = File(context.filesDir, FILE_NAME)
 }
+
+/**
+ * A selectable provider node (endpoint + credentials), each backed by its own
+ * device-local config file.
+ *
+ * The node concept is Host/UI-level: it lets AGA switch between providers
+ * without re-typing credentials. It does NOT add a provider abstraction to AG
+ * Core — the selected node still produces a plain [OpenAiCompatibleConfig].
+ */
+enum class ProviderNode(val displayName: String, val configFileName: String) {
+
+    /** Current development endpoint (EMG, cloudflare-backed). */
+    EMG("EMG", "provider.local.json"),
+
+    /** OpenRouter endpoint (StreamLake-routed model). */
+    OPENROUTER("OpenRouter", "provider.openrouter.json"),
+}
+
+/**
+ * Loads the device-local config for a specific [ProviderNode].
+ *
+ * Reuses [DeviceLocalProviderConfigLoader] semantics (same parser, same
+ * Loaded/Missing/Invalid contract) against the node's own file name, so a node
+ * that has no provisioned config simply falls back to the manual UI flow.
+ */
+object DeviceLocalProviderNodeLoader {
+
+    /** Device-local config file for [node], e.g. `filesDir/provider.openrouter.json`. */
+    fun configFile(context: Context, node: ProviderNode): File =
+        File(context.filesDir, node.configFileName)
+
+    /** Loads [node]'s device-local config. Never throws. */
+    fun load(context: Context, node: ProviderNode): DeviceLocalProviderConfig =
+        DeviceLocalProviderConfigLoader.load(configFile(context, node))
+}

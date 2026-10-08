@@ -62,7 +62,9 @@ class ShellConnection(
         )
     }
 
-    /** Current engine-level readiness as an integration-owned status (non-blocking). */
+    /**
+     * Current engine-level readiness as an integration-owned status (non-blocking).
+     */
     fun readiness(): Status {
         val state = AtRuntime.readinessState()
         return Status(

@@ -24,6 +24,20 @@
             android:layout_marginTop="4dp"
             android:textSize="13sp" />
 
+        <!-- Provider node selector: EMG / OpenRouter (device-local configs). -->
+        <Spinner
+            android:id="@+id/provider_node"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" />
+
+        <Button
+            android:id="@+id/reconnect"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Reconnect" />
+
         <!-- Development provider configuration. The API key is entered at
              runtime and stays in process memory only. -->
         <EditText

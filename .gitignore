@@ -1,4 +1,4 @@
-# Gradle / JVM
+﻿# Gradle / JVM
 .gradle/
 build/
 **/build/
@@ -53,4 +53,6 @@ research/
 *.apk
 *.aab
 *.jar
-!gradle/wrapper/gradle-wrapper.jar
+
+/config/provider.openrouter.local.json
+

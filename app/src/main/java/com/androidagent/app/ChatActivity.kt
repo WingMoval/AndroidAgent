@@ -2,17 +2,22 @@ package com.androidagent.app
 
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.androidagent.core.RunFailure
-import com.androidagent.core.RunOutcome
-import com.androidagent.runtime.AgentRuntime
-import com.androidagent.provider.openai.OpenAiCompatibleConfig
 import com.androidagent.app.trace.AgentTrace
 import com.androidagent.app.trace.TraceFormatter
+import com.androidagent.core.AgentEvent
+import com.androidagent.core.RunFailure
+import com.androidagent.core.RunOutcome
+import com.androidagent.provider.openai.OpenAiCompatibleConfig
+import com.androidagent.runtime.AgentRuntime
 import kotlinx.coroutines.launch
 import java.net.URI
 import java.time.Duration
@@ -27,6 +32,10 @@ import java.time.Duration
  * Credential policy: the API key is typed at runtime and held in process memory
  * only. It is never written to disk, SharedPreferences, DataStore, resources or
  * BuildConfig.
+ *
+ * AGA.HOST-CONTROL-0: persistent status shows the selected Provider node and the
+ * AT Engine connection; the transient run phase (Thinking / Executing / Ready /
+ * Failed) is rendered below without overwriting either.
  */
 class ChatActivity : AppCompatActivity() {
 
@@ -35,14 +44,35 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var input: EditText
     private lateinit var send: Button
     private lateinit var newSession: Button
+    private lateinit var reconnect: Button
 
     private lateinit var baseUrlField: EditText
     private lateinit var modelField: EditText
     private lateinit var apiKeyField: EditText
     private lateinit var timeoutField: EditText
+    private lateinit var nodeSpinner: Spinner
 
     private var root: ChatCompositionRoot? = null
     private var runtime: AgentRuntime? = null
+
+    /** Currently selected provider node. Guarded against listener re-entry. */
+    private var currentNode: ProviderNode = ProviderNode.EMG
+    private var applyingNode: Boolean = false
+
+    /** Persistent: the active Provider node (EMG / OpenRouter). */
+    private var providerStatusText: String? = null
+
+    /** Persistent: the AT Engine connection state. */
+    private var atStatusText: String? = null
+
+    /** Transient: the run phase (Thinking / Executing / ... / Ready / Failed). */
+    private var runStatusText: String? = null
+
+    /** Last successfully applied credential, retained across a blank-key Apply. */
+    private var lastAppliedKey: String = ""
+
+    /** Whether a manual reconnect attempt is in flight (button disabled then). */
+    private var reconnecting: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,10 +83,12 @@ class ChatActivity : AppCompatActivity() {
         input = findViewById(R.id.input)
         send = findViewById(R.id.send)
         newSession = findViewById(R.id.new_session)
+        reconnect = findViewById(R.id.reconnect)
         baseUrlField = findViewById(R.id.base_url)
         modelField = findViewById(R.id.model)
         apiKeyField = findViewById(R.id.api_key)
         timeoutField = findViewById(R.id.timeout)
+        nodeSpinner = findViewById(R.id.provider_node)
 
         baseUrlField.setText(DEFAULT_BASE_URL)
         modelField.setText(DEFAULT_MODEL)
@@ -65,6 +97,8 @@ class ChatActivity : AppCompatActivity() {
         findViewById<Button>(R.id.apply).setOnClickListener { applyConfig() }
         send.setOnClickListener { onSend() }
         newSession.setOnClickListener { onNewSession() }
+        reconnect.setOnClickListener { onReconnect() }
+        setupNodeSpinner()
 
         // AGA.DEV-CONFIG-0: at startup, try the device-local provider config.
         // If present and valid, the Provider is ready with no manual key entry.
@@ -72,104 +106,165 @@ class ChatActivity : AppCompatActivity() {
         tryDeviceLocalConfig()
     }
 
-    /**
-     * AGA.DEV-CONFIG-0: attempt to auto-configure from
-     * `filesDir/provider.local.json`. On success the Provider is ready and the
-     * safe status is shown (the API key field stays blank). On Missing/Invalid the
-     * manual flow remains available; the status reports only a safe category,
-     * never raw JSON or the key.
-     */
-    private fun tryDeviceLocalConfig() {
-        when (val result = DeviceLocalProviderConfigLoader.load(applicationContext)) {
+    // ------------------------------------------------------------- Provider node
+
+    private fun setupNodeSpinner() {
+        val nodes = ProviderNode.entries
+        val labels = nodes.map { it.displayName }
+        nodeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+        nodeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (applyingNode) return
+                val node = nodes[position]
+                if (node != currentNode) {
+                    currentNode = node
+                    applyNode(node)
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+    }
+
+    private fun applyNode(node: ProviderNode) {
+        when (val result = DeviceLocalProviderNodeLoader.load(applicationContext, node)) {
             is DeviceLocalProviderConfig.Loaded -> {
-                val cfg = result.config
-                root = ChatCompositionRoot(cfg, applicationContext)
-                runtime = root?.runtime
-                // The key field is intentionally left blank: the key came from the
-                // device-local file, not the UI, and is never shown.
-                apiKeyField.setText("")
-                setStatus(configReadyStatus(cfg, source = "DEVICE_LOCAL"))
-                connectShell()
+                applyConfig(result.config, source = node.displayName)
             }
 
             is DeviceLocalProviderConfig.Missing ->
-                setStatus("No device-local config. Enter the API key, tap Apply, then send a message.")
+                setStatus("$node config not provisioned. Enter the API key, tap Apply, then send a message.")
 
             is DeviceLocalProviderConfig.Invalid ->
-                setStatus("Device-local config invalid (${DeviceLocalProviderConfigLoader.REASON_INVALID}). " +
-                    "Enter the API key, tap Apply, then send a message.")
+                setStatus("$node config invalid. Enter the API key, tap Apply, then send a message.")
         }
     }
 
-    /**
-     * Wires the AT Engine lifecycle after a Provider is ready (from either the
-     * device-local config or a manual Apply). Shared so both paths behave
-     * identically.
-     */
-    private fun connectShell() {
-        val shellConnection = root?.shell
-        lifecycleScope.launch {
-            val status = shellConnection?.connect()
-            if (status == null) {
-                setStatus("AT Engine: not connected.")
-            } else if (status.ready) {
-                setStatus("AT Engine ready.")
-            } else {
-                setStatus("AT Engine: ${status.message}")
-            }
-        }
+    private fun tryDeviceLocalConfig() {
+        val defaultNode = ProviderNode.entries.firstOrNull {
+            DeviceLocalProviderNodeLoader.load(applicationContext, it) is DeviceLocalProviderConfig.Loaded
+        } ?: ProviderNode.EMG
+        currentNode = defaultNode
+        applyingNode = true
+        nodeSpinner.setSelection(ProviderNode.entries.indexOf(defaultNode))
+        applyingNode = false
+        applyNode(defaultNode)
     }
 
     /**
-     * Safe, key-free "Provider ready" status. [source] is DEVICE_LOCAL or MANUAL.
-     * The endpoint is rendered as scheme + host + port + path only.
+     * Applies a config (from a node or manual entry). AT startup auto-connect is
+     * unconditional in this consolidated Host: the single AGA APK always wires AT.
      */
-    private fun configReadyStatus(cfg: OpenAiCompatibleConfig, source: String): String =
-        "Provider config: $source | Model: ${cfg.model} | Endpoint: ${safeEndpoint(cfg.baseUrl)} " +
-            "| Timeout: ${cfg.requestTimeout.seconds}s | API key: " +
-            (if (cfg.apiKey.isBlank()) "ABSENT" else "PRESENT")
+    private fun applyConfig(cfg: OpenAiCompatibleConfig, source: String) {
+        root = ChatCompositionRoot(cfg, applicationContext, onRunEvent = { onRunEvent(it) })
+        runtime = root?.runtime
+        lastAppliedKey = cfg.apiKey
+        // Reflect the active node in the editable fields; the API key field stays
+        // blank (never echoed back into the view hierarchy).
+        baseUrlField.setText(cfg.baseUrl)
+        modelField.setText(cfg.model)
+        timeoutField.setText(cfg.requestTimeout.seconds.toString())
+        apiKeyField.setText("")
+        providerStatusText = HostStatusModel.providerLine(source)
+        atStatusText = null
+        runStatusText = null
+        renderStatus()
+        connectShell()
+    }
 
-    /** scheme + host + port + path only. Never a query string or credential. */
-    private fun safeEndpoint(baseUrl: String): String = runCatching {
-        val uri = URI.create(baseUrl)
-        val authority = uri.rawAuthority?.substringAfter('@').orEmpty()
-        "${uri.scheme}://$authority${uri.rawPath}"
-    }.getOrDefault(baseUrl)
-
+    /**
+     * Manual Apply: build a config from the editable fields. A blank API key
+     * field must NOT overwrite the active credential (the 401 regression fix).
+     */
     private fun applyConfig() {
+        val typedKey = apiKeyField.text.toString()
+        val effectiveKey = HostStatusModel.effectiveKey(typedKey, lastAppliedKey)
         val cfg = try {
             OpenAiCompatibleConfig(
                 baseUrl = baseUrlField.text.toString().trim().ifEmpty { DEFAULT_BASE_URL },
                 model = modelField.text.toString().trim().ifEmpty { DEFAULT_MODEL },
-                apiKey = apiKeyField.text.toString(),
+                apiKey = effectiveKey,
                 requestTimeout = Duration.ofSeconds(
                     timeoutField.text.toString().trim().toLongOrNull()
                         ?: DEFAULT_TIMEOUT_SECONDS
                 ),
             )
         } catch (e: IllegalArgumentException) {
-            setStatus("Invalid configuration: ${e.message}")
+            runStatusText = "Invalid configuration: ${e.message}"
+            renderStatus()
             return
         }
+        applyConfig(cfg, source = "MANUAL")
+    }
 
-        // AGA.DEV-CONFIG-0: a manual Apply replaces the active Provider for this
-        // process only. It MUST NOT write back provider.local.json — the
-        // device-local file stays read-only from the AGA's perspective.
-        root = ChatCompositionRoot(cfg, applicationContext)
-        runtime = root?.runtime
-        // Clear the field so the key is not left sitting in the view hierarchy.
-        apiKeyField.setText("")
-        setStatus(configReadyStatus(cfg, source = "MANUAL"))
+    // ----------------------------------------------------------------- AT Engine
+
+    /** Startup / switch / manual-reconnect entry: connect the AT Engine. */
+    private fun connectShell() {
+        val shellConnection = root?.shell
+        atStatusText = "Connecting..."
+        renderStatus()
+        lifecycleScope.launch {
+            val status = shellConnection?.connect()
+            atStatusText = if (status == null) {
+                "Not connected"
+            } else if (status.ready) {
+                "Connected"
+            } else {
+                HostStatusModel.safeAtMessage(status.message)
+            }
+            renderStatus()
+        }
+    }
+
+    /** Manual reconnect button: only re-runs the connect flow. */
+    private fun onReconnect() {
+        if (reconnecting) return
+        reconnecting = true
+        reconnect.isEnabled = false
         connectShell()
+        // The connect coroutine finishes asynchronously; re-enable is handled in
+        // the same coroutine by rendering after the status lands.
+        lifecycleScope.launch {
+            // A short yield lets connectShell's launch begin; the button re-enables
+            // on the next status render.
+            reconnecting = false
+            reconnect.isEnabled = true
+        }
+    }
+
+    // ----------------------------------------------------------------- Run status
+
+    /**
+     * Host-side observer for AG Core's [AgentEvent] stream. Renders the transient
+     * run phase without touching the persistent Provider / AT status lines.
+     */
+    private fun onRunEvent(event: AgentEvent) {
+        runStatusText = HostStatusModel.runPhaseText(event)
+        runOnUiThread { renderStatus() }
+    }
+
+    // ----------------------------------------------------------------- UI
+
+    /** Renders persistent Provider + AT lines and the transient run phase. */
+    private fun renderStatus() {
+        val parts = listOfNotNull(
+            providerStatusText,
+            atStatusText?.let { "AT: $it" },
+            runStatusText,
+        )
+        setStatus(parts.joinToString("\n"))
     }
 
     private fun onNewSession() {
         val switched = runtime?.newSession() ?: false
         if (switched) {
             transcript.text = ""
-            setStatus("New session started.")
+            runStatusText = "New session started."
+            renderStatus()
         } else {
-            setStatus("Cannot start a new session while a run is in progress.")
+            runStatusText = "Cannot start a new session while a run is in progress."
+            renderStatus()
         }
     }
 
@@ -179,18 +274,21 @@ class ChatActivity : AppCompatActivity() {
 
         val r = runtime
         if (r == null) {
-            setStatus("Tap Apply first to configure the provider.")
+            runStatusText = "Tap Apply first to configure the provider."
+            renderStatus()
             return
         }
         if (r.isBusy) {
-            setStatus("A run is already in progress for this session.")
+            runStatusText = "A run is already in progress for this session."
+            renderStatus()
             return
         }
 
         append("You", text)
         input.setText("")
         setBusy(true)
-        setStatus("Running...")
+        runStatusText = "Thinking..."
+        renderStatus()
 
         lifecycleScope.launch {
             val outcome = r.send(text)
@@ -199,14 +297,8 @@ class ChatActivity : AppCompatActivity() {
             // run's tool calls, arguments, results and outcome can be replayed.
             logTrace()
             when (outcome) {
-                is RunOutcome.Answer -> {
-                    append("Agent", outcome.content)
-                    setStatus("Ready.")
-                }
-                is RunOutcome.Failure -> {
-                    append("Agent", safeError(outcome.failure))
-                    setStatus("Run failed.")
-                }
+                is RunOutcome.Answer -> append("Agent", outcome.content)
+                is RunOutcome.Failure -> append("Agent", safeError(outcome.failure))
             }
             setBusy(false)
         }
@@ -250,6 +342,9 @@ class ChatActivity : AppCompatActivity() {
     private companion object {
         const val DEFAULT_BASE_URL = "https://api.emg.dpdns.org/v1"
         const val DEFAULT_MODEL = "qwen3.8-local"
-        const val DEFAULT_TIMEOUT_SECONDS = 120L
+        // EMG is slow/variable (measured up to ~142s per request on this phone),
+        // and an Agent run may need several model turns. 600s is a safe default
+        // for the manual fallback; per-node configs override this anyway.
+        const val DEFAULT_TIMEOUT_SECONDS = 600L
     }
 }

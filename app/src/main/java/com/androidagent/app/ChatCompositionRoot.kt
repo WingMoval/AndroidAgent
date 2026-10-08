@@ -5,6 +5,8 @@ import com.androidagent.app.provider.AndroidOpenAiHttpTransport
 import com.androidagent.app.trace.AgentTrace
 import com.androidagent.app.trace.AgentTraceCollector
 import com.androidagent.core.AgentCore
+import com.androidagent.core.AgentEvent
+import com.androidagent.core.AgentEventSink
 import com.androidagent.core.RunOptions
 import com.androidagent.core.ToolRegistry
 import com.androidagent.provider.openai.OpenAiCompatibleConfig
@@ -40,6 +42,7 @@ import com.androidagent.tool.androidshell.ShellConnection
 class ChatCompositionRoot(
     private val config: OpenAiCompatibleConfig,
     applicationContext: Context,
+    private val onRunEvent: (AgentEvent) -> Unit = {},
 ) {
 
     private val toolRegistry = ToolRegistry()
@@ -89,9 +92,26 @@ class ChatCompositionRoot(
 
     private val runOptions = RunOptions(
         instructions = AgentInstructions.CONTENT,
-        eventSink = traceCollector,
+        // The Host may observe the same event stream for transient run status;
+        // tracing stays intact either way.
+        eventSink = CompositeSink(traceCollector, onRunEvent),
     )
 
     /** The runnable Agent lifecycle handed to the UI. */
     val runtime: AgentRuntime = AgentRuntime(agentCore, runOptions = runOptions)
+
+    /** Forwards every event to both observers. Neither may break the Run. */
+    private class CompositeSink(
+        private val trace: AgentEventSink,
+        private val host: (AgentEvent) -> Unit,
+    ) : AgentEventSink {
+        override fun emit(event: AgentEvent) {
+            trace.emit(event)
+            try {
+                host(event)
+            } catch (_: Exception) {
+                // A misbehaving host observer must not break the Agent Run.
+            }
+        }
+    }
 }

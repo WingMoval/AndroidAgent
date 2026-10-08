@@ -118,6 +118,12 @@ AGA.DEV-CONFIG-0 IMPLEMENTED: AGA auto-loads filesDir/provider.local.json at
                                 missing/invalid -> manual UI fallback; manual Apply
                                 never writes back the file. AG Core / Runtime /
                                 AT Engine unchanged.
+AGA.HOST-CONTROL-0 PASS (pre-live host baseline): Provider node selector
+                                (EMG/OpenRouter) switch-is-active; AT startup
+                                auto-connect + manual Reconnect; blank-key Apply
+                                401 fixed; run-phase status; single AGA APK
+                                (noat flavor & atEnabled & connectTo removed);
+                                AG Core / Runtime / AT Engine / Handoff unchanged.
 ```
 
 Implemented and **not** to be described as pending:
