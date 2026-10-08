@@ -14,6 +14,7 @@ import com.androidagent.provider.openai.OpenAiCompatibleConfig
 import com.androidagent.app.trace.AgentTrace
 import com.androidagent.app.trace.TraceFormatter
 import kotlinx.coroutines.launch
+import java.net.URI
 import java.time.Duration
 
 /**
@@ -65,8 +66,75 @@ class ChatActivity : AppCompatActivity() {
         send.setOnClickListener { onSend() }
         newSession.setOnClickListener { onNewSession() }
 
-        setStatus("Enter the API key, tap Apply, then send a message.")
+        // AGA.DEV-CONFIG-0: at startup, try the device-local provider config.
+        // If present and valid, the Provider is ready with no manual key entry.
+        // Otherwise (missing or invalid) the existing manual UI flow is preserved.
+        tryDeviceLocalConfig()
     }
+
+    /**
+     * AGA.DEV-CONFIG-0: attempt to auto-configure from
+     * `filesDir/provider.local.json`. On success the Provider is ready and the
+     * safe status is shown (the API key field stays blank). On Missing/Invalid the
+     * manual flow remains available; the status reports only a safe category,
+     * never raw JSON or the key.
+     */
+    private fun tryDeviceLocalConfig() {
+        when (val result = DeviceLocalProviderConfigLoader.load(applicationContext)) {
+            is DeviceLocalProviderConfig.Loaded -> {
+                val cfg = result.config
+                root = ChatCompositionRoot(cfg, applicationContext)
+                runtime = root?.runtime
+                // The key field is intentionally left blank: the key came from the
+                // device-local file, not the UI, and is never shown.
+                apiKeyField.setText("")
+                setStatus(configReadyStatus(cfg, source = "DEVICE_LOCAL"))
+                connectShell()
+            }
+
+            is DeviceLocalProviderConfig.Missing ->
+                setStatus("No device-local config. Enter the API key, tap Apply, then send a message.")
+
+            is DeviceLocalProviderConfig.Invalid ->
+                setStatus("Device-local config invalid (${DeviceLocalProviderConfigLoader.REASON_INVALID}). " +
+                    "Enter the API key, tap Apply, then send a message.")
+        }
+    }
+
+    /**
+     * Wires the AT Engine lifecycle after a Provider is ready (from either the
+     * device-local config or a manual Apply). Shared so both paths behave
+     * identically.
+     */
+    private fun connectShell() {
+        val shellConnection = root?.shell
+        lifecycleScope.launch {
+            val status = shellConnection?.connect()
+            if (status == null) {
+                setStatus("AT Engine: not connected.")
+            } else if (status.ready) {
+                setStatus("AT Engine ready.")
+            } else {
+                setStatus("AT Engine: ${status.message}")
+            }
+        }
+    }
+
+    /**
+     * Safe, key-free "Provider ready" status. [source] is DEVICE_LOCAL or MANUAL.
+     * The endpoint is rendered as scheme + host + port + path only.
+     */
+    private fun configReadyStatus(cfg: OpenAiCompatibleConfig, source: String): String =
+        "Provider config: $source | Model: ${cfg.model} | Endpoint: ${safeEndpoint(cfg.baseUrl)} " +
+            "| Timeout: ${cfg.requestTimeout.seconds}s | API key: " +
+            (if (cfg.apiKey.isBlank()) "ABSENT" else "PRESENT")
+
+    /** scheme + host + port + path only. Never a query string or credential. */
+    private fun safeEndpoint(baseUrl: String): String = runCatching {
+        val uri = URI.create(baseUrl)
+        val authority = uri.rawAuthority?.substringAfter('@').orEmpty()
+        "${uri.scheme}://$authority${uri.rawPath}"
+    }.getOrDefault(baseUrl)
 
     private fun applyConfig() {
         val cfg = try {
@@ -84,29 +152,15 @@ class ChatActivity : AppCompatActivity() {
             return
         }
 
+        // AGA.DEV-CONFIG-0: a manual Apply replaces the active Provider for this
+        // process only. It MUST NOT write back provider.local.json — the
+        // device-local file stays read-only from the AGA's perspective.
         root = ChatCompositionRoot(cfg, applicationContext)
         runtime = root?.runtime
         // Clear the field so the key is not left sitting in the view hierarchy.
         apiKeyField.setText("")
-        setStatus(
-            "Provider ready (${cfg.model}, timeout ${cfg.requestTimeout.seconds}s). " +
-                "API_KEY = ${if (cfg.apiKey.isBlank()) "ABSENT" else "PRESENT"}"
-        )
-
-        // AG.SHELL-1: wire the AT Engine lifecycle (Host owns the policy; the
-        // composition-root ShellConnection performs the calls off the main thread).
-        // Minimal status display only — no dedicated settings UI in this step.
-        val shellConnection = root?.shell
-        lifecycleScope.launch {
-            val status = shellConnection?.connect()
-            if (status == null) {
-                setStatus("AT Engine: not connected.")
-            } else if (status.ready) {
-                setStatus("AT Engine ready.")
-            } else {
-                setStatus("AT Engine: ${status.message}")
-            }
-        }
+        setStatus(configReadyStatus(cfg, source = "MANUAL"))
+        connectShell()
     }
 
     private fun onNewSession() {

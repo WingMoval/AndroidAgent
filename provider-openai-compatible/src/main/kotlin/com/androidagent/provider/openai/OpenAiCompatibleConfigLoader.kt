@@ -56,6 +56,11 @@ object OpenAiCompatibleConfigLoader {
     /**
      * Parses [path] into an [OpenAiCompatibleConfig].
      *
+     * The only job of the [Path] overload is to check existence and read the file;
+     * every parse/validation decision delegates to [parse], so a JVM host and an
+     * Android host (which reads its own private file with normal File IO) share the
+     * exact same config semantics.
+     *
      * @throws ProviderConfigException for every failure mode. Messages never
      *   contain the api key value.
      */
@@ -65,10 +70,25 @@ object OpenAiCompatibleConfigLoader {
         }
 
         val text = Files.readString(path)
+        return parse(text, label = path.fileName.toString())
+    }
+
+    /**
+     * Parses raw provider config JSON into an [OpenAiCompatibleConfig].
+     *
+     * This is the single source of config validation. It is pure (no file access)
+     * so it can be exercised directly by both JVM and Android hosts. The [label]
+     * is used only to name the offending file in a diagnostic and is never allowed
+     * to carry a secret.
+     *
+     * @throws ProviderConfigException for every failure mode. Messages never
+     *   contain the api key value.
+     */
+    fun parse(rawJson: String, label: String = "provider config"): OpenAiCompatibleConfig {
         val root = try {
-            Json.parseToJsonElement(text).jsonObject
+            Json.parseToJsonElement(rawJson).jsonObject
         } catch (e: Exception) {
-            throw ProviderConfigException.Malformed(path.fileName.toString(), e::class.simpleName ?: "parse error")
+            throw ProviderConfigException.Malformed(label, e::class.simpleName ?: "parse error")
         }
 
         val provider = root["provider"] as? JsonObject

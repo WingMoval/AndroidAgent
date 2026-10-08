@@ -311,4 +311,71 @@ class ProviderConfigTest {
             )
         }
     }
+
+    // ------------------------------------------------- AGA.DEV-CONFIG-0: parse(String)
+    //
+    // The Android Host reads its own private file with normal File IO and feeds the
+    // raw text to parse(). These tests pin that parse(String) is the single source
+    // of config validation, that it produces the SAME semantics as load(Path), and
+    // that it never leaks a secret in a failure message.
+
+    @Test
+    fun C15_parse_equals_load(@TempDir dir: Path) {
+        val path = write(dir, "provider.local.json", validJson())
+        val viaPath = OpenAiCompatibleConfigLoader.load(path)
+        val viaParse = OpenAiCompatibleConfigLoader.parse(Files.readString(path))
+        assertEquals(viaPath, viaParse, "parse(String) must equal load(Path)")
+    }
+
+    @Test
+    fun C16_parse_all_fields() {
+        val json = "{\"provider\":{\"type\":\"openai-compatible\",\"baseUrl\":\"https://x.test/v1\"," +
+            "\"apiKey\":\"k\",\"model\":\"m\",\"requestTimeoutSeconds\":120}}"
+        val config = OpenAiCompatibleConfigLoader.parse(json)
+        assertEquals("https://x.test/v1", config.baseUrl)
+        assertEquals("k", config.apiKey)
+        assertEquals("m", config.model)
+        assertEquals(java.time.Duration.ofSeconds(120), config.requestTimeout)
+    }
+
+    @Test
+    fun C17_parse_malformed_no_leak() {
+        val json = "{\"provider\": {\"apiKey\": \"test-secret\", \"model\":"
+        val error = assertThrows(ProviderConfigException.Malformed::class.java) {
+            OpenAiCompatibleConfigLoader.parse(json, label = "filesDir/provider.local.json")
+        }
+        assertFalse(error.message!!.contains("test-secret"))
+    }
+
+    @Test
+    fun C18_parse_missing_provider() {
+        assertThrows(ProviderConfigException.Invalid::class.java) {
+            OpenAiCompatibleConfigLoader.parse("{\"other\":1}")
+        }
+    }
+
+    @Test
+    fun C19_parse_unsupported_type() {
+        val error = assertThrows(ProviderConfigException.Invalid::class.java) {
+            OpenAiCompatibleConfigLoader.parse("{\"provider\":{\"type\":\"anthropic\",\"baseUrl\":\"b\",\"model\":\"m\"}}")
+        }
+        assertTrue(error.message!!.contains("unsupported provider type"))
+    }
+
+    @Test
+    fun C20_parse_placeholder() {
+        assertThrows(ProviderConfigException.PlaceholderNotReplaced::class.java) {
+            OpenAiCompatibleConfigLoader.parse(validJson(apiKey = "REPLACE_ME"))
+        }
+    }
+
+    @Test
+    fun C21_parse_no_key_leak() {
+        val secret = "sk-parse-leak-value-9999"
+        val badTimeout = "{\"provider\":{\"type\":\"openai-compatible\",\"baseUrl\":\"b\"," +
+            "\"apiKey\":\"$secret\",\"model\":\"m\",\"requestTimeoutSeconds\":0}}"
+        val thrown = runCatching { OpenAiCompatibleConfigLoader.parse(badTimeout) }.exceptionOrNull()
+        assertTrue(thrown is ProviderConfigException)
+        assertFalse(thrown!!.toString().contains(secret))
+    }
 }

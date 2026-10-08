@@ -113,6 +113,11 @@ AGENT-0.PREFLIGHT PRE-LIVE READY: AGENT_INSTRUCTIONS_V0 frozen (Host-owned,
                                 ToolResult feedback verified; minimal Agent Trace
                                 (AgentTraceCollector in :app, redacted) ready.
                                 AG Core / Agent Runtime / AT Engine unchanged.
+AGA.DEV-CONFIG-0 IMPLEMENTED: AGA auto-loads filesDir/provider.local.json at
+                                startup (reuses OpenAiCompatibleConfigLoader.parse);
+                                missing/invalid -> manual UI fallback; manual Apply
+                                never writes back the file. AG Core / Runtime /
+                                AT Engine unchanged.
 ```
 
 Implemented and **not** to be described as pending:

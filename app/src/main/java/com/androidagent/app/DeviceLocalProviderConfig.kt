@@ -1,0 +1,112 @@
+package com.androidagent.app
+
+import android.content.Context
+import com.androidagent.provider.openai.OpenAiCompatibleConfig
+import com.androidagent.provider.openai.OpenAiCompatibleConfigLoader
+import com.androidagent.provider.openai.ProviderConfigException
+import java.io.File
+
+/**
+ * The outcome of looking for a development provider config in the app's private
+ * directory.
+ *
+ * This is the AGA Host's configuration boundary. It deliberately reuses the
+ * existing [OpenAiCompatibleConfigLoader.parse] (the single source of config
+ * validation) rather than re-implementing JSON parsing / validation / placeholder
+ * handling. The AGA only adds: where the file lives, how it is read with normal
+ * Android File IO, and a structured, secret-safe result for the UI.
+ *
+ * The device-local file is READ-ONLY from the AGA's perspective: the app never
+ * writes it. Provisioning (copying repo/config/provider.local.json into
+ * filesDir) is a future ADB step, not part of the app.
+ */
+sealed interface DeviceLocalProviderConfig {
+
+    /** The file existed and parsed into a usable [config]. */
+    data class Loaded(val config: OpenAiCompatibleConfig) : DeviceLocalProviderConfig
+
+    /** No file at the device-local location. The manual UI flow applies. */
+    data object Missing : DeviceLocalProviderConfig
+
+    /**
+     * The file existed but could not be used. [safeReason] is a stable,
+     * non-secret category so it is safe to show in the UI and never to log as raw
+     * JSON. It never contains the apiKey or the file's raw content.
+     */
+    data class Invalid(val safeReason: String) : DeviceLocalProviderConfig
+}
+
+/**
+ * Resolves the AGA development provider config from
+ * `File(context.filesDir, "provider.local.json")`.
+ *
+ * Responsibilities, exactly:
+ *  - locate the file with `context.filesDir` (never a hardcoded absolute path)
+ *  - read it with normal Android File IO
+ *  - delegate validation to [OpenAiCompatibleConfigLoader.parse]
+ *  - return a structured, secret-safe result
+ *
+ * It does not start a provider, build a Composition Root, touch the network, or
+ * write the file. No ADB. No external storage.
+ */
+object DeviceLocalProviderConfigLoader {
+
+    /** Fixed device-local file name. Matches the repo config file exactly. */
+    const val FILE_NAME: String = "provider.local.json"
+
+    /** Stable, UI-safe reason for a missing file. */
+    const val REASON_MISSING: String = "DEVICE_LOCAL_CONFIG_MISSING"
+
+    /** Stable, UI-safe reason for a present-but-unusable file. */
+    const val REASON_INVALID: String = "DEVICE_LOCAL_CONFIG_INVALID"
+
+    /**
+     * Looks up the device-local provider config from the app's private directory.
+     *
+     * Never throws: every failure mode is mapped to a structured [Result]. The
+     * file is opened read-only and is never created or modified by this call.
+     */
+    fun load(context: Context): DeviceLocalProviderConfig =
+        load(File(context.filesDir, FILE_NAME))
+
+    /**
+     * Core lookup against an explicit [file]. Split out from [load] so the JVM
+     * unit tests can drive the exact same read/parse/validation path with a temp
+     * file, without a real Android [Context]. The production entry point is
+     * [load(Context)], which always targets `filesDir/provider.local.json`.
+     *
+     * The file is opened read-only and is never created or modified.
+     */
+    fun load(file: File): DeviceLocalProviderConfig {
+        if (!file.exists() || !file.isFile) {
+            return DeviceLocalProviderConfig.Missing
+        }
+
+        val raw = try {
+            // Normal private-file read. Read-only.
+            file.readText()
+        } catch (e: Exception) {
+            // An unreadable private file is treated as invalid, not a crash, and
+            // never exposes the exception's raw content.
+            return DeviceLocalProviderConfig.Invalid(REASON_INVALID)
+        }
+
+        return try {
+            DeviceLocalProviderConfig.Loaded(
+                OpenAiCompatibleConfigLoader.parse(raw, label = FILE_NAME),
+            )
+        } catch (e: ProviderConfigException) {
+            // Map every provider-config failure to the single stable, non-secret
+            // category. The parser's message is intentionally not surfaced because
+            // it names the file and could echo a JSON shape; the UI only needs to
+            // know "device config is unusable, use manual setup".
+            DeviceLocalProviderConfig.Invalid(REASON_INVALID)
+        }
+    }
+
+    /**
+     * Builds the device-local file from the app's [Context]. Exposed for tests so
+     * they can assert the exact location without hardcoding an absolute path.
+     */
+    fun configFile(context: Context): File = File(context.filesDir, FILE_NAME)
+}
