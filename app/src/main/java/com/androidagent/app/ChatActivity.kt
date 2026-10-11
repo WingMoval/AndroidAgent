@@ -11,6 +11,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.androidagent.app.debug.DebugBridge
 import com.androidagent.app.trace.AgentTrace
 import com.androidagent.app.trace.TraceFormatter
 import com.androidagent.core.AgentEvent
@@ -156,8 +157,17 @@ class ChatActivity : AppCompatActivity() {
      * unconditional in this consolidated Host: the single AGA APK always wires AT.
      */
     private fun applyConfig(cfg: OpenAiCompatibleConfig, source: String) {
-        root = ChatCompositionRoot(cfg, applicationContext, onRunEvent = { onRunEvent(it) })
+        root = ChatCompositionRoot(
+            cfg,
+            applicationContext,
+            onRunEvent = { onRunEvent(it) },
+            onDebugEvent = { e -> sharedDebugBridge?.eventSink?.emit(e) },
+        )
         runtime = root?.runtime
+        sharedRuntime = root?.runtime
+        // Start/reuse the process-wide debug bridge AFTER the runtime exists, but
+        // BEFORE any Run can happen (applyConfig is the only entry point).
+        ensureDebugBridge()
         lastAppliedKey = cfg.apiKey
         // Reflect the active node in the editable fields; the API key field stays
         // blank (never echoed back into the view hierarchy).
@@ -170,6 +180,37 @@ class ChatActivity : AppCompatActivity() {
         runStatusText = null
         renderStatus()
         connectShell()
+    }
+
+    /**
+     * AG.DEBUG-0: start the PC debug bridge in debug builds.
+     *
+     * The bridge is PROCESS-scoped, not Activity-scoped: Activity recreation (for
+     * example under instrumentation's ActivityScenario) must not create a second
+     * bind on the same port or leave the event sink pointing at a dead instance.
+     * It reads the current runtime through [sharedRuntime], so Provider node
+     * switches stay correct without restarting the listener.
+     *
+     * No-op in release (BuildConfig.DEBUG == false): there is no listener and no
+     * external debug ingress in a release build.
+     */
+    private fun ensureDebugBridge() {
+        if (!BuildConfig.DEBUG) return
+        val existing = sharedDebugBridge
+        if (existing != null && existing.isRunning) return
+        val bridge = DebugBridge(runtimeProvider = { sharedRuntime })
+        // Only publish the instance once it is actually listening; a failed bind
+        // must never replace a working bridge or become the event destination.
+        if (bridge.start()) {
+            sharedDebugBridge = bridge
+        }
+    }
+
+    override fun onDestroy() {
+        // The debug bridge is process-scoped on purpose: it must survive Activity
+        // recreation so a passive PC monitor keeps its connection. It dies with
+        // the process. Release builds never create one.
+        super.onDestroy()
     }
 
     /**
@@ -346,5 +387,16 @@ class ChatActivity : AppCompatActivity() {
         // and an Agent run may need several model turns. 600s is a safe default
         // for the manual fallback; per-node configs override this anyway.
         const val DEFAULT_TIMEOUT_SECONDS = 600L
+
+        /**
+         * AG.DEBUG-0: process-scoped debug bridge and the runtime it currently
+         * points at. Shared across Activity instances so recreation never splits
+         * the listener. Both are only ever set in debug builds.
+         */
+        @Volatile
+        private var sharedDebugBridge: DebugBridge? = null
+
+        @Volatile
+        private var sharedRuntime: com.androidagent.runtime.AgentRuntime? = null
     }
 }

@@ -129,6 +129,14 @@ AGENT-0.LIVE    VERIFIED  real adaptive Agent tool loop on device (OpenRouter /
                                 android_shell, observed foreground app P, then used
                                 P in a dependent ToolCall, final answer matched
                                 ground truth. NEXT = AGENT-0.CONTRAST.
+AG.DEBUG-0      PASS      PC Debug Bridge & live execution stream (debug builds
+                                only): TCP JSONL on 127.0.0.1:45678; PC input
+                                routed through the SAME AgentRuntime.send; passive
+                                PC client observes the live AgentEvent stream
+                                including UI-originated runs (T3); busy reused
+                                (T4); disconnect/reconnect safe (T5/T6); release
+                                has no listener (T7). :app only; AG Core /
+                                Runtime / Tool / Provider / AT Engine unchanged.
 ```
 
 Implemented and **not** to be described as pending:
@@ -216,9 +224,10 @@ AIController integration
 
 Note: ShellTool / Android Tool and AT Engine integration are **implemented**
 (`AG.SHELL-1` VERIFIED, `:tool-android-shell`). AGENT-0.PREFLIGHT is **done**
-(instructions/tool/context/trace frozen). What remains forbidden without a Step:
-AGENT-0.LIVE (live model autonomous tool choice), pairing, AGCLI, persistence,
-MCP, multi-agent, AIController.
+(instructions/tool/context/trace frozen). AGENT-0.LIVE is **VERIFIED** and
+AG.DEBUG-0 is **PASS** (debug bridge / live execution stream, :app only).
+What remains forbidden without a Step: AGENT-0.CONTRAST (A/B contrast of the
+Agent loop), pairing, AGCLI, persistence, MCP, multi-agent, AIController.
 
 Note: AGA itself is **implemented and frozen**. What is forbidden is new AGA
 feature work and any additional frontend — not AGA's existence.
