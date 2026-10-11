@@ -124,6 +124,11 @@ AGA.HOST-CONTROL-0 PASS (pre-live host baseline): Provider node selector
                                 401 fixed; run-phase status; single AGA APK
                                 (noat flavor & atEnabled & connectTo removed);
                                 AG Core / Runtime / AT Engine / Handoff unchanged.
+AGENT-0.LIVE    VERIFIED  real adaptive Agent tool loop on device (OpenRouter /
+                                deepseek-v4-flash-0731): model autonomously chose
+                                android_shell, observed foreground app P, then used
+                                P in a dependent ToolCall, final answer matched
+                                ground truth. NEXT = AGENT-0.CONTRAST.
 ```
 
 Implemented and **not** to be described as pending:
