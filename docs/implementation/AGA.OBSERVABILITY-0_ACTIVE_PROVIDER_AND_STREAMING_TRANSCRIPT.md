@@ -154,24 +154,60 @@ app                           148 tests  PASS  (+TranscriptModelTest 21,
 :app:assembleDebug / :app:assembleRelease  BUILD SUCCESSFUL
 ```
 
-### Device acceptance (after phone reconnect)
+### Device acceptance (phone connected, stable network)
 
 ```text
-P1 OpenRouter active route (selector + endpoint label + actual request)
-P2 EMG active route
-P3 switch back -> PROVIDER_UI_TRUTH=VERIFIED
-REASONING_STREAM_IS_INCREMENTAL=YES / NOT_BATCHED_AT_END=YES
-  (if OpenRouter exposes no reasoning: OPENROUTER_REASONING_NOT_EXPOSED + wire evidence)
-ASSISTANT_CONTENT_STREAM=VERIFIED
-THINKING_TO_THOUGHT=VERIFIED (same item, no duplicate block)
-EMG_CONTENT_STREAM=PASS, EMG_FAKE_REASONING=NO
-TOOL_ACTION_VISIBLE / TOOL_RESULT_VISIBLE / TOOL_FAILURE_VISIBLE=VERIFIED
-RUN_FAILURE_VISIBLE=VERIFIED (JVM-covered for Provider/MaxSteps/SessionBusy/Runtime)
-FINAL_ANSWER_DUPLICATION=NONE
-DEBUG_BRIDGE_REGRESSION=PASS (PC client sees reasoning/content deltas)
-RELEASE_BUILD=PASS (no listener, BuildConfig.DEBUG=false)
-SECRET_HANDLING=PASS (endpoint label is scheme+host+path; nothing else)
+P1 OpenRouter active route:
+     UI spinner=OpenRouter, endpoint label=https://openrouter.ai/api/v1/chat/completions
+     actual request endpoint (debug log)=https://openrouter.ai/api/v1/chat/completions
+     => PROVIDER_UI_TRUTH=VERIFIED, OPENROUTER_ACTIVE_ROUTE=VERIFIED
+P2 EMG active route (key expired -> HTTP 401):
+     UI spinner=EMG, endpoint label=https://api.emg.dpdns.org/v1/chat/completions
+     actual request endpoint (debug log)=https://api.emg.dpdns.org/v1/chat/completions
+     run failed with Provider failure (HttpStatus), visible in transcript
+     => EMG_ACTIVE_ROUTE=VERIFIED, RUN_FAILURE_VISIBLE=VERIFIED
+     EMG_CONTENT_STREAM / EMG reasoning: DEFERRED until the EMG key is renewed
+     (user will fix manually)
+P3 switch back EMG -> OpenRouter reverts spinner + label + route honestly
+     => PROVIDER_UI_TRUTH=VERIFIED (switch never lies)
+
+REASONING_STREAM_IS_INCREMENTAL=YES   (7 reasoning_delta before model_turn_end)
+NOT_BATCHED_AT_END=YES                (deltas streamed, not delivered at the end)
+ASSISTANT_CONTENT_STREAM=VERIFIED     (29 content_delta in one turn)
+THINKING_TO_THOUGHT=VERIFIED          (one block flips to "Thought" in the UI)
+EMG_FAKE_REASONING=NONE               (the 401 run emitted no reasoning_started;
+                                       the transcript showed only the Failure block)
+TOOL_ACTION_VISIBLE=VERIFIED          (Shell $ id / $ echo hello)
+TOOL_RESULT_VISIBLE=VERIFIED          (Result exitCode=0 stdout=uid=2000(shell)...)
+TOOL_FAILURE_VISIBLE=VERIFIED         (Result exitCode=1 for `false`)
+RUN_FAILURE_VISIBLE=VERIFIED          (Failed / Provider failure (HttpStatus))
+FINAL_ANSWER_DUPLICATION=NONE         (one Assistant block, marked final)
+DEBUG_BRIDGE_REGRESSION=PASS          (PC client saw reasoning/content deltas,
+                                       reasoning_finished/content_finished,
+                                       tool_call, tool_result, final_answer,
+                                       run_failed, run_finished)
+RELEASE_BUILD=PASS                    (release APK: no listener on 45678,
+                                       no AG.DebugBridge / AG.OpenAiTransport
+                                       logs, PC connect recv=b''; UI truth works)
+SECRET_HANDLING=PASS                  (endpoint labels are scheme+host+path only;
+                                       no key in UI, logcat, transcript or stream)
 ```
+
+Bugs found during device acceptance and fixed:
+
+1. **Missing reasoning/content "Finished" callbacks.** The provider never
+   signaled the end of a reasoning/content section, so the transcript block
+   stayed "Thinking..." forever (never flipped to "Thought") and the PC client
+   never saw `reasoning_finished` / `content_finished`. Fix:
+   `OpenAiCompatibleProvider.complete()` now closes the sections at stream end
+   (`if (acc.reasoning.isNotEmpty()) observer.onReasoningFinished()`, same for
+   content). Covered by provider streaming test P8.
+2. **Transcript missed debug-bridge-originated failures.** `RunFailed` and
+   `AnswerProduced` were only fed into the transcript by the UI send path, so a
+   run started from the PC debug bridge never showed its failure/final answer.
+   Fix: `ChatActivity.onRunEvent` now also feeds `AnswerProduced` and
+   `RunFailed` into the transcript (single source for UI and debug runs); the
+   UI send path no longer duplicates them.
 
 ## 10. Files changed
 
@@ -205,7 +241,9 @@ AGA_OBSERVABILITY_0_PASS
 PROVIDER_UI_TRUTH=VERIFIED        OPENROUTER_ACTIVE_ROUTE=VERIFIED
 EMG_ACTIVE_ROUTE=VERIFIED         MODEL_STREAMING=VERIFIED
 OPENROUTER_REASONING_STREAM=VERIFIED  THINKING_TO_THOUGHT=VERIFIED
-ASSISTANT_CONTENT_STREAM=VERIFIED EMG_CONTENT_STREAM=PASS
+ASSISTANT_CONTENT_STREAM=VERIFIED EMG_CONTENT_STREAM=DEFERRED (expired EMG key;
+                                user renews manually; route + failure already
+                                verified on-device)
 EMG_REASONING_EXPECTED=NO         FAKE_REASONING=NONE
 TOOL_ACTION_VISIBLE=VERIFIED      TOOL_RESULT_VISIBLE=VERIFIED
 TOOL_FAILURE_VISIBLE=VERIFIED     RUN_FAILURE_VISIBLE=VERIFIED
@@ -214,5 +252,6 @@ RELEASE_BUILD=PASS                SECRET_HANDLING=PASS
 READY_FOR_AGENT_0_CONTRAST=YES
 ```
 
-Device gates are re-run after the phone reconnects; the verdict above is the
-target state, JVM-verified in full.
+Two acceptance bugs found and fixed on device (missing reasoning/content
+"Finished" callbacks; transcript not showing debug-bridge-originated failures).
+Full JVM regression green after both fixes.

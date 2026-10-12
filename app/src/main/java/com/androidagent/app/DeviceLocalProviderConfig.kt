@@ -121,11 +121,14 @@ object DeviceLocalProviderConfigLoader {
  */
 enum class ProviderNode(val displayName: String, val configFileName: String) {
 
+    /**
+     * OpenRouter endpoint (StreamLake-routed model). First in the enum so it is
+     * the DEFAULT provider at startup; the EMG endpoint is the fallback.
+     */
+    OPENROUTER("OpenRouter", "provider.openrouter.json"),
+
     /** Current development endpoint (EMG, cloudflare-backed). */
     EMG("EMG", "provider.local.json"),
-
-    /** OpenRouter endpoint (StreamLake-routed model). */
-    OPENROUTER("OpenRouter", "provider.openrouter.json"),
 }
 
 /**

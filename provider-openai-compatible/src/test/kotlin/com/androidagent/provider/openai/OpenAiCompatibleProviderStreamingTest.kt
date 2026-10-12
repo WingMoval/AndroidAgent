@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test
 import java.time.Duration
 
 /**
- * AGA.OBSERVABILITY-0 â€?P series: the Provider always streams.
+ * AGA.OBSERVABILITY-0 ï¿½?P series: the Provider always streams.
  *
  * Proves that [OpenAiCompatibleProvider.complete] requests `stream: true`,
  * feeds every SSE line through the accumulator, notifies the observer
@@ -56,6 +56,8 @@ class OpenAiCompatibleProviderStreamingTest {
         val contentDeltas = mutableListOf<String>()
         var reasoningStarted = 0
         var contentStarted = 0
+        var reasoningFinished = 0
+        var contentFinished = 0
 
         override fun onReasoningStarted() {
             reasoningStarted++
@@ -65,12 +67,20 @@ class OpenAiCompatibleProviderStreamingTest {
             reasoningDeltas += text
         }
 
+        override fun onReasoningFinished() {
+            reasoningFinished++
+        }
+
         override fun onContentStarted() {
             contentStarted++
         }
 
         override fun onContentDelta(text: String) {
             contentDeltas += text
+        }
+
+        override fun onContentFinished() {
+            contentFinished++
         }
     }
 
@@ -120,8 +130,10 @@ class OpenAiCompatibleProviderStreamingTest {
         val turn = runBlocking { provider.complete(request(observer)) }
         assertEquals(1, observer.reasoningStarted)
         assertEquals(listOf("r1", "r2"), observer.reasoningDeltas)
+        assertEquals(1, observer.reasoningFinished, "reasoning section is closed at stream end")
         assertEquals(1, observer.contentStarted)
         assertEquals(listOf("c1", "c2"), observer.contentDeltas)
+        assertEquals(1, observer.contentFinished, "content section is closed at stream end")
         assertTrue(turn is ModelTurn.FinalAnswer)
         assertEquals("c1c2", (turn as ModelTurn.FinalAnswer).content)
     }
@@ -193,5 +205,34 @@ class OpenAiCompatibleProviderStreamingTest {
         assertThrows(OpenAiProviderException.Protocol::class.java) {
             runBlocking { provider.complete(request()) }
         }
+    }
+
+    @Test
+    fun P8_finished_callbacks_match_the_stream_sections() {
+        // Content-only stream: only the content section closes.
+        val contentOnly = OpenAiCompatibleProvider(
+            config,
+            FakeTransport(
+                lines = listOf("""data: {"choices":[{"delta":{"content":"x"},"finish_reason":"stop"}]}"""),
+            ),
+        )
+        val contentObserver = RecordingObserver()
+        runBlocking { contentOnly.complete(request(contentObserver)) }
+        assertEquals(0, contentObserver.reasoningFinished)
+        assertEquals(1, contentObserver.contentFinished)
+
+        // Reasoning + tool-call stream (no content): only the reasoning section closes.
+        val reasoningOnly = OpenAiCompatibleProvider(
+            config,
+            FakeTransport(
+                lines = listOf(
+                    """data: {"choices":[{"delta":{"reasoning":"r","tool_calls":[{"index":0,"id":"c1","function":{"name":"android_shell","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}""",
+                ),
+            ),
+        )
+        val reasoningObserver = RecordingObserver()
+        runBlocking { reasoningOnly.complete(request(reasoningObserver)) }
+        assertEquals(1, reasoningObserver.reasoningFinished)
+        assertEquals(0, reasoningObserver.contentFinished)
     }
 }

@@ -149,10 +149,14 @@ AGA.OBSERVABILITY-0 PASS      Active Provider Truth & Streaming Agent
                                 only (final ModelTurn semantics unchanged);
                                 DebugBridge JSONL v0 gains reasoning/content
                                 delta kinds. JVM regression green (ag-core 41,
-                                ag-runtime 8, provider-openai-compatible 58,
+                                ag-runtime 8, provider-openai-compatible 59,
                                 provider-openai-compatible-jdk 25,
                                 tool-android-shell 32, app 148); device
-                                acceptance pending phone reconnect.
+                                acceptance PASS (OpenRouter + EMG routes,
+                                Thinking->Thought, tool/result/failure
+                                visibility, debug bridge, release build; EMG
+                                content stream deferred until EMG key renewed).
+                                Default provider node is now OPENROUTER.
                                 NEXT = AGENT-0.CONTRAST.
 ```
 
@@ -244,9 +248,9 @@ Note: ShellTool / Android Tool and AT Engine integration are **implemented**
 (instructions/tool/context/trace frozen). AGENT-0.LIVE is **VERIFIED**,
 AG.DEBUG-0 is **PASS** (debug bridge / live execution stream, :app only), and
 AGA.OBSERVABILITY-0 is **PASS** (active provider truth + streaming agent
-transcript; device acceptance pending phone reconnect). What remains forbidden
-without a Step: AGENT-0.CONTRAST (A/B contrast of the Agent loop), pairing,
-AGCLI, persistence, MCP, multi-agent, AIController.
+transcript; device acceptance PASS on a connected phone). What remains
+forbidden without a Step: AGENT-0.CONTRAST (A/B contrast of the Agent loop),
+pairing, AGCLI, persistence, MCP, multi-agent, AIController.
 
 Note: AGA itself is **implemented and frozen**. What is forbidden is new AGA
 feature work and any additional frontend — not AGA's existence.

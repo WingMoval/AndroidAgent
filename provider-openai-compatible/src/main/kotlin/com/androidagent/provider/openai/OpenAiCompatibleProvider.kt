@@ -33,6 +33,10 @@ class OpenAiCompatibleProvider(
         val acc = ChatCompletionWire.StreamAccumulator()
         val observer = request.streamObserver
         val httpResponse = postStream(payload, acc, observer)
+        // The stream is complete: signal the end of any reasoning/content section
+        // so observers (transcript, debug bridge) can close their blocks.
+        if (acc.reasoning.isNotEmpty()) observer.onReasoningFinished()
+        if (acc.content.isNotEmpty()) observer.onContentFinished()
         // The streamed chunks are the only body: the final turn is assembled
         // from what actually streamed, never from a second non-streaming call.
         return ChatCompletionWire.toModelTurn(acc)

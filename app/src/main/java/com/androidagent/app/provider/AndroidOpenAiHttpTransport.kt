@@ -1,5 +1,7 @@
 package com.androidagent.app.provider
 
+import android.util.Log
+import com.androidagent.app.BuildConfig
 import com.androidagent.provider.openai.OpenAiHttpRequest
 import com.androidagent.provider.openai.OpenAiHttpResponse
 import com.androidagent.provider.openai.OpenAiHttpTransport
@@ -93,6 +95,12 @@ class AndroidOpenAiHttpTransport : OpenAiHttpTransport {
     /** Opens and configures one POST connection. Never logs headers or body. */
     private fun open(request: OpenAiHttpRequest): HttpURLConnection =
         (URL(request.endpoint).openConnection() as HttpURLConnection).apply {
+            // AGA.OBSERVABILITY-0: debug-only evidence of the ACTUAL request
+            // endpoint (scheme + host + path, no query, no credential). This is
+            // how the provider-truth gate proves the request route on device.
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "request endpoint: ${request.endpoint}")
+            }
             requestMethod = "POST"
             connectTimeout = request.timeout.toMillis().toInt()
             readTimeout = request.timeout.toMillis().toInt()
@@ -103,4 +111,8 @@ class AndroidOpenAiHttpTransport : OpenAiHttpTransport {
             request.headers.forEach { (name, value) -> setRequestProperty(name, value) }
             outputStream.use { it.write(request.body.toByteArray(Charsets.UTF_8)) }
         }
+
+    private companion object {
+        const val TAG: String = "AG.OpenAiTransport"
+    }
 }

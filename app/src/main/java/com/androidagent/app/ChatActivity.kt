@@ -17,8 +17,6 @@ import com.androidagent.app.trace.AgentTrace
 import com.androidagent.app.trace.TraceFormatter
 import com.androidagent.core.AgentEvent
 import com.androidagent.core.ModelStreamObserver
-import com.androidagent.core.RunFailure
-import com.androidagent.core.RunOutcome
 import com.androidagent.provider.openai.OpenAiCompatibleConfig
 import com.androidagent.runtime.AgentRuntime
 import kotlinx.coroutines.launch
@@ -58,7 +56,7 @@ class ChatActivity : AppCompatActivity() {
     private var runtime: AgentRuntime? = null
 
     /** The node that is ACTUALLY applied as the active provider. */
-    private var activeNode: ProviderNode = ProviderNode.EMG
+    private var activeNode: ProviderNode = ProviderNode.OPENROUTER
     private var applyingNode: Boolean = false
 
     /** Pure transcript model; recreated per session. */
@@ -150,7 +148,7 @@ class ChatActivity : AppCompatActivity() {
     private fun tryDeviceLocalConfig() {
         val defaultNode = ProviderNode.entries.firstOrNull {
             DeviceLocalProviderNodeLoader.load(applicationContext, it) is DeviceLocalProviderConfig.Loaded
-        } ?: ProviderNode.EMG
+        } ?: ProviderNode.OPENROUTER
         activeNode = defaultNode
         applyingNode = true
         nodeSpinner.setSelection(ProviderNode.entries.indexOf(defaultNode))
@@ -263,6 +261,8 @@ class ChatActivity : AppCompatActivity() {
                 is AgentEvent.ModelTurnStarted -> transcriptModel.onModelTurnStarted(event.step)
                 is AgentEvent.ToolCallStarted -> transcriptModel.onToolCallStarted(event.call)
                 is AgentEvent.ToolCallFinished -> transcriptModel.onToolCallFinished(event.call, event.result)
+                is AgentEvent.AnswerProduced -> transcriptModel.onAnswerProduced(event.content)
+                is AgentEvent.RunFailed -> transcriptModel.onRunFailed(event.failure)
                 else -> {}
             }
             renderStatus()
@@ -394,18 +394,9 @@ class ChatActivity : AppCompatActivity() {
             // AGENT-0.PREFLIGHT: the composition-root collector has reconstructed
             // this Run from the AgentEvent stream. Render the redacted trace so the
             // run's tool calls, arguments, results and outcome can be replayed.
+            // Transcript blocks (assistant/failure) are fed by onRunEvent, which
+            // also serves debug-bridge-originated runs.
             logTrace()
-            when (outcome) {
-                is RunOutcome.Answer -> {
-                    transcriptModel.onAnswerProduced(outcome.content)
-                    renderTranscript()
-                }
-
-                is RunOutcome.Failure -> {
-                    transcriptModel.onRunFailed(outcome.failure)
-                    renderTranscript()
-                }
-            }
             setBusy(false)
         }
     }
