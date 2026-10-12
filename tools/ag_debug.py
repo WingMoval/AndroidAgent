@@ -78,6 +78,18 @@ def pretty(kind, obj):
         return "[RUN FAILED] %s" % obj.get("failure")
     if kind == "run_finished":
         return "[RUN] Finished (%s)" % obj.get("outcome")
+    if kind == "reasoning_started":
+        return "[THINKING] started"
+    if kind == "reasoning_delta":
+        return "[THINKING] %s" % obj.get("text")
+    if kind == "reasoning_finished":
+        return "[THOUGHT] finished"
+    if kind == "content_started":
+        return "[ASSISTANT] started"
+    if kind == "content_delta":
+        return "[ASSISTANT] %s" % obj.get("text")
+    if kind == "content_finished":
+        return "[ASSISTANT] finished"
     return "[%s] %s" % (kind, json.dumps(obj, ensure_ascii=False))
 
 

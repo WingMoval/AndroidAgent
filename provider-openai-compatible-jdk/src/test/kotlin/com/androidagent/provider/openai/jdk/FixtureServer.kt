@@ -3,6 +3,7 @@ package com.androidagent.provider.openai.jdk
 import com.androidagent.provider.openai.OpenAiCompatibleConfig
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -10,6 +11,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
@@ -65,10 +67,80 @@ class FixtureServer(
         if (delayMillis > 0) Thread.sleep(delayMillis)
 
         val text = responder?.invoke() ?: rawBody
-        val bytes = text.toByteArray(StandardCharsets.UTF_8)
-        exchange.responseHeaders.add("Content-Type", contentType)
+        // A real OpenAI-compatible endpoint frames stream:true responses as SSE.
+        // The fixture mirrors that so the Provider's streaming path is exercised.
+        val streaming = statusCode in 200..299 && body.contains("\"stream\":true")
+        val bytes = if (streaming) {
+            sseFrame(text).toByteArray(StandardCharsets.UTF_8)
+        } else {
+            text.toByteArray(StandardCharsets.UTF_8)
+        }
+        exchange.responseHeaders.add(
+            "Content-Type",
+            if (streaming) "text/event-stream" else contentType,
+        )
         exchange.sendResponseHeaders(statusCode, bytes.size.toLong())
         exchange.responseBody.use { it.write(bytes) }
+    }
+
+    /**
+     * Frames one JSON chunk as SSE. A real streaming endpoint emits `delta`
+     * objects, so a fixture body written in the non-streaming `message` shape is
+     * projected onto `choices[0].delta` (finish_reason preserved), then framed
+     * as a single data line followed by [DONE].
+     */
+    private fun sseFrame(json: String): String {
+        val root = try {
+            Json.parseToJsonElement(json).jsonObject
+        } catch (_: Exception) {
+            return "data: $json\n\n" + "data: [DONE]\n\n"
+        }
+        val choices = root["choices"] as? JsonArray ?: return "data: $json\n\n" + "data: [DONE]\n\n"
+        val first = choices.firstOrNull() as? JsonObject ?: return "data: $json\n\n" + "data: [DONE]\n\n"
+        val message = first["message"] as? JsonObject ?: return "data: $json\n\n" + "data: [DONE]\n\n"
+        val finishReason = first["finish_reason"]
+        val chunk = buildJsonObject {
+            put(
+                "choices",
+                buildJsonArray {
+                    add(
+                        buildJsonObject {
+                            put("index", JsonPrimitive(0))
+                            put(
+                                "delta",
+                                buildJsonObject {
+                                    message.forEach { (k, v) ->
+                                        if (k == "tool_calls") {
+                                            // Streaming tool calls are keyed by index; the
+                                            // non-streaming shape has none, so one is added.
+                                            val calls = v as? JsonArray ?: return@forEach
+                                            put(
+                                                "tool_calls",
+                                                buildJsonArray {
+                                                    calls.forEachIndexed { i, call ->
+                                                        val obj = call as? JsonObject ?: return@forEachIndexed
+                                                        add(
+                                                            buildJsonObject {
+                                                                put("index", JsonPrimitive(i))
+                                                                obj.forEach { (ck, cv) -> put(ck, cv) }
+                                                            },
+                                                        )
+                                                    }
+                                                },
+                                            )
+                                        } else {
+                                            put(k, v)
+                                        }
+                                    }
+                                },
+                            )
+                            if (finishReason != null) put("finish_reason", finishReason)
+                        },
+                    )
+                },
+            )
+        }.toString()
+        return "data: $chunk\n\n" + "data: [DONE]\n\n"
     }
 
     override fun close() {

@@ -39,8 +39,8 @@ object HostStatusModel {
      * to the transient line". Never exposes tool arguments or model reasoning.
      */
     fun runPhaseText(event: AgentEvent): String? = when (event) {
-        is AgentEvent.RunStarted -> "Thinking..."
-        is AgentEvent.ModelTurnStarted -> "Thinking... · Step ${event.step}"
+        is AgentEvent.RunStarted -> "Running..."
+        is AgentEvent.ModelTurnStarted -> "Running · Step ${event.step}"
         is AgentEvent.ModelTurnFinished -> null
         is AgentEvent.ToolCallStarted -> "Executing ${event.call.name}..."
         is AgentEvent.ToolCallFinished -> "Processing result..."
@@ -51,4 +51,32 @@ object HostStatusModel {
 
     /** The persistent Provider line on the main screen (node only, no details). */
     fun providerLine(node: String): String = "Provider: $node"
+}
+
+/**
+ * AGA.OBSERVABILITY-0 — the outcome of a Provider node switch attempt.
+ *
+ * Pure decision rule so the failed-switch honesty guarantee is JVM-testable:
+ * the UI must never show a node that was not actually applied.
+ */
+sealed interface ProviderSwitchOutcome {
+
+    /** The attempted node loaded and became the active provider. */
+    data class Applied(val node: ProviderNode, val config: com.androidagent.provider.openai.OpenAiCompatibleConfig) :
+        ProviderSwitchOutcome
+
+    /** The attempted node could not be applied; the active provider is unchanged. */
+    data class Rejected(val attempted: ProviderNode, val reason: String) : ProviderSwitchOutcome
+}
+
+/** Decides a node switch from its device-local load result. Never throws. */
+fun resolveProviderSwitch(
+    attempted: ProviderNode,
+    load: DeviceLocalProviderConfig,
+): ProviderSwitchOutcome = when (load) {
+    is DeviceLocalProviderConfig.Loaded -> ProviderSwitchOutcome.Applied(attempted, load.config)
+    is DeviceLocalProviderConfig.Missing ->
+        ProviderSwitchOutcome.Rejected(attempted, "${attempted.displayName} config not provisioned")
+    is DeviceLocalProviderConfig.Invalid ->
+        ProviderSwitchOutcome.Rejected(attempted, "${attempted.displayName} config invalid")
 }

@@ -15,6 +15,7 @@ import java.net.http.HttpTimeoutException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletionException
+import java.util.stream.Stream
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -54,6 +55,36 @@ class JdkOpenAiHttpTransport(
         )
     }
 
+    override suspend fun postStream(
+        request: OpenAiHttpRequest,
+        onLine: (String) -> Unit,
+    ): OpenAiHttpResponse {
+        val httpRequest = buildRequest(request)
+        val response = try {
+            sendStreaming(httpRequest)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: HttpTimeoutException) {
+            throw OpenAiTransportTimeoutException("request timed out after ${request.timeout}", e)
+        } catch (e: IOException) {
+            throw OpenAiTransportNetworkException("could not reach the endpoint", e)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw OpenAiTransportNetworkException("interrupted while calling the endpoint", e)
+        }
+
+        val status = response.statusCode()
+        return if (status in 200..299) {
+            // Deliver every body line as it arrives; the returned body is empty.
+            response.body().forEach(onLine)
+            OpenAiHttpResponse(statusCode = status, body = "")
+        } else {
+            // Error body is read whole so the Provider can build a safe summary.
+            val body = response.body().collect(java.util.stream.Collectors.joining("\n"))
+            OpenAiHttpResponse(statusCode = status, body = body)
+        }
+    }
+
     private fun buildRequest(request: OpenAiHttpRequest): HttpRequest {
         val builder = HttpRequest.newBuilder(URI.create(request.endpoint))
             .timeout(request.timeout)
@@ -71,6 +102,31 @@ class JdkOpenAiHttpTransport(
     private suspend fun send(request: HttpRequest): HttpResponse<String> =
         suspendCancellableCoroutine { continuation ->
             val future = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+
+            future.whenComplete { response, throwable ->
+                when {
+                    throwable == null -> continuation.resume(response)
+                    else -> {
+                        val cause = unwrap(throwable)
+                        if (cause is CancellationException) continuation.cancel(cause)
+                        else continuation.resumeWithException(cause)
+                    }
+                }
+            }
+
+            continuation.invokeOnCancellation { future.cancel(true) }
+        }
+
+    /**
+     * Bridges a streaming [HttpClient.sendAsync] into a cancellable suspension.
+     *
+     * The body is a `Stream<String>` of lines; it is consumed to EOF on the
+     * HttpClient's callback thread. A mid-stream failure surfaces as an
+     * IOException from the stream and is classified by the caller.
+     */
+    private suspend fun sendStreaming(request: HttpRequest): HttpResponse<Stream<String>> =
+        suspendCancellableCoroutine { continuation ->
+            val future = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofLines())
 
             future.whenComplete { response, throwable ->
                 when {

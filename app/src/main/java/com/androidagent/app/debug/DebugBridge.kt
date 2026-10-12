@@ -4,6 +4,7 @@ import android.util.Log
 import com.androidagent.app.trace.TraceFormatter
 import com.androidagent.core.AgentEvent
 import com.androidagent.core.AgentEventSink
+import com.androidagent.core.ModelStreamObserver
 import com.androidagent.runtime.AgentRuntime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +72,13 @@ class DebugBridge(
      * all connected debug clients.
      */
     val eventSink: AgentEventSink = DebugStreamSink(this)
+
+    /**
+     * Model-stream observer wired by the Host alongside the transcript;
+     * broadcasts reasoning/content deltas to all connected debug clients as
+     * JSONL v0 incremental messages.
+     */
+    val streamSink: ModelStreamObserver = DebugStreamObserver(this)
 
     /** Starts the listener. Returns true when this call is now listening. */
     fun start(): Boolean {
@@ -180,6 +188,10 @@ class DebugBridge(
 
     private fun broadcast(event: AgentEvent) {
         val line = DebugProtocol.eventToJson(event).toString()
+        broadcastLine(line)
+    }
+
+    private fun broadcastLine(line: String) {
         // Off the emitting (host/main) thread and strictly ordered: the send
         // executor is single-threaded. A writer whose socket/transport died
         // mid-run is dropped here (the reader eventually sees EOF too); without
@@ -192,6 +204,42 @@ class DebugBridge(
             } catch (e: Exception) {
                 Log.w(TAG, "broadcast failed: ${e::class.java.simpleName}: ${e.message}")
             }
+        }
+    }
+
+    private fun emitStream(kind: String, text: String?) {
+        broadcastLine(DebugProtocol.streamToJson(kind, text).toString())
+    }
+
+    private class DebugStreamSink(private val bridge: DebugBridge) : AgentEventSink {
+        override fun emit(event: AgentEvent) {
+            bridge.broadcast(event)
+        }
+    }
+
+    private class DebugStreamObserver(private val bridge: DebugBridge) : ModelStreamObserver {
+        override fun onReasoningStarted() {
+            bridge.emitStream(DebugProtocol.STREAM_REASONING_STARTED, null)
+        }
+
+        override fun onReasoningDelta(text: String) {
+            bridge.emitStream(DebugProtocol.STREAM_REASONING_DELTA, text)
+        }
+
+        override fun onReasoningFinished() {
+            bridge.emitStream(DebugProtocol.STREAM_REASONING_FINISHED, null)
+        }
+
+        override fun onContentStarted() {
+            bridge.emitStream(DebugProtocol.STREAM_CONTENT_STARTED, null)
+        }
+
+        override fun onContentDelta(text: String) {
+            bridge.emitStream(DebugProtocol.STREAM_CONTENT_DELTA, text)
+        }
+
+        override fun onContentFinished() {
+            bridge.emitStream(DebugProtocol.STREAM_CONTENT_FINISHED, null)
         }
     }
 
@@ -218,12 +266,6 @@ class DebugBridge(
                 socket.close()
             } catch (_: Exception) {
             }
-        }
-    }
-
-    private class DebugStreamSink(private val bridge: DebugBridge) : AgentEventSink {
-        override fun emit(event: AgentEvent) {
-            bridge.broadcast(event)
         }
     }
 

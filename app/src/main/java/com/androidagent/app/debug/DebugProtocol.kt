@@ -140,6 +140,28 @@ object DebugProtocol {
     /** Convenience for building a simple reply JSON object. */
     fun reply(build: JsonObjectBuilder.() -> Unit): JsonObject = buildJsonObject(build)
 
+    // ---------------------------------------------------- model stream messages
+
+    /**
+     * Projects one model-stream observation to debug JSONL. This is the minimal
+     * incremental extension of the v0 protocol: new message types, unchanged
+     * framing. Older clients ignore unknown types safely.
+     */
+    fun streamToJson(kind: String, text: String? = null): JsonObject = buildJsonObject {
+        put("type", JsonPrimitive(kind))
+        if (text != null) {
+            put("text", JsonPrimitive(redact(text)))
+        }
+    }
+
+    /** Stream message kinds, shared with the bridge. */
+    const val STREAM_REASONING_STARTED: String = "reasoning_started"
+    const val STREAM_REASONING_DELTA: String = "reasoning_delta"
+    const val STREAM_REASONING_FINISHED: String = "reasoning_finished"
+    const val STREAM_CONTENT_STARTED: String = "content_started"
+    const val STREAM_CONTENT_DELTA: String = "content_delta"
+    const val STREAM_CONTENT_FINISHED: String = "content_finished"
+
     private fun turnTypeOf(turn: ModelTurn): String =
         if (turn is ModelTurn.FinalAnswer) "final_answer" else "tool_calls"
 

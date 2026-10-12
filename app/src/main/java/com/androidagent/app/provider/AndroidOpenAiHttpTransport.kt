@@ -36,19 +36,7 @@ class AndroidOpenAiHttpTransport : OpenAiHttpTransport {
         withContext(Dispatchers.IO) {
             var connection: HttpURLConnection? = null
             try {
-                connection = (URL(request.endpoint).openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = request.timeout.toMillis().toInt()
-                    readTimeout = request.timeout.toMillis().toInt()
-                    useCaches = false
-                    doOutput = true
-                    setRequestProperty("Content-Type", "application/json")
-                    // Never logged. Applied straight from the request.
-                    request.headers.forEach { (name, value) -> setRequestProperty(name, value) }
-                }
-
-                connection.outputStream.use { it.write(request.body.toByteArray(Charsets.UTF_8)) }
-
+                connection = open(request)
                 val status = connection.responseCode
                 // getInputStream() throws for >= 400, so the error body must come
                 // from getErrorStream(). Losing it would strip the Provider of the
@@ -67,5 +55,52 @@ class AndroidOpenAiHttpTransport : OpenAiHttpTransport {
                 // finally block still runs and tears the socket down.
                 connection?.disconnect()
             }
+        }
+
+    override suspend fun postStream(
+        request: OpenAiHttpRequest,
+        onLine: (String) -> Unit,
+    ): OpenAiHttpResponse =
+        withContext(Dispatchers.IO) {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = open(request)
+                val status = connection.responseCode
+                if (status in 200..299) {
+                    // Deliver every body line as it arrives; the returned body is
+                    // empty. The Provider owns SSE framing.
+                    connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
+                        while (true) {
+                            val line = reader.readLine() ?: break
+                            onLine(line)
+                        }
+                    }
+                    OpenAiHttpResponse(statusCode = status, body = "")
+                } else {
+                    val body = connection.errorStream
+                        ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
+                    OpenAiHttpResponse(statusCode = status, body = body)
+                }
+            } catch (e: SocketTimeoutException) {
+                throw OpenAiTransportTimeoutException("request timed out", e)
+            } catch (e: IOException) {
+                throw OpenAiTransportNetworkException("could not reach the endpoint", e)
+            } finally {
+                connection?.disconnect()
+            }
+        }
+
+    /** Opens and configures one POST connection. Never logs headers or body. */
+    private fun open(request: OpenAiHttpRequest): HttpURLConnection =
+        (URL(request.endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = request.timeout.toMillis().toInt()
+            readTimeout = request.timeout.toMillis().toInt()
+            useCaches = false
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            // Never logged. Applied straight from the request.
+            request.headers.forEach { (name, value) -> setRequestProperty(name, value) }
+            outputStream.use { it.write(request.body.toByteArray(Charsets.UTF_8)) }
         }
 }

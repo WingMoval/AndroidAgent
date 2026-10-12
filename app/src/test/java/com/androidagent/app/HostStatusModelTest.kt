@@ -7,6 +7,7 @@ import com.androidagent.core.RunFailure
 import com.androidagent.core.RunOutcome
 import com.androidagent.core.ToolCall
 import com.androidagent.core.ToolResult
+import com.androidagent.provider.openai.OpenAiCompatibleConfig
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -100,9 +101,9 @@ class HostStatusModelTest {
     // ------------------------------------------------------------ S1-S7 run phase
 
     @Test
-    fun S1_model_turn_started_is_thinking() {
-        assertEquals("Thinking... · Step 1", HostStatusModel.runPhaseText(AgentEvent.ModelTurnStarted(1)))
-        assertEquals("Thinking... · Step 2", HostStatusModel.runPhaseText(AgentEvent.ModelTurnStarted(2)))
+    fun S1_model_turn_started_is_running() {
+        assertEquals("Running · Step 1", HostStatusModel.runPhaseText(AgentEvent.ModelTurnStarted(1)))
+        assertEquals("Running · Step 2", HostStatusModel.runPhaseText(AgentEvent.ModelTurnStarted(2)))
     }
 
     @Test
@@ -119,8 +120,8 @@ class HostStatusModelTest {
     }
 
     @Test
-    fun S4_run_started_is_thinking() {
-        assertEquals("Thinking...", HostStatusModel.runPhaseText(AgentEvent.RunStarted("s1")))
+    fun S4_run_started_is_running() {
+        assertEquals("Running...", HostStatusModel.runPhaseText(AgentEvent.RunStarted("s1")))
     }
 
     @Test
@@ -141,5 +142,65 @@ class HostStatusModelTest {
     @Test
     fun S8_model_turn_finished_is_no_change() {
         assertNull(HostStatusModel.runPhaseText(AgentEvent.ModelTurnFinished(1, ModelTurn.FinalAnswer("x"))))
+    }
+
+    // ------------------------------------------------------------ P1-P6 provider switch
+
+    @Test
+    fun P1_loaded_config_applies_the_attempted_node() {
+        val cfg = OpenAiCompatibleConfig(
+            baseUrl = "https://api.emg.dpdns.org/v1",
+            model = "qwen3.8-local",
+            apiKey = "FAKE_KEY_FOR_TEST",
+        )
+        val outcome = resolveProviderSwitch(
+            ProviderNode.EMG,
+            DeviceLocalProviderConfig.Loaded(cfg),
+        )
+        assertTrue(outcome is ProviderSwitchOutcome.Applied)
+        assertEquals(ProviderNode.EMG, (outcome as ProviderSwitchOutcome.Applied).node)
+    }
+
+    @Test
+    fun P2_missing_config_rejects_the_attempted_node() {
+        val outcome = resolveProviderSwitch(ProviderNode.EMG, DeviceLocalProviderConfig.Missing)
+        assertTrue(outcome is ProviderSwitchOutcome.Rejected)
+        assertEquals(ProviderNode.EMG, (outcome as ProviderSwitchOutcome.Rejected).attempted)
+    }
+
+    @Test
+    fun P3_invalid_config_rejects_the_attempted_node() {
+        val outcome = resolveProviderSwitch(ProviderNode.OPENROUTER, DeviceLocalProviderConfig.Invalid("bad"))
+        assertTrue(outcome is ProviderSwitchOutcome.Rejected)
+        assertEquals(ProviderNode.OPENROUTER, (outcome as ProviderSwitchOutcome.Rejected).attempted)
+    }
+
+    @Test
+    fun P4_rejected_reason_names_the_attempted_node_not_a_secret() {
+        val outcome = resolveProviderSwitch(ProviderNode.OPENROUTER, DeviceLocalProviderConfig.Missing)
+        val reason = (outcome as ProviderSwitchOutcome.Rejected).reason
+        assertTrue(reason.contains("OpenRouter"))
+        assertFalse(reason.contains("sk-or-"), "reason must not contain a key")
+    }
+
+    @Test
+    fun P5_rejected_switch_never_claims_a_new_active_provider() {
+        // The UI contract: a Rejected outcome means the ACTIVE provider is
+        // unchanged; the selector must revert. The outcome itself carries no
+        // "applied" state — only Applied does.
+        val outcome = resolveProviderSwitch(ProviderNode.OPENROUTER, DeviceLocalProviderConfig.Missing)
+        assertTrue(outcome is ProviderSwitchOutcome.Rejected)
+    }
+
+    @Test
+    fun P6_endpoint_label_is_safe_scheme_host_path() {
+        val cfg = OpenAiCompatibleConfig(
+            baseUrl = "https://api.emg.dpdns.org/v1",
+            model = "qwen3.8-local",
+            apiKey = "FAKE_KEY_FOR_TEST",
+        )
+        val endpoint = cfg.safeChatCompletionsEndpoint
+        assertEquals("https://api.emg.dpdns.org/v1/chat/completions", endpoint)
+        assertFalse(endpoint.contains("FAKE_KEY_FOR_TEST"), "endpoint must not contain the key")
     }
 }

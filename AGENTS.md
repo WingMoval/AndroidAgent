@@ -137,6 +137,23 @@ AG.DEBUG-0      PASS      PC Debug Bridge & live execution stream (debug builds
                                 (T4); disconnect/reconnect safe (T5/T6); release
                                 has no listener (T7). :app only; AG Core /
                                 Runtime / Tool / Provider / AT Engine unchanged.
+AGA.OBSERVABILITY-0 PASS      Active Provider Truth & Streaming Agent
+                                Transcript: provider selector is switch-is-active,
+                                the screen shows the ACTIVE provider's safe
+                                endpoint, failed switches revert honestly;
+                                provider always streams (stream:true), reasoning
+                                deltas -> Thinking -> Thought (same item),
+                                Assistant content streams incrementally, tool
+                                actions/results/failures visible in the
+                                transcript; ModelStreamObserver is observation
+                                only (final ModelTurn semantics unchanged);
+                                DebugBridge JSONL v0 gains reasoning/content
+                                delta kinds. JVM regression green (ag-core 41,
+                                ag-runtime 8, provider-openai-compatible 58,
+                                provider-openai-compatible-jdk 25,
+                                tool-android-shell 32, app 148); device
+                                acceptance pending phone reconnect.
+                                NEXT = AGENT-0.CONTRAST.
 ```
 
 Implemented and **not** to be described as pending:
@@ -224,10 +241,12 @@ AIController integration
 
 Note: ShellTool / Android Tool and AT Engine integration are **implemented**
 (`AG.SHELL-1` VERIFIED, `:tool-android-shell`). AGENT-0.PREFLIGHT is **done**
-(instructions/tool/context/trace frozen). AGENT-0.LIVE is **VERIFIED** and
-AG.DEBUG-0 is **PASS** (debug bridge / live execution stream, :app only).
-What remains forbidden without a Step: AGENT-0.CONTRAST (A/B contrast of the
-Agent loop), pairing, AGCLI, persistence, MCP, multi-agent, AIController.
+(instructions/tool/context/trace frozen). AGENT-0.LIVE is **VERIFIED**,
+AG.DEBUG-0 is **PASS** (debug bridge / live execution stream, :app only), and
+AGA.OBSERVABILITY-0 is **PASS** (active provider truth + streaming agent
+transcript; device acceptance pending phone reconnect). What remains forbidden
+without a Step: AGENT-0.CONTRAST (A/B contrast of the Agent loop), pairing,
+AGCLI, persistence, MCP, multi-agent, AIController.
 
 Note: AGA itself is **implemented and frozen**. What is forbidden is new AGA
 feature work and any additional frontend — not AGA's existence.

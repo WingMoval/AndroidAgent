@@ -2,11 +2,9 @@ package com.androidagent.provider.openai
 
 import com.androidagent.core.ModelProvider
 import com.androidagent.core.ModelRequest
+import com.androidagent.core.ModelStreamObserver
 import com.androidagent.core.ModelTurn
-import com.androidagent.core.ToolCall
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import java.net.URI
 import java.util.concurrent.CancellationException
 
 /**
@@ -31,17 +29,32 @@ class OpenAiCompatibleProvider(
 ) : ModelProvider {
 
     override suspend fun complete(request: ModelRequest): ModelTurn {
-        val payload = ChatCompletionWire.buildRequestBody(config.model, request)
-        return toModelTurn(post(payload))
+        val payload = ChatCompletionWire.buildRequestBody(config.model, request, stream = true)
+        val acc = ChatCompletionWire.StreamAccumulator()
+        val observer = request.streamObserver
+        val httpResponse = postStream(payload, acc, observer)
+        // The streamed chunks are the only body: the final turn is assembled
+        // from what actually streamed, never from a second non-streaming call.
+        return ChatCompletionWire.toModelTurn(acc)
     }
 
     // ------------------------------------------------------------------ HTTP
 
-    private suspend fun post(payload: JsonElement): JsonElement {
+    /**
+     * Streams one request body and feeds every SSE line into [acc] via
+     * [ChatCompletionWire.parseStreamLine]. Non-2xx responses raise
+     * [OpenAiProviderException.HttpStatus] exactly like the buffered path.
+     */
+    private suspend fun postStream(
+        payload: JsonElement,
+        acc: ChatCompletionWire.StreamAccumulator,
+        observer: ModelStreamObserver,
+    ) {
         val httpResponse = try {
-            transport.post(buildRequest(payload))
+            transport.postStream(buildRequest(payload)) { line ->
+                ChatCompletionWire.parseStreamLine(line, acc, observer)
+            }
         } catch (e: CancellationException) {
-            // Coroutine control flow, not a provider failure.
             throw e
         } catch (e: OpenAiTransportTimeoutException) {
             throw OpenAiProviderException.Timeout(
@@ -53,21 +66,12 @@ class OpenAiCompatibleProvider(
         }
 
         val status = httpResponse.statusCode
-        val bodyText = httpResponse.body
-
         if (status !in 200..299) {
             throw OpenAiProviderException.HttpStatus(
                 statusCode = status,
                 endpoint = safeEndpoint(),
-                providerSummary = ChatCompletionWire.errorSummary(bodyText).ifEmpty { null },
+                providerSummary = ChatCompletionWire.errorSummary(httpResponse.body).ifEmpty { null },
             )
-        }
-
-        return try {
-            Json.parseToJsonElement(bodyText)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            throw OpenAiProviderException.Parse("response body was not valid JSON", e)
         }
     }
 
@@ -88,48 +92,5 @@ class OpenAiCompatibleProvider(
     }
 
     /** Host, port and path only. No query string, no credential. */
-    private fun safeEndpoint(): String = runCatching {
-        val uri = URI.create(config.chatCompletionsEndpoint)
-        val authority = uri.rawAuthority?.substringAfter('@').orEmpty()
-        "${uri.scheme}://$authority${uri.rawPath}"
-    }.getOrElse { "endpoint" }
-
-    // --------------------------------------------------------------- Response
-
-    private fun toModelTurn(body: JsonElement): ModelTurn {
-        val message = ChatCompletionWire.assistantMessageOf(body)
-        val content = ChatCompletionWire.contentOf(message)
-        val toolCalls = ChatCompletionWire.toolCallsOf(message)
-
-        val hasContent = !content.isNullOrBlank()
-        val hasToolCalls = toolCalls != null && toolCalls.isNotEmpty()
-
-        return when {
-            // A turn may legitimately carry prose AND tool calls. Since
-            // AG.PROVIDER-0.R1 the frozen contract carries both, so nothing is
-            // discarded. A pure tool-call turn yields content = "".
-            hasToolCalls ->
-                ModelTurn.ToolCalls(
-                    calls = toolCalls(toolCalls!!),
-                    content = content.orEmpty(),
-                )
-
-            hasContent -> ModelTurn.FinalAnswer(content!!)
-            // Neither prose nor tool calls: a well-formed but empty turn cannot be
-            // represented as a FinalAnswer with no text.
-            else -> throw OpenAiProviderException.Protocol(
-                "assistant message carried neither content nor tool_calls",
-            )
-        }
-    }
-
-    /**
-     * Maps every tool call, preserving count, id, name, arguments and order.
-     * Nothing is deduplicated, reordered, or truncated to the first element.
-     */
-    private fun toolCalls(array: kotlinx.serialization.json.JsonArray): List<ToolCall> =
-        array.mapIndexed { index, element ->
-            val wire = ChatCompletionWire.toolCallOf(element, index)
-            ToolCall(id = wire.id, name = wire.name, arguments = wire.arguments)
-        }
+    private fun safeEndpoint(): String = config.safeChatCompletionsEndpoint
 }

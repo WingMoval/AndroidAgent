@@ -15,6 +15,7 @@ data class RunOptions(
     val maxSteps: Int = DEFAULT_MAX_STEPS,
     val approvalPolicy: ToolApprovalPolicy = ToolApprovalPolicy.AllowAll,
     val eventSink: AgentEventSink = AgentEventSink.Noop,
+    val streamObserver: ModelStreamObserver = ModelStreamObserver.Noop,
 ) {
     init {
         require(maxSteps >= 1) { "maxSteps must be >= 1, was $maxSteps" }
@@ -135,6 +136,7 @@ class AgentCore(
                         instructions = options.instructions,
                         history = session.history(),
                         tools = toolRegistry.specs(),
+                        streamObserver = options.streamObserver,
                     )
                 )
             } catch (e: CancellationException) {

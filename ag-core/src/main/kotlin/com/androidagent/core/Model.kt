@@ -34,13 +34,61 @@ sealed interface ModelTurn {
  * [history] is the full Session history including everything earlier Runs
  * appended, which is what gives a Session its continuity across Runs.
  * [tools] is the current registry specification set.
+ * [streamObserver] receives incremental model output (reasoning / content
+ * deltas) while the turn is being produced. Observation only: the final
+ * [ModelTurn] semantics are unchanged.
  */
 data class ModelRequest(
     val sessionId: String,
     val instructions: String,
     val history: List<Message>,
     val tools: List<ToolSpec>,
+    val streamObserver: ModelStreamObserver = ModelStreamObserver.Noop,
 )
+
+/**
+ * Incremental observation of one model turn's output stream.
+ *
+ * A provider that streams may report reasoning and/or content deltas as they
+ * arrive, before the turn is complete. This is observation only: the final
+ * [ModelTurn] semantics are unchanged, and the Agent loop still acts only on
+ * the complete turn.
+ *
+ * Lifecycle per turn:
+ *
+ *     onReasoningStarted -> onReasoningDelta* -> onReasoningFinished
+ *     onContentStarted   -> onContentDelta*   -> onContentFinished
+ *
+ * Either section may be absent: a model with no reasoning output emits no
+ * reasoning callbacks at all, and a pure tool-call turn may emit neither.
+ * All callbacks are plain synchronous notifications; ordering follows the
+ * provider's wire order.
+ */
+interface ModelStreamObserver {
+
+    /** The first reasoning delta of the turn arrived. */
+    fun onReasoningStarted() {}
+
+    /** One incremental reasoning fragment. */
+    fun onReasoningDelta(text: String) {}
+
+    /** The reasoning section of the turn is complete. */
+    fun onReasoningFinished() {}
+
+    /** The first content delta of the turn arrived. */
+    fun onContentStarted() {}
+
+    /** One incremental content fragment. */
+    fun onContentDelta(text: String) {}
+
+    /** The content section of the turn is complete. */
+    fun onContentFinished() {}
+
+    companion object {
+        /** Default sink: discards everything. */
+        val Noop: ModelStreamObserver = object : ModelStreamObserver {}
+    }
+}
 
 /**
  * The model boundary AG Core depends on.

@@ -17,19 +17,19 @@
             android:textSize="20sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="13sp" />
-
-        <!-- Provider node selector: EMG / OpenRouter (device-local configs). -->
+        <!-- Provider truth area: the selector and the ACTIVE endpoint label. -->
         <Spinner
             android:id="@+id/provider_node"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/provider_endpoint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="13sp" />
 
         <Button
             android:id="@+id/reconnect"
@@ -38,46 +38,12 @@
             android:layout_marginTop="4dp"
             android:text="Reconnect" />
 
-        <!-- Development provider configuration. The API key is entered at
-             runtime and stays in process memory only. -->
-        <EditText
-            android:id="@+id/base_url"
+        <TextView
+            android:id="@+id/status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Base URL"
-            android:inputType="textUri"
+            android:layout_marginTop="4dp"
             android:textSize="13sp" />
-
-        <EditText
-            android:id="@+id/model"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Model"
-            android:inputType="text"
-            android:textSize="13sp" />
-
-        <EditText
-            android:id="@+id/api_key"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="API Key (memory only)"
-            android:importantForAutofill="no"
-            android:inputType="textPassword"
-            android:textSize="13sp" />
-
-        <EditText
-            android:id="@+id/timeout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Timeout seconds"
-            android:inputType="number"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/apply"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Apply" />
 
         <View
             android:layout_width="match_parent"

@@ -44,6 +44,8 @@ class ChatCompositionRoot(
     applicationContext: Context,
     private val onRunEvent: (AgentEvent) -> Unit = {},
     private val onDebugEvent: (AgentEvent) -> Unit = {},
+    private val streamObserver: com.androidagent.core.ModelStreamObserver =
+        com.androidagent.core.ModelStreamObserver.Noop,
 ) {
 
     private val toolRegistry = ToolRegistry()
@@ -94,8 +96,10 @@ class ChatCompositionRoot(
     private val runOptions = RunOptions(
         instructions = AgentInstructions.CONTENT,
         // The Host may observe the same event stream for transient run status and
-        // the PC debug stream; tracing stays intact either way.
+        // the PC debug stream; tracing stays intact either way. The model stream
+        // observer feeds the transcript and the PC debug stream incrementally.
         eventSink = CompositeSink(traceCollector, onRunEvent, onDebugEvent),
+        streamObserver = streamObserver,
     )
 
     /** The runnable Agent lifecycle handed to the UI. */

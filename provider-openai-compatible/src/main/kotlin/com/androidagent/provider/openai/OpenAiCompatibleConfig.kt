@@ -1,5 +1,6 @@
 package com.androidagent.provider.openai
 
+import java.net.URI
 import java.time.Duration
 
 /**
@@ -37,6 +38,17 @@ data class OpenAiCompatibleConfig(
      */
     val chatCompletionsEndpoint: String
         get() = if (baseUrl.endsWith(ENDPOINT_SUFFIX)) baseUrl else baseUrl.trimEnd('/') + ENDPOINT_SUFFIX
+
+    /**
+     * A display-safe rendering of [chatCompletionsEndpoint]: scheme, host and
+     * path only. Never includes a query string, userinfo, or credential.
+     */
+    val safeChatCompletionsEndpoint: String
+        get() = runCatching {
+            val uri = URI.create(chatCompletionsEndpoint)
+            val authority = uri.rawAuthority?.substringAfter('@').orEmpty()
+            "${uri.scheme}://$authority${uri.rawPath}"
+        }.getOrElse { chatCompletionsEndpoint }
 
     /**
      * Redacted on purpose. The generated data-class toString would embed the raw
