@@ -5,6 +5,9 @@ import com.androidagent.app.trace.TraceFormatter
 import com.androidagent.core.AgentEvent
 import com.androidagent.core.AgentEventSink
 import com.androidagent.core.ModelStreamObserver
+import com.androidagent.core.ToolApprovalPolicy
+import com.androidagent.core.ToolCall
+import com.androidagent.core.ToolRegistry
 import com.androidagent.runtime.AgentRuntime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +45,19 @@ import java.util.concurrent.Executors
  */
 class DebugBridge(
     private val runtimeProvider: () -> AgentRuntime?,
+    // AG.NETWORK-0: optional reference to the SAME ToolRegistry the agent uses, so
+    // a debug client can DIRECTLY invoke a production tool (bypassing
+    // ModelProvider / Agent Loop / LLM). Debug/test-only; never model-visible.
+    private val toolRegistryProvider: (() -> ToolRegistry?)? = null,
+    // AGA.OBSERVABILITY-1: optional Host hook invoked when a debug client sends a
+    // prompt, so the Host can record the User block in the transcript exactly as
+    // it does for a UI-originated send. Debug-only; no-op when unwired or release.
+    private val userInputSink: ((String) -> Unit)? = null,
+    // HOST-005: optional Host hook so a debug-originated Run updates the SAME
+    // busy/Stop button state the UI path uses. Without this the Stop button
+    // stays disabled (grey) during a bridge-originated Run and the user cannot
+    // exercise the Stop control from the UI. Debug-only; no-op when unwired.
+    private val onRunStateChanged: ((Boolean) -> Unit)? = null,
     private val port: Int = DEFAULT_PORT,
     scope: CoroutineScope? = null,
 ) {
@@ -149,6 +165,13 @@ class DebugBridge(
                             bridgeScope.launch { handleSend(msg.text, writer) }
                         }
 
+                        is DebugProtocol.ClientMessage.ToolInvoke -> {
+                            // AG.NETWORK-0 L2 Direct Tool Validation: call the SAME
+                            // production Tool directly, no ModelProvider / Agent Loop
+                            // / LLM. Runs in its own coroutine so the reader continues.
+                            bridgeScope.launch { handleToolInvoke(msg.name, msg.arguments, writer) }
+                        }
+
                         null -> writer.send(DebugProtocol.error("unrecognized message"))
                     }
                 }
@@ -160,6 +183,31 @@ class DebugBridge(
                 Log.i(TAG, "debug client disconnected")
             }
         }
+    }
+
+    /**
+     * AG.NETWORK-0 L2 — direct tool invocation. Calls the SAME production tool the
+     * agent uses (via the shared [ToolRegistry].dispatch, with [ToolApprovalPolicy
+     * .AllowAll] so a debug probe is never blocked by host policy), bypassing
+     * ModelProvider / Agent Loop / LLM entirely. The full [ToolResult] is returned
+     * as JSON so the raw fetch (success/output/error) can be judged with zero model
+     * tokens. This is debug/test-only and shares the production implementation.
+     */
+    private suspend fun handleToolInvoke(name: String, arguments: String, writer: ClientWriter) {
+        val registry = toolRegistryProvider?.invoke()
+        if (registry == null) {
+            writer.send(DebugProtocol.error("tool registry not wired (direct tool validation unavailable)"))
+            return
+        }
+        val call = ToolCall(id = "debug-direct", name = name, arguments = arguments)
+        val result = try {
+            registry.dispatch(call, ToolApprovalPolicy.AllowAll)
+        } catch (e: Exception) {
+            writer.send(DebugProtocol.error("direct tool invoke failed: ${e::class.java.simpleName ?: "unknown"}"))
+            return
+        }
+        writer.send(DebugProtocol.toolResult(name, result.success, result.output, result.error))
+        Log.i(TAG, "direct tool invoke finished: $name success=${result.success}")
     }
 
     private suspend fun handleSend(text: String, writer: ClientWriter) {
@@ -177,11 +225,19 @@ class DebugBridge(
             return
         }
         writer.send(DebugProtocol.accepted())
+        // AGA.OBSERVABILITY-1: mirror the UI send path so a debug-originated Run
+        // also records its User block in the transcript (the Host decides how to
+        // render it; the bridge only reports that a user input was accepted).
+        userInputSink?.invoke(text)
+        // HOST-005: mirror the UI busy state so the Stop button is enabled during
+        // a bridge-originated Run, exactly as the UI onSend() path does.
+        onRunStateChanged?.invoke(true)
         val outcome = try {
             runtime.send(text)
         } catch (e: Exception) {
             writer.send(DebugProtocol.error(e::class.java.simpleName ?: "unknown"))
-            return
+        } finally {
+            onRunStateChanged?.invoke(false)
         }
         Log.i(TAG, "debug run finished: $outcome")
     }

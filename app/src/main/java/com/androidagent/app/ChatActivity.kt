@@ -48,6 +48,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var endpointLabel: TextView
     private lateinit var input: EditText
     private lateinit var send: Button
+    private lateinit var stop: Button
     private lateinit var newSession: Button
     private lateinit var reconnect: Button
     private lateinit var nodeSpinner: Spinner
@@ -83,11 +84,13 @@ class ChatActivity : AppCompatActivity() {
         endpointLabel = findViewById(R.id.provider_endpoint)
         input = findViewById(R.id.input)
         send = findViewById(R.id.send)
+        stop = findViewById(R.id.stop)
         newSession = findViewById(R.id.new_session)
         reconnect = findViewById(R.id.reconnect)
         nodeSpinner = findViewById(R.id.provider_node)
 
         send.setOnClickListener { onSend() }
+        stop.setOnClickListener { onStopRun() }
         newSession.setOnClickListener { onNewSession() }
         reconnect.setOnClickListener { onReconnect() }
         setupNodeSpinner()
@@ -197,7 +200,25 @@ class ChatActivity : AppCompatActivity() {
         if (!BuildConfig.DEBUG) return
         val existing = sharedDebugBridge
         if (existing != null && existing.isRunning) return
-        val bridge = DebugBridge(runtimeProvider = { sharedRuntime })
+        // AG.NETWORK-0 L2: wire the same ToolRegistry so a debug client can directly
+        // invoke a production tool (no LLM). Debug-only; no-op in release.
+        // AGA.OBSERVABILITY-1: wire the User-block hook so a debug-originated Run
+        // records its User input in the transcript exactly like a UI send.
+        val bridge = DebugBridge(
+            runtimeProvider = { sharedRuntime },
+            toolRegistryProvider = { root?.toolRegistryView },
+            userInputSink = { text ->
+                runOnUiThread {
+                    transcriptModel.onUser(text)
+                    renderTranscript()
+                }
+            },
+            onRunStateChanged = { busy ->
+                runOnUiThread {
+                    setBusy(busy)
+                }
+            },
+        )
         // Only publish the instance once it is actually listening; a failed bind
         // must never replace a working bridge or become the event destination.
         if (bridge.start()) {
@@ -263,6 +284,17 @@ class ChatActivity : AppCompatActivity() {
                 is AgentEvent.ToolCallFinished -> transcriptModel.onToolCallFinished(event.call, event.result)
                 is AgentEvent.AnswerProduced -> transcriptModel.onAnswerProduced(event.content)
                 is AgentEvent.RunFailed -> transcriptModel.onRunFailed(event.failure)
+                is AgentEvent.RunFinished -> {
+                    // HOST-005: terminal reached (Answer, Failure, or Interrupted).
+                    // Any terminal ends the INTERRUPTING ("Stopping...") phase and
+                    // re-enables the Stop button for the next Run (H7: a Stop vs
+                    // natural-terminal race must never leave the UI stuck).
+                    stop.isEnabled = false
+                    // An interrupted Run renders a Stopped block (not a Failure).
+                    if (event.outcome is com.androidagent.core.RunOutcome.Interrupted) {
+                        transcriptModel.onInterrupted()
+                    }
+                }
                 else -> {}
             }
             renderStatus()
@@ -397,13 +429,48 @@ class ChatActivity : AppCompatActivity() {
             // Transcript blocks (assistant/failure) are fed by onRunEvent, which
             // also serves debug-bridge-originated runs.
             logTrace()
+            // HOST-005: on a user Stop the structured outcome is Interrupted; the
+            // terminal RunFinished(Interrupted) event (via onRunEvent) renders the
+            // transcript, and the status shows the interrupted phase.
+            if (outcome is com.androidagent.core.RunOutcome.Interrupted) {
+                runStatusText = "Stopped."
+                renderStatus()
+            }
             setBusy(false)
+        }
+    }
+
+    /**
+     * HOST-005 Stop: direct Stop, no confirmation. Requests interruption of the
+     * active Run through the Runtime's [AgentRuntime.interruptActiveRun]. The
+     * button is disabled immediately (the INTERRUPTING phase is Host-transient);
+     * it re-enables when the Run reaches terminal. A second Stop while already
+     * interrupting is a structured no-op (AlreadyInterrupting).
+     */
+    private fun onStopRun() {
+        val r = runtime ?: return
+        if (!r.isBusy) return
+        when (r.interruptActiveRun()) {
+            AgentRuntime.InterruptResult.Requested -> {
+                runStatusText = "Stopping..."
+                stop.isEnabled = false
+                renderStatus()
+            }
+            AgentRuntime.InterruptResult.AlreadyInterrupting -> {
+                // Already interrupting; no-op.
+                renderStatus()
+            }
+            AgentRuntime.InterruptResult.NoActiveRun -> {
+                // The Run already completed between the busy check and the tap.
+                setBusy(false)
+            }
         }
     }
 
     private fun setBusy(busy: Boolean) {
         send.isEnabled = !busy
         newSession.isEnabled = !busy
+        stop.isEnabled = busy
     }
 
     /**
