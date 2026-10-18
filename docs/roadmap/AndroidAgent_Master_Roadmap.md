@@ -588,31 +588,30 @@ risk after the v1.0 normalization. **CURRENT is NONE** immediately after
 AG.ROADMAP-0.REVIEW-1A closes (this repair is documentation-only).
 
 ### CURRENT
-- NONE. AG.V1-FREEZE = CLOSED by the freeze commit (tag
-  AG.V1-KNOWN-GOOD-FREEZE-V1). V1 is now FROZEN_KNOWN_GOOD: reference /
-  rollback / evidence source; NO new feature development on V1 (only
-  explicitly-authorized critical freeze-line bugfixes).
+- NONE. AG.V2-1.BASELINE-MIGRATION = CLOSED by the V2 baseline commit (tag
+  AG.V2-BASELINE-V1). AndroidAgent-V2 is now the ACTIVE DEVELOPMENT TREE with a
+  VERIFIED baseline equivalent to the V1 freeze. V1 remains FROZEN_KNOWN_GOOD:
+  reference / rollback / evidence source; NO new feature development on V1.
 
 ### NEXT (<=5, in recommended order)
-Recomputed after AG.V1-FREEZE (Controller Strategy B: V1 frozen as Known-Good
-baseline; new feature development moves to the V2 tree after equivalence
-migration). Frozen migration sequence:
-AG.V2-1.BASELINE-MIGRATION -> V2 EQUIVALENCE GATE ->
-AG.V2-2.AT-INTEGRATION -> NEW AT INTEGRATION GATE -> AG.OUTPUT-BOUND.PREFLIGHT.
+Recomputed after AG.V2-1.BASELINE-MIGRATION (V2 baseline established from the
+frozen V1; production equivalence verified). Frozen migration sequence:
+AG.V2-2.AT-INTEGRATION -> NEW AT INTEGRATION GATE ->
+AG.OUTPUT-BOUND.PREFLIGHT -> future capabilities on V2.
 TOOL-006 status/priority/identity UNCHANGED; only execution order changes
 (TOOL_006_TARGET = V2). NEXT_OPEN_AUTHORIZED = NO (awaiting Controller Review
-of the freeze evidence).
+of the V2 baseline evidence).
 
- 1. **AG.V2-1.BASELINE-MIGRATION** — (migration sequence step).
-    V1 -> V2 equivalence migration (same module graph, same architecture,
-    same AT binary, same test baseline). NO new AT, NO feature work.
- 2. **AG.V2-2.AT-INTEGRATION** — (migration sequence step).
-    New AT integration (Handoff V2 / post-emulator) isolated on V2 only.
- 3. **AG.OUTPUT-BOUND.PREFLIGHT** — TOOL-006.
+ 1. **AG.V2-2.AT-INTEGRATION** — (migration sequence step).
+    New AT integration (Handoff V2 / post-emulator) on V2 only: new AT binary /
+    handoff bundle, tool-android-shell compatibility, AT provenance refresh,
+    one-shot regression. NO persistent-terminal tool in this step (that needs
+    capability intake + preflight + TOOL-006 + AT contract stabilization).
+ 2. **AG.OUTPUT-BOUND.PREFLIGHT** — TOOL-006.
     Status DISCOVERED; P0; hard prereq CORE-003 (satisfied); blocker none; risk
     LOW (shared seam). Why later: V1 is frozen; new feature development happens
     on V2 after the AT integration gate. Capability semantics UNCHANGED.
- 4. **AG.PROVIDER-RECOVERY.PREFLIGHT** — PROVIDER-006/003/004/005.
+ 3. **AG.PROVIDER-RECOVERY.PREFLIGHT** — PROVIDER-006/003/004/005.
     Status RESEARCH_REQUIRED / BLOCKED; P1; hard prereq PROVIDER-002 (satisfied);
     blocker = partial-stream design gate; risk MEDIUM (transport semantics).
     Why later: user-surfaced; freeze the retryable taxonomy + the partial-stream
@@ -715,6 +714,8 @@ OUT_OF_SCOPE.
 | Persistent raw terminal | (no capability row) | recorded as PENDING INTAKE (no Stable ID) | AG.V1-PRE-FREEZE-NORMALIZATION per AG.V2-0: CAPABILITY_INTAKE_REQUIRED=YES; intake after V2 baseline / AT integration gate; definition in pre-freeze evidence doc |
 | Execution Queue NEXT | AG.V1-FREEZE (first item) | AG.V2-1.BASELINE-MIGRATION | AG.V1-FREEZE CLOSED by the freeze commit (tag AG.V1-KNOWN-GOOD-FREEZE-V1); V1 = FROZEN_KNOWN_GOOD; NEXT_OPEN_AUTHORIZED = NO (awaiting Controller Review of freeze evidence) |
 | V1 tree policy | active development | FROZEN (reference / rollback / evidence source; no new features except explicitly-authorized critical freeze-line bugfixes) | AG.V1-FREEZE: Known-Good baseline established; new feature development moves to V2 after equivalence migration |
+| Execution Queue NEXT | AG.V2-1.BASELINE-MIGRATION | AG.V2-2.AT-INTEGRATION | AG.V2-1.BASELINE-MIGRATION CLOSED by the V2 baseline commit (tag AG.V2-BASELINE-V1): direct git clone of frozen V1 at the freeze commit; production equivalence EXACT (production diff = 0); 8-module topology unchanged; 410/0/3 test baseline reproduced; known AT AAR lint fingerprint identical; AT binary unchanged; no architecture change; AndroidAgent-V2 = ACTIVE DEVELOPMENT TREE. NEXT_OPEN_AUTHORIZED = NO (awaiting Controller Review of V2 baseline evidence) |
+| Repository identity | AndroidAgent (V1, active) | AndroidAgent-V2 (V2, active development tree) + AndroidAgent V1 (frozen reference) | AG.V2-1.BASELINE-MIGRATION: Strategy B materialized — V1 frozen, V2 clone established as the active tree; pre-migration research archived under docs/v2-research/pre-migration-workspace/ |
 | RUN-004 note | "USER reason tag" | "per-Run user-interrupt metadata carried into Core (Core never queries Runtime)" | CLOSEOUT C3: Core must not query Runtime; metadata travels Runtime -> Core per-Run |
 | RUN-003 note | "interrupt handle" | "ATOMIC interrupt handle; cancels structured execution child only (send caller survives)" | CLOSEOUT C1/C2/C5 |
 | InterruptReason | enum {USER, HOST_LIFECYCLE} proposed | NOT REQUIRED (V0 ships RunOutcome.Interrupted; reason only if mechanism needs a per-Run type) | CLOSEOUT: remove over-design; lifecycle has no structured consumer now |

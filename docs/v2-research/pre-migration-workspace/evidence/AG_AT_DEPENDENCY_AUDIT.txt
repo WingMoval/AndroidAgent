@@ -1,0 +1,64 @@
+AG.V2-0.ARCHITECTURE-RESEARCH — AT dependency audit (raw evidence)
+Repo: D:\codebank\AndCode\AndroidAgent @ e30d250 (READ ONLY)
+
+1. GRADLE-LEVEL AT DEPENDENCIES
+   grep "androidterminal|at-runtime|at-core" over all build.gradle.kts:
+   - tool-android-shell/build.gradle.kts:
+       implementation("com.androidterminal:at-runtime:0.1.0")
+     (resolved from repo-local maven third_party/at-engine-handoff-v0/m2)
+   - app/build.gradle.kts: only a COMMENT mentions "androidterminaladb"
+     (explaining native lib resolution); NO gradle AT dependency.
+   - ag-core / ag-runtime / provider-* / tool-network / tool-file:
+     NO AT dependency of any kind.
+
+   => AG_CORE_AT_DEPENDENCY  = NONE
+   => AG_RUNTIME_AT_DEPENDENCY = NONE
+
+2. SOURCE-LEVEL AT IMPORTS (main sources, all modules)
+   grep "import com.androidterminal" :
+   - tool-android-shell/src/main/java/.../ShellConnection.kt:
+       import com.androidterminal.runtime.AtExecutionOutcome
+       import com.androidterminal.runtime.AtExecutionResult
+       import com.androidterminal.runtime.AtRuntime
+     (the ONLY production file in the whole repo importing AT types)
+   - every other module (ag-core, ag-runtime, provider-*, tool-network,
+     tool-file, app): ZERO AT imports.
+
+   => CURRENT_AT_CONSUMERS = tool-android-shell (exactly one production module)
+   => CONFIRMS frozen rule: ":tool-android-shell is the only production AG
+      module consuming AT"
+
+3. AT API SURFACE ACTUALLY USED BY AG (from ShellConnection.kt +
+   AndroidShellToolImpl.kt):
+   - AtRuntime.initialize(context)
+   - AtRuntime.connectAuto(keyDir)
+   - AtRuntime.readinessState()
+   - AtRuntime.disconnect()
+   - AtRuntime.execute(command, timeoutMs)   [one-shot; no-replay hard rule:
+       one ToolCall performs at most one execute()]
+   NOT used (present in AT Handoff V1 bundle but unconsumed by AG today):
+   - persistent TerminalSession API (raw byte stream, input, resize, Ctrl-C)
+   - multi-session
+   - transport-loss / recovery callbacks (surfaced only via readiness state)
+   => AT HAS CAPABILITY != AG TOOL CONSUMES CAPABILITY
+
+4. ADB-LEVEL SEARCH (AG modules other than tool-android-shell):
+   grep "adb|pairing|tls|wireless|reconnect|transport.?loss" (main sources,
+   excluding comments/imports):
+   - ag-core: hits are InterruptPairing (an internal interrupt bookkeeping
+     class — NOT ADB pairing).
+   - tool-network: TLS hits are its own HTTPS client (HttpsURLConnection
+     TLS handshake errors) — unrelated to ADB.
+   - app/ChatActivity.kt: "reconnect" button -> onReconnect() ->
+     root.shell.connect() (ShellConnection -> AtRuntime.connectAuto).
+     The Host only triggers the Tool-layer connection and renders status.
+   => ADB_RESPONSIBILITY_DUPLICATED_IN_AG = NO
+      (pairing/discovery/TLS/transport-loss/recovery all live in AT;
+       the Host merely invokes the Tool-layer connect and displays state)
+
+5. CLI-LEVEL SEARCH:
+   grep "ProcessBuilder|Runtime.getRuntime|exec(" (main sources): NO hits
+   in ag-core / ag-runtime / tools / app.
+   => CLI_USED_AS_AG_API = NO
+      (AG never shells out to the AT CLI; the CLI is a human-facing
+       convenience frontend on the AT side, unused by AG)

@@ -1,0 +1,97 @@
+AG.V2-0.ARCHITECTURE-RESEARCH — AT Handoff V1 evidence (raw)
+Sources:
+  - D:\codebank\AndCode\AndroidTerminal-V2 (git, READ ONLY)
+  - D:\codebank\AndCode\AndroidAgent\third_party/at-engine-handoff-v0/ (READ ONLY)
+
+1. AT GIT BASELINE CHECK
+   Repo: D:\codebank\AndCode\AndroidTerminal-V2, branch main
+   HEAD: 726a441 (AT.RUNTIME-1: audit existing lifecycle capabilities)
+
+   Task-specified baselines:
+     SOURCE_BASELINE 700ca3b                     -> NOT FOUND
+                                                     (git cat-file: not a valid object name)
+     PRE_EMULATOR_FREEZE_COMMIT
+     7ccb1bf3ae332b66a425f47586c60d9a30ba70ef    -> NOT FOUND
+                                                     (git cat-file: could not get object info)
+     FREEZE_TAG AT.PRE-EMULATOR-FREEZE-V1        -> NOT FOUND
+   Existing tags: at-v0.1.0, at-v2-baseline-0
+   => AT_SOURCE_BASELINE_FOUND = NO (700ca3b)
+   => AT_FREEZE_COMMIT_FOUND   = NO (7ccb1bf3...)
+   => AT_FREEZE_TAG_FOUND      = NO (AT.PRE-EMULATOR-FREEZE-V1)
+   INTERPRETATION: the AT repo has moved past the pre-emulator freeze
+   (history shows AT.V2-3B/4A/4B/AT.RUNTIME-1 work). The handoff bundle's
+   own provenance block (below) is the authoritative source-identity record.
+
+2. HANDOFF ARTIFACT AUDIT (third_party/at-engine-handoff-v0/)
+   What it is: a VERSIONED PAIRED AAR BUNDLE + repo-local Maven metadata
+   wrapper + verification script + manifest.
+   Contents:
+     at-engine-handoff.json      = bundle manifest (schemaVersion 1)
+     README.md
+     SHA256SUMS
+     artifacts/
+       at-runtime.aar            (73,033 B)
+       at-core.aar               (1,277,257 B; carries arm64-v8a .so libs)
+       native/libandroidterminaladb.so, libc++_shared.so, libnetwork_probe.so
+     m2/com/androidterminal/at-runtime/0.1.0/{at-runtime-0.1.0.aar,.pom}
+     m2/com/androidterminal/at-core/0.1.0/{at-core-0.1.0.aar,.pom}
+     verify/verify-at-engine-handoff.ps1
+   It is NOT source. It is a binary implementation bundle (AARs) plus
+   resolution metadata. No API definition files beyond what the AARs
+   contain (the manifest documents the stable surface).
+
+3. BUNDLE MANIFEST FACTS (at-engine-handoff.json)
+   bundleId        = at-engine-handoff-v0
+   bundleVersion   = 0.1.0
+   artifactKind    = versioned-paired-aar-bundle
+   atomicity       = AARs are an INDIVISIBLE pair; regenerate whole bundle
+                     on any AT update
+   engine          = AT Engine = AT Runtime + AT Core
+     runtimeModule = com.androidterminal.runtime
+                     ("AG-facing stable public contract / lifecycle boundary")
+     coreModule    = com.androidterminal
+                     ("Frozen implementation + JNI + native libs (reached
+                       ONLY via AT Runtime)")
+   publicContract.entryPoint = com.androidterminal.runtime.AtRuntime
+   publicContract.rule       = external consumer MUST import ONLY
+                     com.androidterminal.runtime.* ; zero imports of
+                     TerminalRuntime, AdbManager, AtWirelessConnector,
+                     RecoveryCoordinator, EndpointStore, DiscoveryBackend,
+                     _adb-tls-connect, hardcoded ports, recovery internals
+   stableSurface   = initialize / readinessState / checkReadiness /
+                     connectAuto / connect / execute / disconnect
+   provenance:
+     repo          = D:/codebank/AndCode/AndroidTerminal-V2
+     branch        = main
+     sourceCommit  = 726a441acd5d5a7e24c5015adce57e543d1897f7
+     sourceDirty   = true
+     sourceDirtyNote = uncommitted AT.RUNTIME-2A/2B/2D + AT.ENGINE-AG0 sources;
+                       HEAD alone does NOT identify source identity
+     sourceTreeSha256 = ff0a6432b9600f831b12456734a798fdc3802a08cee488bda4cb154be7f9ce3b
+     (162 fingerprinted files)
+   validationStatus:
+     inRepoHandoffConsumer = AT.ENGINE-AG0 VERIFIED (H1-H4 real-device PASS)
+     externalStandaloneConsumer = PENDING
+
+4. HANDOFF V1 vs BUNDLE IDENTITY (Q5)
+   AT_TO_AG_HANDOFF_V1 is a CAPABILITY SNAPSHOT VERSION (user/controller
+   notification; no standalone local handoff file exists in either repo).
+   The physical BINARY BUNDLE remains "at-engine-handoff-v0" @ 0.1.0, built
+   from AT main @ 726a441 (dirty tree, sourceTreeSha256 authoritative).
+   => CAPABILITY_HANDOFF = V1
+   => BINARY_BUNDLE      = v0 (0.1.0 paired AARs)
+   The two are deliberately decoupled: V1 says "these capabilities are
+   available and verified"; the bundle carries the actual binaries.
+
+5. HANDOFF_V1_LOCAL_ARTIFACT = NOT_FOUND (as a standalone document).
+   Per task rule §62: the USER/CONTROLLER NOTIFICATION is the formal input
+   and is ACCEPTED. No AT source artifact was forged.
+
+6. AT PHASE / CONTRACT STATUS (per task input)
+   AT_PHASE          = PRE_EMULATOR
+   NEXT_AT_PHASE     = AT.EMULATOR-0
+   AT_CONTRACT_STATUS = DRAFT
+   AT_CONTRACT_FREEZE_AUTHORIZED = NO
+   PERSISTENT_EXECUTION_CAPABILITY = MATURE_ENOUGH_FOR_EMULATOR
+   TERMINAL_EMULATOR / SCREEN_STATE / STRUCTURED_TERMINAL_OBSERVATION
+                                = NOT_STARTED

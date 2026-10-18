@@ -1,0 +1,30 @@
+AG.V2-0.ARCHITECTURE-RESEARCH — V1 Git baseline (raw evidence)
+Collected: 2026-10-18 (closeout of AG.HOST-STOP-1.NATURAL-COMPLETION.CLOSEOUT)
+Command: git -C D:\codebank\AndCode\AndroidAgent log/branch/status (READ ONLY)
+
+V1_REPO = D:\codebank\AndCode\AndroidAgent
+V1_BRANCH = main
+V1_GIT_HEAD = e30d250 (AG.HOST-STOP-1.NATURAL-COMPLETION.CLOSEOUT: D3 root cause = fixture SSE framing (Case E))
+V1_DIRTY = YES (43 changed/untracked paths; all pre-existing Step work from
+          AG.NETWORK-0 / AG.FILE-0 / AG.RUN-CONTROL-1 / AGA.OBSERVABILITY-1 /
+          AG.HOST-STOP-1 that has not been batch-committed; the closeout commit
+          e30d250 itself covers the HOST-STOP-1 closeout files)
+
+Recent V1 history (git log --oneline -5):
+  e30d250 AG.HOST-STOP-1.NATURAL-COMPLETION.CLOSEOUT: D3 root cause = fixture SSE framing (Case E)
+  868eacf fix: close stream sections and show debug-originated run failures
+  395b89d feat: add streaming agent transcript and provider truth UI
+  (older history continues; no tags on V1 main relevant to this baseline)
+
+Test baseline (actual JUnit execution results, 2026-10-18, this Step):
+  ag-core                        = 41  (0 failures)
+  ag-runtime                     = 26  (0 failures)
+  provider-openai-compatible     = 59  (0 failures)
+  tool-android-shell             = 16  (0 failures)
+  tool-network                   = 78  (0 failures)
+  tool-file                      = 55  (0 failures)
+  app (testDebugUnitTest)        = 109 (0 failures)
+  TOTAL                          = 384 (0 failures)
+Note: AGENTS.md historical claims (e.g. "app 234") are point-in-time figures
+from earlier Steps; the numbers above are the measured current baseline and
+are the ones any V2 equivalence gate must reproduce.

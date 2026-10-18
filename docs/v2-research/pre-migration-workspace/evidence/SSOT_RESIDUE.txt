@@ -1,0 +1,14 @@
+AG.V2-0.ARCHITECTURE-RESEARCH — SSOT residue matrix (raw findings)
+Scope: V1 Roadmap / AGENTS.md / step docs, checked 2026-10-18.
+Per task rule §75: V1 source is NOT modified in this Step; findings are
+proposals for a later V1 doc-only Step.
+
+| ID | File | Location | Residue | Truth | Proposal |
+| R1 | docs/roadmap/AndroidAgent_Master_Roadmap.md | line 899 (capability coverage matrix) | HOST-005 status column = RESEARCH_REQUIRED | Registry line 400 = VERIFIED (D1-D4 ALL PASS; D3 closeout §13) | Update matrix row status to VERIFIED (keep "COVERED") |
+| R2 | docs/roadmap/AndroidAgent_Master_Roadmap.md | lines ~604-612 (NEXT list) | Items 2 and 3 are duplicate AG.PROVIDER-RECOVERY.PREFLIGHT entries | Only one such preflight exists | Dedupe; renumber remaining items |
+| R3 | docs/implementation/AG.HOST-STOP-1.md | §13.11 | Hash lines read "(computed at closeout; see controller review)" | Final file SHA256 = 7FB5FF4C1D09889638B01C64348CDDC8F82168781DCB95E95829761D5E0D3E2F (canonical == upload, MATCH=YES) | Doc-only correction may record the hash; NOT required for V2 |
+| R4 | AGENTS.md | HOST-005 frozen-state block | "Regression green (ag-core 41, ag-runtime 26, provider 59, app 109)" | Matches measured baseline (app=109) — CONSISTENT | NO ACTION |
+| R5 | AGENTS.md | "Current frozen state" block order | AG.HOST-STOP-1 entry sits after AG.RUN-CONTROL-1.DETERMINISTIC.FIX; queue text says NEXT = AG.OUTPUT-BOUND.PREFLIGHT | Roadmap queue: CURRENT = NONE, NEXT = AG.OUTPUT-BOUND.PREFLIGHT (consistent) | NO ACTION |
+| R6 | Roadmap | Execution Queue "CURRENT = NONE" (line ~591) | Correct after D3 closeout | Confirmed by this Step's re-read | NO ACTION |
+| R7 | Roadmap | AT-001/AT-002 external rows | Notes do not yet state: AT owns pairing/discovery/transport/recovery; Handoff V1 provides one-shot + persistent terminal + raw byte IO + Ctrl-C + resize + lifecycle + multi-session (Local/ADB) | True per Handoff V1 input + AT capability audit | Proposal: enrich AT-001/AT-002 Notes (Status stays EXTERNAL); do this in V1 doc Step, not here |
+| R8 | (naming) | "third_party/at-engine-handoff-v0" | Folder name encodes BINARY bundle id, not capability snapshot | CAPABILITY_HANDOFF=V1, BINARY_BUNDLE=v0 | Proposal: do NOT rename folder in V2 baseline; document the decoupling instead (renaming would churn git history + m2 paths for zero capability change) |

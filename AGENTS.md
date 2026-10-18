@@ -558,7 +558,27 @@ migration isolation / rollback safety / new-AT isolation. Frozen migration
 sequence: AG.V1-FREEZE -> AG.V2-1.BASELINE-MIGRATION -> equivalence gate ->
 AG.V2-2.AT-INTEGRATION -> AT gate -> AG.OUTPUT-BOUND.PREFLIGHT (TOOL-006,
 semantics unchanged; execution order only). See
-`D:\codebank\AndCode\AndroidAgent-V2\docs\architecture\AG.V2-CONTROLLER-DECISION.md`.
+`docs/v2-research/pre-migration-workspace/docs/architecture/AG.V2-CONTROLLER-DECISION.md`.
+
+## Repository identity (V2)
+
+```text
+THIS REPO        = AndroidAgent-V2 (ACTIVE DEVELOPMENT TREE)
+V1 SOURCE        = D:\codebank\AndCode\AndroidAgent (FROZEN_KNOWN_GOOD,
+                   tag AG.V1-KNOWN-GOOD-FREEZE-V1; reference/rollback/evidence
+                   only; no new feature development on V1)
+V2 BASELINE      = AG.V2-BASELINE-V1 (equivalent to the V1 freeze; established
+                   by AG.V2-1.BASELINE-MIGRATION as a direct clone at the freeze
+                   commit — production content byte-equivalent to V1)
+V2 ARCHITECTURE  = INHERITED FROM CONFIRMED V1 / UNCHANGED
+CURRENT AT BUNDLE = unchanged from V1 (third_party/at-engine-handoff-v0 @ 0.1.0)
+NEXT             = AG.V2-2.AT-INTEGRATION (new AT integration; NOT yet
+                   authorized — awaiting Controller Review)
+```
+
+This is a repository/current-state note only: no production contract, module,
+package, or AT binary changed by the V2 migration. Migration evidence:
+`docs/migration/AG.V2-1.BASELINE-MIGRATION.md` and `docs/migration/AG.V2-BASELINE-V1.md`.
 
 Implemented and **not** to be described as pending:
 

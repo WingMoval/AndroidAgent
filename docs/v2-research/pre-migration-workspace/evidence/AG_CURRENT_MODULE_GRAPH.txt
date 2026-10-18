@@ -1,0 +1,61 @@
+AG.V2-0.ARCHITECTURE-RESEARCH — Current module graph (raw evidence)
+Source: settings.gradle.kts + build.gradle.kts of each module + source import scan
+Repo: D:\codebank\AndCode\AndroidAgent @ e30d250 (READ ONLY)
+
+MODULES (settings.gradle.kts):
+  :ag-core
+  :ag-runtime
+  :provider-openai-compatible
+  :provider-openai-compatible-jdk
+  :tool-android-shell
+  :tool-network
+  :tool-file
+  :app
+  (+ repo-local maven: third_party/at-engine-handoff-v0/m2)
+
+DEPENDENCY EDGES (implementation/api only, from build.gradle.kts):
+
+  ag-core                       -> (none; pure Kotlin, only JDK imports)
+  ag-runtime                    -> :ag-core, kotlinx-coroutines-core
+  provider-openai-compatible    -> :ag-core, kotlinx-serialization-json, kotlinx-coroutines-core
+  provider-openai-compatible-jdk-> (JDK transport; see module, no AT)
+  tool-android-shell            -> :ag-core, com.androidterminal:at-runtime:0.1.0 (AAR from handoff m2),
+                                   kotlinx-serialization-json, kotlinx-coroutines-core
+  tool-network                  -> :ag-core, kotlinx-serialization-json, kotlinx-coroutines-core  (NO AT)
+  tool-file                     -> :ag-core, kotlinx-serialization-json, kotlinx-coroutines-core  (NO AT)
+  app                           -> :ag-core, :ag-runtime, :provider-openai-compatible,
+                                   :tool-android-shell, :tool-network, :tool-file
+                                   (AGGREGATES everything; the ONLY module with
+                                    all project deps — composition root role)
+
+GRAPH (arrows = depends on):
+
+  app
+   ├── ag-runtime ── ag-core
+   ├── provider-openai-compatible ── ag-core
+   ├── tool-android-shell ── ag-core ──(AAR)── com.androidterminal:at-runtime:0.1.0
+   ├── tool-network ── ag-core
+   └── tool-file ── ag-core
+
+  ag-core is a leaf. NO module depends on app. NO tool depends on ag-runtime
+  or app. NO provider depends on tools.
+
+PACKAGE LAYOUT (production, main sources):
+  ag-core                       com.androidagent.core
+  ag-runtime                    com.androidagent.runtime
+  provider-openai-compatible    com.androidagent.provider.openai
+  provider-openai-compatible-jdk com.androidagent.provider.openai.jdk
+  tool-android-shell            com.androidagent.tool.androidshell
+  tool-network                  com.androidagent.tool.network
+  tool-file                     com.androidagent.tool.file
+  app (AGA host)                com.androidagent.app (+ .debug, .trace)
+
+IMPORT LEAKAGE SCAN (main sources):
+  ag-core imports com.androidagent.{app,runtime,tool,provider,shell} : NONE
+  ag-runtime imports com.androidagent.{app,tool,provider,shell}      : NONE
+  tool-* imports com.androidagent.{runtime,app}                      : NONE
+  provider-* imports com.androidterminal.*                           : NONE
+  app imports com.androidterminal.*                                  : NONE
+    (only a comment in ChatCompositionRoot.kt mentions the namespace
+     to document the boundary: "no `com.androidterminal.*` type ever
+     appears in Host code")
