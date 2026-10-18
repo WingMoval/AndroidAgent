@@ -25,10 +25,10 @@ V2_REMOTE_TO_V1    = NONE (origin removed after clone)
 ## V2 identity
 
 ```text
-V2_BASELINE_COMMIT = <recorded at commit time>
+V2_BASELINE_COMMIT = c84bf5ded15c6c6c617a1ac72ac80707226e3b90
 V2_BASELINE_PARENT = 13df1dbd892c02ff25ce5d8317095bc1deaaaf71
-V2_BASELINE_TREE   = <recorded at commit time>
-V2_BASELINE_TAG    = AG.V2-BASELINE-V1 (annotated)
+V2_BASELINE_TREE   = 5ec605a0343ad10b9f5311f350b644987eb75c54
+V2_BASELINE_TAG    = AG.V2-BASELINE-V1 (annotated; points to the baseline commit)
 ```
 
 ## Production equivalence
