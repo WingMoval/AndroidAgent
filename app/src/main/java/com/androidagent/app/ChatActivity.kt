@@ -218,6 +218,9 @@ class ChatActivity : AppCompatActivity() {
                     setBusy(busy)
                 }
             },
+            // AG.V2-2B: wire the AT Execution Adapter for persistent session
+            // validation. Debug-only; the adapter is owned by ShellConnection.
+            adapterProvider = { root?.shell?.adapter },
         )
         // Only publish the instance once it is actually listening; a failed bind
         // must never replace a working bridge or become the event destination.

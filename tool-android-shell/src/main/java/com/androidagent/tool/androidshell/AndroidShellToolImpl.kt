@@ -4,22 +4,27 @@ import com.androidagent.core.Tool
 import com.androidagent.core.ToolCall
 import com.androidagent.core.ToolResult
 import com.androidagent.core.ToolSpec
-import com.androidterminal.runtime.AtExecutionResult
-import com.androidterminal.runtime.AtRuntime
+import com.androidagent.integration.at.AtExecutionAdapter
+import com.at.engine.ATExecutionResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
  * Concrete Android Shell Tool — the ONLY AndroidAgent execution layer that
- * connects to the AT Engine.
+ * connects to the AT Engine (V3 Freeze V1).
+ *
+ * AG.V2-2B: the tool now consumes AT through the unified [AtExecutionAdapter]
+ * instead of directly constructing an [com.at.engine.ATEngine]. The adapter is
+ * the single AT consumption point; the tool is a thin consumer of the adapter's
+ * one-shot ADB execution.
  *
  * Responsibilities, frozen:
  *
  * ```
  * ToolCall.arguments ({"command": "..."})
  *   ↓ parse
- * AtRuntime.execute(command, timeoutMs = 0)
- *   ↓ AtExecutionResult
+ * AtExecutionAdapter.executeAdb(command)
+ *   ↓ ATExecutionResult
  * ToolResult
  * ```
  *
@@ -27,10 +32,8 @@ import kotlinx.coroutines.withContext
  * endpoint / port. Connection lifecycle belongs to [ShellConnection] and is
  * owned by the Host.
  *
- * No-replay HARD rule: one ToolCall performs at most one [AtRuntime.execute].
- * A TRANSPORT_ERROR result is returned faithfully — the AT Runtime may recover
- * the connection itself, but the failed command is never re-run here. The
- * failed [ToolResult] enters AG history and the Model decides what to do next.
+ * No-replay HARD rule: one ToolCall performs at most one execute.
+ * A TRANSPORT_ERROR result is returned faithfully.
  *
  * The [Executor] seam is tool-local and test-only: JVM unit tests cannot load
  * the Android/native runtime, so they inject a fake executor to verify
@@ -40,7 +43,14 @@ class AndroidShellToolImpl internal constructor(
     private val executor: Executor,
 ) : Tool {
 
-    constructor() : this({ command -> AtRuntime.execute(command, 0) })
+    /**
+     * Production constructor: consumes one-shot ADB execution through the
+     * unified [AtExecutionAdapter]. The adapter must be initialized (ADB
+     * connection READY) before the tool is used; the Host handles lifecycle.
+     */
+    constructor(adapter: AtExecutionAdapter) : this(
+        Executor { command -> adapter.executeAdb(command) }
+    )
 
     override val spec: ToolSpec = ToolSpec(
         name = TOOL_NAME,
@@ -74,7 +84,7 @@ class AndroidShellToolImpl internal constructor(
 
     /** Minimal tool-local seam (fake in JVM unit tests, real AT call in prod). */
     fun interface Executor {
-        suspend fun execute(command: String): AtExecutionResult
+        suspend fun execute(command: String): ATExecutionResult
     }
 
     companion object {

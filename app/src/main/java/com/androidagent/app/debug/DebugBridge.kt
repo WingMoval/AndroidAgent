@@ -8,7 +8,9 @@ import com.androidagent.core.ModelStreamObserver
 import com.androidagent.core.ToolApprovalPolicy
 import com.androidagent.core.ToolCall
 import com.androidagent.core.ToolRegistry
+import com.androidagent.integration.at.AtExecutionAdapter
 import com.androidagent.runtime.AgentRuntime
+import com.at.engine.ATTerminalSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -23,8 +25,10 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * AG.DEBUG-0 — PC Debug Bridge (host/tooling layer only).
@@ -58,6 +62,9 @@ class DebugBridge(
     // stays disabled (grey) during a bridge-originated Run and the user cannot
     // exercise the Stop control from the UI. Debug-only; no-op when unwired.
     private val onRunStateChanged: ((Boolean) -> Unit)? = null,
+    // AG.V2-2B: optional AT Execution Adapter for persistent session validation.
+    // Debug-only; null when not wired (release builds never wire it).
+    private val adapterProvider: (() -> AtExecutionAdapter?)? = null,
     private val port: Int = DEFAULT_PORT,
     scope: CoroutineScope? = null,
 ) {
@@ -65,6 +72,10 @@ class DebugBridge(
     private val bridgeScope = scope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var serverSocket: ServerSocket? = null
     private var acceptJob: Job? = null
+
+    // AG.V2-2B: persistent session registry (debug-only).
+    private val sessions = ConcurrentHashMap<Int, ATTerminalSession>()
+    private val sessionIds = AtomicInteger(0)
 
     @Volatile
     private var running = false
@@ -170,6 +181,31 @@ class DebugBridge(
                             // production Tool directly, no ModelProvider / Agent Loop
                             // / LLM. Runs in its own coroutine so the reader continues.
                             bridgeScope.launch { handleToolInvoke(msg.name, msg.arguments, writer) }
+                        }
+
+                        // AG.V2-2B: AT persistent session operations.
+                        is DebugProtocol.ClientMessage.SessionOpen -> {
+                            bridgeScope.launch { handleSessionOpen(msg.backend, writer) }
+                        }
+
+                        is DebugProtocol.ClientMessage.SessionWrite -> {
+                            bridgeScope.launch { handleSessionWrite(msg.id, msg.text, msg.ctrlc, writer) }
+                        }
+
+                        is DebugProtocol.ClientMessage.SessionRead -> {
+                            bridgeScope.launch { handleSessionRead(msg.id, msg.timeoutMs, writer) }
+                        }
+
+                        is DebugProtocol.ClientMessage.SessionResize -> {
+                            bridgeScope.launch { handleSessionResize(msg.id, msg.rows, msg.cols, writer) }
+                        }
+
+                        is DebugProtocol.ClientMessage.SessionClose -> {
+                            bridgeScope.launch { handleSessionClose(msg.id, writer) }
+                        }
+
+                        is DebugProtocol.ClientMessage.SessionState -> {
+                            handleSessionState(msg.id, writer)
                         }
 
                         null -> writer.send(DebugProtocol.error("unrecognized message"))
@@ -297,6 +333,118 @@ class DebugBridge(
         override fun onContentFinished() {
             bridge.emitStream(DebugProtocol.STREAM_CONTENT_FINISHED, null)
         }
+    }
+
+    // ------------------------------------------------- AG.V2-2B session handlers
+
+    private suspend fun handleSessionOpen(backend: String, writer: ClientWriter) {
+        val adapter = adapterProvider?.invoke()
+        if (adapter == null) {
+            writer.send(DebugProtocol.error("adapter not wired (persistent session unavailable)"))
+            return
+        }
+        val session = if (backend.equals("adb", true)) {
+            adapter.openAdbSession()
+        } else if (backend.equals("local", true)) {
+            adapter.openLocalSession()
+        } else {
+            writer.send(DebugProtocol.error("unknown backend: $backend (expected adb|local)"))
+            return
+        }
+        if (session == null) {
+            writer.send(DebugProtocol.sessionOpenFailed(backend, "openSession returned null"))
+            return
+        }
+        val id = sessionIds.incrementAndGet()
+        sessions[id] = session
+        writer.send(DebugProtocol.sessionOpened(id, backend))
+        Log.i(TAG, "session opened: id=$id backend=$backend")
+    }
+
+    private suspend fun handleSessionWrite(id: Int, text: String, ctrlc: Boolean, writer: ClientWriter) {
+        val session = sessions[id]
+        if (session == null) {
+            writer.send(DebugProtocol.error("no session with id=$id"))
+            return
+        }
+        val adapter = adapterProvider?.invoke() ?: run {
+            writer.send(DebugProtocol.error("adapter not wired"))
+            return
+        }
+        val bytes = if (ctrlc) {
+            adapter.writeCtrlC(session)
+        } else {
+            adapter.writeCommand(session, text)
+        }
+        writer.send(DebugProtocol.sessionWriteResult(id, bytes))
+    }
+
+    private suspend fun handleSessionRead(id: Int, timeoutMs: Int, writer: ClientWriter) {
+        val session = sessions[id]
+        if (session == null) {
+            writer.send(DebugProtocol.error("no session with id=$id"))
+            return
+        }
+        val adapter = adapterProvider?.invoke() ?: run {
+            writer.send(DebugProtocol.error("adapter not wired"))
+            return
+        }
+        val data = adapter.readOutput(session, timeoutMs)
+        if (data == null) {
+            // EOF or error: session terminated.
+            sessions.remove(id)
+            writer.send(DebugProtocol.sessionData(id, "<EOF>"))
+        } else {
+            val text = String(data, Charsets.UTF_8)
+            if (text.isNotEmpty()) {
+                writer.send(DebugProtocol.sessionData(id, text))
+            } else {
+                // Timeout with no data.
+                writer.send(DebugProtocol.sessionData(id, ""))
+            }
+        }
+    }
+
+    private suspend fun handleSessionResize(id: Int, rows: Int, cols: Int, writer: ClientWriter) {
+        val session = sessions[id]
+        if (session == null) {
+            writer.send(DebugProtocol.error("no session with id=$id"))
+            return
+        }
+        val adapter = adapterProvider?.invoke() ?: run {
+            writer.send(DebugProtocol.error("adapter not wired"))
+            return
+        }
+        val ok = adapter.resize(session, rows, cols)
+        writer.send(DebugProtocol.sessionResized(id, rows, cols, ok))
+    }
+
+    private suspend fun handleSessionClose(id: Int, writer: ClientWriter) {
+        val session = sessions.remove(id)
+        if (session == null) {
+            writer.send(DebugProtocol.error("no session with id=$id"))
+            return
+        }
+        val adapter = adapterProvider?.invoke() ?: run {
+            writer.send(DebugProtocol.error("adapter not wired"))
+            return
+        }
+        adapter.closeSession(session)
+        writer.send(DebugProtocol.sessionClosed(id))
+        Log.i(TAG, "session closed: id=$id")
+    }
+
+    private fun handleSessionState(id: Int, writer: ClientWriter) {
+        val session = sessions[id]
+        if (session == null) {
+            writer.send(DebugProtocol.error("no session with id=$id"))
+            return
+        }
+        val adapter = adapterProvider?.invoke() ?: run {
+            writer.send(DebugProtocol.error("adapter not wired"))
+            return
+        }
+        writer.send(DebugProtocol.sessionState(id, adapter.sessionState(session)))
     }
 
     /** One connected debug client (writer only; read handled by the caller). */

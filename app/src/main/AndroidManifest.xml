@@ -1,9 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- The host performs real model requests. Nothing else is required:
-         no storage, location, camera, microphone, accessibility, or ADB. -->
+    <!-- The host performs real model requests. -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+      AG.V2-2: ADB runtime / mDNS discovery permissions (minimal set
+      needed by V3 AdbRuntime's readiness + NSD discovery). These mirror
+      what V3 :adb-engine declares.
+
+      WRITE_SECURE_SETTINGS is a product capability declaration
+      (signature|privileged). It lets the app control Settings.Global
+      adb_wifi_enabled for post-bootstrap Auto-WD. It is NOT granted on a
+      fresh install (FIRST_USE_MANUAL_BOOTSTRAP = REQUIRED): the user
+      manually enables WD once, pairs/trusts, and the app then self-grants
+      via `pm grant` over its own verified ADB shell.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION"
+        android:maxSdkVersion="35" />
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="35" />
 
     <application
         android:allowBackup="false"

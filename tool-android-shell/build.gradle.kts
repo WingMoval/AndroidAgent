@@ -1,12 +1,23 @@
-// AG.SHELL-1 — Concrete Android Shell Tool Integration.
+// AG.V2-2 — Concrete Android Shell Tool (AT V3 Freeze V1).
 //
 // This is the ONLY AndroidAgent layer allowed to depend on the AT Engine
 // (frozen boundary: AG Core / Agent Runtime / AGA Host -X-> AT implementation).
 //
 //   :tool-android-shell
-//     → :ag-core                    (Tool contract)
-//     → com.androidterminal:at-runtime (stable public contract)
-//     → com.androidterminal:at-core    (transitive impl + JNI + native, via at-runtime POM)
+//     ├── :ag-core                    (Tool contract)
+//     ├── :at-engine                  (AT Engine domain contracts, from AT V3)
+//     ├── :at-backend-adb             (ADB Backend adapter, from AT V3)
+//     └── :adb-engine                 (ADB Engine + libadbd_engine.so, from AT V3)
+//
+// The AT V3 modules are resolved via includeBuild("../AndroidTerminal-V3")
+// in settings.gradle.kts, with dependencySubstitution mapping the module
+// coordinates to the V3 project modules. The AARs are built from the exact
+// freeze commit (AT.PRE-EMULATOR-FREEZE-V1 = 7ccb1bf3) and cached in
+// third_party/at-engine-handoff-v3/artifacts/ for provenance.
+//
+// Legacy AT bundle v0 (com.androidterminal:at-runtime:0.1.0) is REMOVED.
+// The legacy AARs in third_party/at-engine-handoff-v0/ are retained as
+// historical artifacts only (no longer resolved by Gradle).
 //
 // Deliberately NO dependencies on :app, :ag-runtime, or any provider module.
 plugins {
@@ -43,9 +54,10 @@ android {
 dependencies {
     implementation(project(":ag-core"))
 
-    // AT Engine handoff bundle v0, resolved from the repo-local metadata wrapper.
-    // at-core arrives transitively via at-runtime's POM (compile scope).
-    implementation("com.androidterminal:at-runtime:0.1.0")
+    // AG.V2-2B: the tool now consumes AT through the unified adapter, not
+    // directly. The adapter re-exports AT types (ATExecutionResult) so the
+    // tool's Executor seam and result mapping continue to work.
+    api(project(":integration-at"))
 
     // JSON argument schema / result payload.
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")

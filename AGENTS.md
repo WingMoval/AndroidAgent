@@ -538,25 +538,25 @@ The single authoritative source for "which AT snapshot AG consumes" is:
 docs/integration/AT_TO_AG_HANDOFF_CURRENT.md
 ```
 
-Current facts (normalized by AG.V1-PRE-FREEZE-NORMALIZATION; do not restate
+Current facts (updated by AG.V2-2B.AT-ENGINE-FULL-INTEGRATION; do not restate
 the full AT state in other docs — point to the file above):
 
 ```text
-ARCHITECTURE_V1                 = CONFIRMED (structurally valid; unchanged)
-AG Core direct AT dependency    = NONE (verified)
-Agent Runtime direct AT dep     = NONE (verified)
-Current production AT consumer  = tool-android-shell ONLY (verified)
-CAPABILITY_HANDOFF              = AT_TO_AG_HANDOFF_V1
-CURRENT_BINARY_HANDOFF          = at-engine-handoff-v0 @ 0.1.0 (paired AAR, hash-verified)
-AT_CONTRACT_STATUS              = DRAFT (NO final API freeze; wording must say
-                                   "current exposed runtime surface", not "stable/frozen API")
-CURRENT_ANDROID_SHELL_CAPABILITY = ONE-SHOT ONLY (AtRuntime.execute)
-AT persistent raw terminal      = AVAILABLE EXTERNALLY (NOT consumed by AG)
-AG persistent raw terminal      = NOT IMPLEMENTED / ELIGIBLE_FOR_PLANNING (intake pending, no Stable ID)
-SCREEN_AWARE_TERMINAL           = BLOCKED_BY_AT.EMULATOR-0 (RAW_ESCAPE_BYTES != SCREEN_STATE)
-HUMAN_AGENT_SHARED_SESSION      = DEFERRED
-CLI_USED_AS_AG_API              = NO
-ADB_RESPONSIBILITY_DUPLICATED   = NO (ADB pairing/discovery/TLS/recovery all owned by AT)
+CURRENT_AT                      = AndroidTerminal V3
+                                   (AT.PRE-EMULATOR-FREEZE-V1)
+AT_EXECUTION_SUBSYSTEM          = FULL CURRENT CAPABILITY INTEGRATED
+PROVIDERS                       = LOCAL + ADB
+MODEL_TOOL_EXPOSURE             = android_shell ONE-SHOT ONLY
+PERSISTENT_TERMINAL_ENGINE_CAPABILITY = AVAILABLE INTERNALLY
+PERSISTENT_TERMINAL_TOOL        = NOT IMPLEMENTED
+SCREEN_AWARE_TERMINAL           = NOT IMPLEMENTED (BLOCKED_BY_AT.EMULATOR-0)
+LEGACY_AT_V0                    = SUPERSEDED / INACTIVE
+AG_CORE_DIRECT_AT_DEPENDENCY    = FORBIDDEN / NONE (verified)
+AG_RUNTIME_DIRECT_AT_DEPENDENCY = FORBIDDEN / NONE (verified)
+AG_AT_CONSUMPTION_MODE          = GRADLE_COMPOSITE_BUILD
+AT_CONTRACT_STATUS              = DRAFT (NO final API freeze)
+AT_CONSUMER_BOOTSTRAP_GAP       = YES (no consumer-facing pairing API in Freeze V1;
+                                   identity = UNSAFE_KEY_COPY bootstrap)
 NEXT_FORMAL_AT_SYNC             = POST_AT_EMULATOR_0_AND_CONTRACT_1_REVIEW (Handoff V2)
 ```
 
@@ -580,9 +580,12 @@ V2 BASELINE      = AG.V2-BASELINE-V1 (equivalent to the V1 freeze; established
                    by AG.V2-1.BASELINE-MIGRATION as a direct clone at the freeze
                    commit — production content byte-equivalent to V1)
 V2 ARCHITECTURE  = INHERITED FROM CONFIRMED V1 / UNCHANGED
-CURRENT AT BUNDLE = unchanged from V1 (third_party/at-engine-handoff-v0 @ 0.1.0)
-NEXT             = AG.V2-2.AT-INTEGRATION (new AT integration; NOT yet
-                   authorized — awaiting Controller Review)
+CURRENT AT       = AndroidTerminal V3 (AT.PRE-EMULATOR-FREEZE-V1)
+                   consumed via Gradle composite build (includeBuild)
+AT MODULES       = :at-engine, :at-backend-adb, :at-backend-local, :adb-engine
+AT ADAPTER       = :integration-at (AtExecutionAdapter — unified AT consumption)
+LEGACY AT V0     = SUPERSEDED / INACTIVE (no longer in dependency graph)
+NEXT             = AG.OUTPUT-BOUND.PREFLIGHT (TOOL-006, per Roadmap queue)
 ```
 
 This is a repository/current-state note only: no production contract, module,
@@ -603,10 +606,17 @@ Implemented and **not** to be described as pending:
 :provider-openai-compatible-jdk JdkOpenAiHttpTransport (java.net.http)
 :app                           AGA host: AndroidOpenAiHttpTransport
                                (HttpsURLConnection), minimal chat UI
+:integration-at                AG AT Execution Adapter (AtExecutionAdapter):
+                                unified AT consumption point. Holds ATEngine
+                                composition (Local + ADB one-shot + persistent).
+                                The ONLY AG module that directly depends on AT
+                                V3 modules. Isolates AT Contract DRAFT.
 :tool-android-shell            Concrete Android Shell Tool Integration:
                                 AndroidShellToolImpl (Tool) + ShellConnection
-                                (AT Engine lifecycle binding). The ONLY module
-                                that depends on AT Engine (paired AAR bundle).
+                                (AT lifecycle binding via adapter). Consumes AT
+                                through :integration-at (api dep). NOT the only
+                                AT consumer — the adapter is the consumption
+                                point; the tool is a thin one-shot consumer.
 :tool-network                  Concrete Network Tool: NetworkToolImpl (Tool)
                                 action=fetch, HTTPS-only GET, PUBLIC_NETWORK_ONLY
                                 (full IPv4+IPv6 SSRF guard), AppHttpFetcher
@@ -668,13 +678,15 @@ Core" — that is wrong.
 AndroidAgent must **not** vendor AT source, copy AT source, reimplement AT Core,
 or push an AT implementation into `:ag-core`, `:ag-runtime` or `:app`.
 
-**The AT integration mechanism is frozen and implemented (`AG.SHELL-1`).** The
-concrete Android Shell Tool is the only consumer: it links the AT Engine through
-the vendored `third_party/at-engine-handoff-v0` Handoff Bundle v0 (paired
-`at-runtime` / `at-core` AARs, byte-identical). No direct AT Core linking, no
-runtime service, no Binder / AIDL. AG does not wait for future AT Pairing,
-Wireless Bootstrap, or PTY work — the AG mainline and the AT mainline evolve
-independently.
+**The AT integration mechanism is frozen and implemented (`AG.V2-2` +
+`AG.V2-2B`).** The concrete Android Shell Tool consumes AT through the unified
+`:integration-at` adapter (AtExecutionAdapter), which holds the ATEngine
+composition for both Local and ADB backends (one-shot + persistent). The
+V3 AT modules are consumed via Gradle composite build (`includeBuild`), NOT
+AAR binary handoff. No direct AT Core linking in AG Core / Runtime / Provider.
+No second ADB lifecycle owner. AdbRuntime remains the UNIQUE ADB lifecycle
+owner. AG does not wait for future AT Emulator / Screen State work — the AG
+mainline and the AT mainline evolve independently.
 
 ## Still forbidden without an explicitly opened Step
 
@@ -689,7 +701,9 @@ AIController integration
 ```
 
 Note: ShellTool / Android Tool and AT Engine integration are **implemented**
-(`AG.SHELL-1` VERIFIED, `:tool-android-shell`). AGENT-0.PREFLIGHT is **done**
+(`AG.V2-2` + `AG.V2-2B` PASS; `:integration-at` adapter + `:tool-android-shell`;
+full current execution capability integrated; model surface = one-shot only).
+AGENT-0.PREFLIGHT is **done**
 (instructions/tool/context/trace frozen). AGENT-0.LIVE is **VERIFIED**,
 AG.DEBUG-0 is **PASS** (debug bridge / live execution stream, :app only), and
 AGA.OBSERVABILITY-0 is **PASS** (active provider truth + streaming agent

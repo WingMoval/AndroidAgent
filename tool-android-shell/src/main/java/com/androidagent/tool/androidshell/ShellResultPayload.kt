@@ -1,6 +1,6 @@
 package com.androidagent.tool.androidshell
 
-import com.androidterminal.runtime.AtExecutionResult
+import com.at.engine.ATExecutionResult
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -12,10 +12,13 @@ import kotlinx.serialization.json.put
  * outcome, exitCode, stdout, stderr, hasError, and (only on mechanism failure)
  * error. Device stderr is NEVER promoted to [com.androidagent.core.ToolResult.error]
  * — stderr is genuine device output and stays inside the payload.
+ *
+ * V3 [ATExecutionResult] field mapping (identical to V2):
+ *   outcome, stdout, stderr, exitCode, hasError, error
  */
 internal object ShellResultPayload {
 
-    fun encode(result: AtExecutionResult): String = buildJsonObject {
+    fun encode(result: ATExecutionResult): String = buildJsonObject {
         put("outcome", JsonPrimitive(result.outcome.name))
         put("exitCode", JsonPrimitive(result.exitCode))
         put("stdout", JsonPrimitive(result.stdout))

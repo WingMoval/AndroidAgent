@@ -39,6 +39,37 @@ object DebugProtocol {
          * Invokes the named production tool directly (no LLM).
          */
         data class ToolInvoke(val name: String, val arguments: String) : ClientMessage
+
+        /**
+         * AG.V2-2B: AT persistent session operations (debug-only).
+         * {"type":"session_open","backend":"adb|local"}
+         */
+        data class SessionOpen(val backend: String) : ClientMessage
+
+        /**
+         * {"type":"session_write","id":1,"text":"...","ctrlc":false}
+         */
+        data class SessionWrite(val id: Int, val text: String, val ctrlc: Boolean) : ClientMessage
+
+        /**
+         * {"type":"session_read","id":1,"timeoutMs":2000}
+         */
+        data class SessionRead(val id: Int, val timeoutMs: Int) : ClientMessage
+
+        /**
+         * {"type":"session_resize","id":1,"rows":24,"cols":100}
+         */
+        data class SessionResize(val id: Int, val rows: Int, val cols: Int) : ClientMessage
+
+        /**
+         * {"type":"session_close","id":1}
+         */
+        data class SessionClose(val id: Int) : ClientMessage
+
+        /**
+         * {"type":"session_state","id":1}
+         */
+        data class SessionState(val id: Int) : ClientMessage
     }
 
     /** Parses one JSONL line from the client. Returns null on empty/blank/malformed. */
@@ -61,6 +92,35 @@ object DebugProtocol {
                 val name = root["name"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
                 val arguments = root["arguments"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
                 ClientMessage.ToolInvoke(name, arguments)
+            }
+            "session_open" -> {
+                val backend = root["backend"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
+                ClientMessage.SessionOpen(backend)
+            }
+            "session_write" -> {
+                val id = root["id"]?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() } ?: -1
+                val text = root["text"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
+                val ctrlc = root["ctrlc"]?.let { (it as? JsonPrimitive)?.content?.toBoolean() } ?: false
+                ClientMessage.SessionWrite(id, text, ctrlc)
+            }
+            "session_read" -> {
+                val id = root["id"]?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() } ?: -1
+                val timeoutMs = root["timeoutMs"]?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() } ?: 2000
+                ClientMessage.SessionRead(id, timeoutMs)
+            }
+            "session_resize" -> {
+                val id = root["id"]?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() } ?: -1
+                val rows = root["rows"]?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() } ?: 24
+                val cols = root["cols"]?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() } ?: 80
+                ClientMessage.SessionResize(id, rows, cols)
+            }
+            "session_close" -> {
+                val id = root["id"]?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() } ?: -1
+                ClientMessage.SessionClose(id)
+            }
+            "session_state" -> {
+                val id = root["id"]?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() } ?: -1
+                ClientMessage.SessionState(id)
             }
             else -> null
         }
@@ -105,6 +165,65 @@ object DebugProtocol {
             if (error != null) {
                 put("error", JsonPrimitive(redact(error)))
             }
+        },
+    )
+
+    // ------------------------------------------------- AG.V2-2B session messages
+
+    fun sessionOpened(id: Int, backend: String): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("session_opened"))
+            put("id", JsonPrimitive(id))
+            put("backend", JsonPrimitive(backend))
+        },
+    )
+
+    fun sessionOpenFailed(backend: String, reason: String): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("session_open_failed"))
+            put("backend", JsonPrimitive(backend))
+            put("reason", JsonPrimitive(reason))
+        },
+    )
+
+    fun sessionWriteResult(id: Int, bytesWritten: Int): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("session_write_result"))
+            put("id", JsonPrimitive(id))
+            put("bytesWritten", JsonPrimitive(bytesWritten))
+        },
+    )
+
+    fun sessionData(id: Int, text: String): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("session_data"))
+            put("id", JsonPrimitive(id))
+            put("data", JsonPrimitive(redact(text)))
+        },
+    )
+
+    fun sessionResized(id: Int, rows: Int, cols: Int, ok: Boolean): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("session_resized"))
+            put("id", JsonPrimitive(id))
+            put("rows", JsonPrimitive(rows))
+            put("cols", JsonPrimitive(cols))
+            put("ok", JsonPrimitive(ok))
+        },
+    )
+
+    fun sessionClosed(id: Int): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("session_closed"))
+            put("id", JsonPrimitive(id))
+        },
+    )
+
+    fun sessionState(id: Int, state: String): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("session_state"))
+            put("id", JsonPrimitive(id))
+            put("state", JsonPrimitive(state))
         },
     )
 

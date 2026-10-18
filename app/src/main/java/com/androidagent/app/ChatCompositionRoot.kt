@@ -73,7 +73,10 @@ class ChatCompositionRoot(
         // ToolRegistry. The Host is the Composition Root: it constructs concrete
         // Tools and registers them; it owns no tool capability itself. AG Core /
         // Agent Runtime / Provider are unchanged.
-        toolRegistry.register(AndroidShellToolImpl())
+        // AG.V2-2B: the tool consumes AT through the unified adapter (owned by
+        // ShellConnection). The adapter holds the ATEngine composition + ADB
+        // lifecycle; the tool is a thin one-shot consumer.
+        toolRegistry.register(AndroidShellToolImpl(shell.adapter))
         toolRegistry.register(NetworkToolImpl())
         // AG.FILE-0: register the concrete File Tool (Tool #3, APP_SELF READ family)
         // in the SAME ToolRegistry. The Host injects the APP_SELF root

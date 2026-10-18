@@ -28,8 +28,16 @@ object HostStatusModel {
      * Collapse an AT diagnostic into a short, secret-free status fragment.
      */
     fun safeAtMessage(message: String): String = when {
+        // AG.V2-2: V3 AdbRuntime.ensureReady returns distinct messages:
+        //   "user action required: enable Wireless Debugging"  -> USER_ACTION_REQUIRED
+        //   "Wireless Debugging is disabled; enable it..."     -> connectAuto DISABLED
+        //   "connection failed: ..."                          -> CONNECT_FAILED
+        //   "connected"                                        -> READY
+        // Show the real V3 message instead of collapsing everything.
+        message.contains("user action required", ignoreCase = true) -> "Enable Wireless Debugging in Dev Options"
         message.contains("Wireless Debugging", ignoreCase = true) -> "Wireless debugging unavailable"
         message.contains("connect failed", ignoreCase = true) -> "Not connected"
+        message.contains("pairing", ignoreCase = true) -> "Pairing required"
         message.isBlank() -> "Not connected"
         else -> "Not connected"
     }

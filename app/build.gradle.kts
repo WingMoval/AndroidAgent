@@ -74,6 +74,8 @@ dependencies {
     implementation(project(":tool-network"))
     // AG.FILE-0: third Tool Layer tool (APP_SELF file READ family).
     implementation(project(":tool-file"))
+    // AG.V2-2B: AT Execution Adapter (for DebugBridge session validation).
+    implementation(project(":integration-at"))
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")

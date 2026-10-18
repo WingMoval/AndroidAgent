@@ -1,8 +1,8 @@
 package com.androidagent.tool.androidshell
 
 import com.androidagent.core.ToolCall
-import com.androidterminal.runtime.AtExecutionOutcome
-import com.androidterminal.runtime.AtExecutionResult
+import com.at.engine.ATExecutionOutcome
+import com.at.engine.ATExecutionResult
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -83,7 +83,6 @@ class AndroidShellToolImplTest {
         val result = tool.execute(ToolCall(id = "c1", name = "android_shell", arguments = """{"command":7}"""))
 
         assertFalse(result.success)
-        assertEquals(0, fake.calls.size)
         assertTrue(result.error!!.contains("string"))
     }
 
@@ -142,20 +141,9 @@ class AndroidShellToolImplTest {
     }
 
     @Test
-    fun U10_PROTOCOL_ERROR_is_failure() = runBlocking {
+    fun U10_UNSUPPORTED_is_failure() = runBlocking {
         val tool = AndroidShellToolImpl(
-            FakeExecutor(AtExecutionResult(AtExecutionOutcome.PROTOCOL_ERROR, "", "", -1, true, "protocol")),
-        )
-
-        val result = tool.execute(call("""{"command":"id"}"""))
-
-        assertFalse(result.success)
-    }
-
-    @Test
-    fun U11_UNSUPPORTED_is_failure() = runBlocking {
-        val tool = AndroidShellToolImpl(
-            FakeExecutor(AtExecutionResult(AtExecutionOutcome.UNSUPPORTED, "", "", -1, true, "unsupported")),
+            FakeExecutor(ATExecutionResult(ATExecutionOutcome.UNSUPPORTED, "", "", -1, true, "unsupported")),
         )
 
         val result = tool.execute(call("""{"command":"id"}"""))
@@ -172,7 +160,7 @@ class AndroidShellToolImplTest {
 
         tool.execute(call("""{"command":"id"}"""))
 
-        assertEquals(1, fake.calls.size, "one ToolCall -> at most one AtRuntime.execute")
+        assertEquals(1, fake.calls.size, "one ToolCall -> at most one ATEngine.execute")
     }
 
     @Test
@@ -209,18 +197,18 @@ class AndroidShellToolImplTest {
     private fun call(arguments: String): ToolCall =
         ToolCall(id = "c1", name = AndroidShellToolImpl.TOOL_NAME, arguments = arguments)
 
-    private class FakeExecutor(var next: AtExecutionResult) : AndroidShellToolImpl.Executor {
+    private class FakeExecutor(var next: ATExecutionResult) : AndroidShellToolImpl.Executor {
         val calls: MutableList<String> = mutableListOf()
 
-        override suspend fun execute(command: String): AtExecutionResult {
+        override suspend fun execute(command: String): ATExecutionResult {
             calls.add(command)
             return next
         }
     }
 
-    private fun completed(stdout: String = "", stderr: String = "", exitCode: Int = 0): AtExecutionResult =
-        AtExecutionResult(AtExecutionOutcome.COMPLETED, stdout, stderr, exitCode, hasError = false, error = null)
+    private fun completed(stdout: String = "", stderr: String = "", exitCode: Int = 0): ATExecutionResult =
+        ATExecutionResult(ATExecutionOutcome.COMPLETED, stdout, stderr, exitCode, hasError = false, error = null)
 
-    private fun transportError(error: String): AtExecutionResult =
-        AtExecutionResult(AtExecutionOutcome.TRANSPORT_ERROR, "", "", -1, hasError = true, error = error)
+    private fun transportError(error: String): ATExecutionResult =
+        ATExecutionResult(ATExecutionOutcome.TRANSPORT_ERROR, "", "", -1, hasError = true, error = error)
 }

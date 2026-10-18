@@ -257,29 +257,63 @@ class AgentPreflightTest {
 
     @Test
     fun T12_no_direct_at_imports_outside_tool_module() {
-        // AG Core, Agent Runtime and :app main must not import com.androidterminal.*.
+        // AG Core, Agent Runtime and :app main must not import AT types.
+        // AG.V2-2: AT V3 uses packages com.at.engine / com.adb.engine /
+        // com.at.backend.adb (legacy v0 used com.androidterminal.*).
+        // AG.V2-2B: :integration-at is the unified AT consumption point.
+        // :app debug-only code (DebugBridge) may reference AT types for
+        // session validation; this is excluded from the boundary check.
         // Paths are relative to the :app module dir (the unit test working dir),
         // so each sibling module needs a ".." prefix to reach the project root.
+        val atImportPatterns = listOf(
+            "import com.androidterminal",  // legacy v0
+            "import com.at.engine",        // V3 AT Engine
+            "import com.at.backend",       // V3 AT Backend
+            "import com.adb.engine",       // V3 ADB Engine
+        )
         val dirs = listOf(
             java.io.File("..", "ag-core/src/main/kotlin"),
             java.io.File("..", "ag-runtime/src/main/kotlin"),
             java.io.File("src", "main/java"),
         )
+        // Debug-only code in :app may reference AT types (session validation).
+        val debugDir = java.io.File("src", "main/java/com/androidagent/app/debug")
         for (dir in dirs) {
-            val files = dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+            val files = dir.walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .filter {
+                    // Exclude debug-only code (path separator varies by OS).
+                    val p = it.path.replace('\\', '/')
+                    !p.contains("/debug/")
+                }
+                .toList()
             assertTrue(files.isNotEmpty(), "${dir.path} must have sources")
             for (f in files) {
                 val text = f.readText()
-                assertFalse(
-                    text.contains("import com.androidterminal"),
-                    "direct AT import in ${f.path}",
-                )
+                for (pattern in atImportPatterns) {
+                    assertFalse(
+                        text.contains(pattern),
+                        "direct AT import ($pattern) in ${f.path}",
+                    )
+                }
             }
         }
-        // The tool module is the only allowed AT consumer and must actually use it.
+        // The integration-at module is the unified AT consumption point and
+        // must actually use AT types.
+        val integrationFiles = java.io.File("..", "integration-at/src/main/java")
+            .walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        assertTrue(integrationFiles.isNotEmpty(), "integration-at must have sources")
+        val integrationUsesAt = integrationFiles.any { f ->
+            atImportPatterns.any { p -> f.readText().contains(p) }
+        }
+        assertTrue(integrationUsesAt, "integration-at must retain its AT imports")
+        // The tool module consumes AT through the adapter (via api dependency).
+        // It may still import AT types for its Executor seam.
         val toolFiles = java.io.File("..", "tool-android-shell/src/main/java")
             .walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        val toolUsesAt = toolFiles.any { it.readText().contains("import com.androidterminal") }
+        val toolUsesAt = toolFiles.any { f ->
+            atImportPatterns.any { p -> f.readText().contains(p) }
+        }
         assertTrue(toolUsesAt, "tool-android-shell must retain its AT imports")
     }
 

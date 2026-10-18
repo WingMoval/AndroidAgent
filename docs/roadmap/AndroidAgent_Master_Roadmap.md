@@ -588,34 +588,29 @@ risk after the v1.0 normalization. **CURRENT is NONE** immediately after
 AG.ROADMAP-0.REVIEW-1A closes (this repair is documentation-only).
 
 ### CURRENT
-- NONE. AG.V2-1.BASELINE-MIGRATION = CLOSED by the V2 baseline commit (tag
-  AG.V2-BASELINE-V1). AndroidAgent-V2 is now the ACTIVE DEVELOPMENT TREE with a
-  VERIFIED baseline equivalent to the V1 freeze. V1 remains FROZEN_KNOWN_GOOD:
-  reference / rollback / evidence source; NO new feature development on V1.
+- NONE. AG.V2-2 + AG.V2-2B = CLOSED. AndroidTerminal V3 Freeze V1 full current
+  execution capability integrated (one-shot + persistent, Local + ADB).
+  Model tool surface = android_shell one-shot only. V1 remains FROZEN_KNOWN_GOOD.
 
 ### NEXT (<=5, in recommended order)
-Recomputed after AG.V2-1.BASELINE-MIGRATION (V2 baseline established from the
-frozen V1; production equivalence verified). Frozen migration sequence:
-AG.V2-2.AT-INTEGRATION -> NEW AT INTEGRATION GATE ->
+Recomputed after AG.V2-2B.AT-ENGINE-FULL-INTEGRATION (full AT V3 execution
+engine integrated; D1-D4 + E1-E20 device verified; 726 tests 0 failures;
+full build PASS). Frozen migration sequence:
+AG.V2-2.AT-INTEGRATION (DONE) -> NEW AT INTEGRATION GATE (DONE) ->
 AG.OUTPUT-BOUND.PREFLIGHT -> future capabilities on V2.
-TOOL-006 status/priority/identity UNCHANGED; only execution order changes
-(TOOL_006_TARGET = V2). NEXT_OPEN_AUTHORIZED = NO (awaiting Controller Review
-of the V2 baseline evidence).
+NEXT_OPEN_AUTHORIZED = NO (awaiting Controller Review).
 
- 1. **AG.V2-2.AT-INTEGRATION** — (migration sequence step).
-    New AT integration (Handoff V2 / post-emulator) on V2 only: new AT binary /
-    handoff bundle, tool-android-shell compatibility, AT provenance refresh,
-    one-shot regression. NO persistent-terminal tool in this step (that needs
-    capability intake + preflight + TOOL-006 + AT contract stabilization).
- 2. **AG.OUTPUT-BOUND.PREFLIGHT** — TOOL-006.
+ 1. **AG.OUTPUT-BOUND.PREFLIGHT** — TOOL-006.
     Status DISCOVERED; P0; hard prereq CORE-003 (satisfied); blocker none; risk
-    LOW (shared seam). Why later: V1 is frozen; new feature development happens
-    on V2 after the AT integration gate. Capability semantics UNCHANGED.
- 3. **AG.PROVIDER-RECOVERY.PREFLIGHT** — PROVIDER-006/003/004/005.
+    LOW (shared seam). Next queue item after AT integration. Capability
+    semantics UNCHANGED.
+ 2. **AG.PROVIDER-RECOVERY.PREFLIGHT** — PROVIDER-006/003/004/005.
     Status RESEARCH_REQUIRED / BLOCKED; P1; hard prereq PROVIDER-002 (satisfied);
     blocker = partial-stream design gate; risk MEDIUM (transport semantics).
-    Why later: user-surfaced; freeze the retryable taxonomy + the partial-stream
-    gate before any recovery code.
+ 3. **AT CONSUMER BOOTSTRAP GAP** (not a Stable ID; tracked as KNOWN_ISSUE).
+    AT V3 Freeze V1 has no consumer-facing pairing/bootstrap API. AG identity
+    = UNSAFE_KEY_COPY (V3 app key in AG app-private dir). Resolved when AT V3
+    provides consumer-facing pairing (POST_AT_EMULATOR_0_AND_CONTRACT_1_REVIEW).
 
 ### LATER (queued, not next)
 - STATE-001 (retract) — after RUN-CONTROL preflight + build.
@@ -722,6 +717,8 @@ OUT_OF_SCOPE.
 | RUN-004 note | "USER reason tag" | "per-Run user-interrupt metadata carried into Core (Core never queries Runtime)" | CLOSEOUT C3: Core must not query Runtime; metadata travels Runtime -> Core per-Run |
 | RUN-003 note | "interrupt handle" | "ATOMIC interrupt handle; cancels structured execution child only (send caller survives)" | CLOSEOUT C1/C2/C5 |
 | InterruptReason | enum {USER, HOST_LIFECYCLE} proposed | NOT REQUIRED (V0 ships RunOutcome.Interrupted; reason only if mechanism needs a per-Run type) | CLOSEOUT: remove over-design; lifecycle has no structured consumer now |
+| AT integration | legacy v0 AAR bundle (at-engine-handoff-v0 @ 0.1.0) | AT V3 Freeze V1 via Gradle composite build (includeBuild + dependencySubstitution) | AG.V2-2 + AG.V2-2B: full current execution capability integrated (one-shot + persistent, Local + ADB). D1-D4 + E1-E20 device PASS. 726 tests 0 failures. Full build PASS. Legacy v0 SUPERSEDED/INACTIVE. AT_CONSUMER_BOOTSTRAP_GAP = YES (identity = UNSAFE_KEY_COPY). |
+| Execution Queue NEXT | AG.V2-2.AT-INTEGRATION | AG.OUTPUT-BOUND.PREFLIGHT (TOOL-006) | AG.V2-2 + AG.V2-2B CLOSED: full AT V3 execution engine integrated; NEXT = output bounding preflight. NEXT_OPEN_AUTHORIZED = NO. |
 | C1 return path (RUN-003/004 note) | "send caller survives & returns Interrupted" (child implied to return the value) | child TERMINATES CANCELLED; the still-active send caller converts THIS USER child cancel to Host-visible Interrupted (IFF caller active + per-Run USER metadata + Core finalization committed); parent-cancelled caller propagates, never converted | CLOSEOUT-FINAL C1: a Job.cancel()'d child must not be relied on to return a value; conversion belongs at the Runtime/send boundary; I15 added |
 | STATE-003 | persistence/resume merged | STATE-003 Persistence + STATE-006 Resume | distinct lifecycles; historical STATE-003 retained for Persistence |
 | STATE-005 | fork/checkpoint merged | STATE-005 Fork + STATE-014 Checkpoint | distinct lifecycles; historical STATE-005 retained for Fork |
