@@ -849,7 +849,8 @@ ADB_REVERSE                  = REMOVED (tcp:18080)
 ADB_FORWARD                  = REMOVED (tcp:45678)
 FIXTURE_PROCESS              = STOPPED
 OBSERVER_PROCESS             = STOPPED
-COMMIT / PUSH                = NO
+COMMIT / PUSH                = NO (at time of writing; commit e30d250 applied
+                                after doc finalization per user instruction)
 ```
 
 ### 13.13 Files changed in this closeout

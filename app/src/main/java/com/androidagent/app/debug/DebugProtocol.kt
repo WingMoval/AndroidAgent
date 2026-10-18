@@ -32,6 +32,13 @@ object DebugProtocol {
 
         /** {"type":"send","text":"..."} */
         data class Send(val text: String) : ClientMessage
+
+        /**
+         * AG.NETWORK-0 L2 Direct Tool Validation:
+         * {"type":"tool_invoke","name":"network","arguments":"{...}"}
+         * Invokes the named production tool directly (no LLM).
+         */
+        data class ToolInvoke(val name: String, val arguments: String) : ClientMessage
     }
 
     /** Parses one JSONL line from the client. Returns null on empty/blank/malformed. */
@@ -49,6 +56,11 @@ object DebugProtocol {
             "send" -> {
                 val text = root["text"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
                 ClientMessage.Send(text)
+            }
+            "tool_invoke" -> {
+                val name = root["name"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
+                val arguments = root["arguments"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
+                ClientMessage.ToolInvoke(name, arguments)
             }
             else -> null
         }
@@ -76,6 +88,23 @@ object DebugProtocol {
         buildJsonObject {
             put("type", JsonPrimitive("error"))
             put("message", JsonPrimitive(message))
+        },
+    )
+
+    /**
+     * AG.NETWORK-0 L2: the full ToolResult of a direct tool invocation, so the raw
+     * fetch can be judged with zero model tokens. `output` is the tool's JSON
+     * payload (redacted before emission, like every other stream).
+     */
+    fun toolResult(tool: String, success: Boolean, output: String, error: String?): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("tool_result_direct"))
+            put("tool", JsonPrimitive(tool))
+            put("success", JsonPrimitive(success))
+            put("output", JsonPrimitive(redact(output)))
+            if (error != null) {
+                put("error", JsonPrimitive(redact(error)))
+            }
         },
     )
 

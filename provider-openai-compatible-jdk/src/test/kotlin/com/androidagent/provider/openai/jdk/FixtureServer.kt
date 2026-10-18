@@ -64,21 +64,36 @@ class FixtureServer(
         authorizationHeaders += exchange.requestHeaders.getFirst("Authorization")
         requestPaths += exchange.requestURI.path
 
-        if (delayMillis > 0) Thread.sleep(delayMillis)
+        if (delayMillis > 0) {
+            try {
+                Thread.sleep(delayMillis)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return
+            }
+        }
 
         val text = responder?.invoke() ?: rawBody
         // A real OpenAI-compatible endpoint frames stream:true responses as SSE.
         // The fixture mirrors that so the Provider's streaming path is exercised.
         val streaming = statusCode in 200..299 && body.contains("\"stream\":true")
-        val bytes = if (streaming) {
-            sseFrame(text).toByteArray(StandardCharsets.UTF_8)
-        } else {
-            text.toByteArray(StandardCharsets.UTF_8)
+        if (!streaming) {
+            val bytes = text.toByteArray(StandardCharsets.UTF_8)
+            exchange.responseHeaders.add("Content-Type", contentType)
+            exchange.sendResponseHeaders(statusCode, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+            return
         }
-        exchange.responseHeaders.add(
-            "Content-Type",
-            if (streaming) "text/event-stream" else contentType,
-        )
+
+        // The stream-hold path (L2-FULL Stop E2E) is driven by [delayMillis]: the
+        // server holds the request open before responding (the client is suspended
+        // in the transport's in-flight call), so a user Stop cancels it mid-flight
+        // and the transport disconnects. [streamDisconnect] is released when a
+        // client disconnect is observed, so the test can assert the Stop actually
+        // tore the connection down.
+
+        val bytes = sseFrame(text).toByteArray(StandardCharsets.UTF_8)
+        exchange.responseHeaders.add("Content-Type", "text/event-stream")
         exchange.sendResponseHeaders(statusCode, bytes.size.toLong())
         exchange.responseBody.use { it.write(bytes) }
     }

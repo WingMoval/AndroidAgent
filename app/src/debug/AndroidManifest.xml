@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AG.HOST-STOP-1 — DEBUG-ONLY cleartext override for loopback fixture testing.
+
+  The on-device Stop acceptance points the production provider at a local
+  OpenAI-compatible fixture over plain HTTP (http://127.0.0.1:18080/v1) via
+  `adb reverse`. The debug build needs to permit that loopback HTTP.
+
+  This manifest is merged into the DEBUG build type only. The release APK does
+  NOT include it, so release remains cleartext-restricted (no fixture, no
+  localhost default, no cleartext traffic).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:usesCleartextTraffic="true" />
+</manifest>

@@ -6,6 +6,7 @@ import com.androidagent.core.ModelTurn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -168,6 +169,9 @@ class AgentRuntimeTest {
         val provider = ScriptedProvider(listOf(ModelTurn.FinalAnswer("never"))).apply { this.gate = gate }
         val (runtime, _) = runtimeOf(provider)
 
+        // R7 is a HOST/LIFECYCLE cancellation: the host cancels its own Run Job
+        // without a user Stop, so the CancellationException must propagate (NOT be
+        // converted to Interrupted). This is the lifecycle path.
         val job = async(Dispatchers.Default) { runtime.send("A") }
         withTimeout(10_000) { while (!runtime.isBusy) delay(10) }
 

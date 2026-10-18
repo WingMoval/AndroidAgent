@@ -7,6 +7,7 @@ import com.androidagent.core.ModelRequest
 import com.androidagent.core.ModelTurn
 import com.androidagent.core.RunOptions
 import com.androidagent.core.ToolRegistry
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 
 /**
@@ -26,9 +27,31 @@ internal class ScriptedProvider(
     /** When set, [complete] suspends on this before returning the next turn. */
     var gate: CompletableDeferred<Unit>? = null
 
+    /**
+     * When set, [complete] suspends on this BEFORE returning any turn. This lets a
+     * test hold the Run in flight at a known point (e.g. right as the provider is
+     * called) so it can interrupt the Run deterministically and observe that the
+     * provider's call was cancelled (it never returned a turn).
+     */
+    var startGate: CompletableDeferred<Unit>? = null
+
+    /** True once [complete] observed a cancellation (i.e. was interrupted mid-call). */
+    var cancelled: Boolean = false
+        private set
+
     override suspend fun complete(request: ModelRequest): ModelTurn {
         requests += request
-        gate?.await()
+        try {
+            // Hold at each gate (if any) with a plain suspension. A user Stop is
+            // enforced by the Runtime cancelling the Run's execution Job, so the
+            // gate suspension receives the CancellationException exactly as any
+            // well-behaved suspend function would (no separate Stop protocol).
+            startGate?.await()
+            gate?.await()
+        } catch (e: CancellationException) {
+            cancelled = true
+            throw e
+        }
         return turns.getOrElse(requests.size - 1) { turns.last() }
     }
 }

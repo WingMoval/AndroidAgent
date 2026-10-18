@@ -117,6 +117,7 @@ class LiveApiTest {
     private fun RunOutcome.describe(): String = when (this) {
         is RunOutcome.Answer -> "Answer(length=${content.length})"
         is RunOutcome.Failure -> "Failure($failure)"
+        is RunOutcome.Interrupted -> "Interrupted"
     }
 
     // ------------------------------------------------------------------ L1

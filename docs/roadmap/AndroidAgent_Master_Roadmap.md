@@ -421,8 +421,8 @@ Additional non-AT backends use EXT-BK-* IDs.
 
 | ID | Capability | Owner (node) | Status | Priority | Requires | Blocked By | Enables | Evidence / Note |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| AT-001 | ADB pairing / discovery / transport / reconnect | AT | EXTERNAL | - | - | - | - | historical AT-001 identity preserved; AT Engine backend, AG integrates via Handoff only |
-| AT-002 | Terminal PTY / shell execution transport / principal | AT | EXTERNAL | - | - | - | - | historical AT-002 identity preserved |
+| AT-001 | ADB pairing / discovery / transport / reconnect | AT | EXTERNAL | - | - | - | - | historical AT-001 identity preserved; ADB pairing / identity / TLS-CNXN / discovery / connectAuto / transport / transport-loss observation / bounded recovery are ALL owned by the AT external ADB subsystem; AG does not duplicate any of it (verified: ADB_RESPONSIBILITY_DUPLICATED_IN_AG = NO); AG integrates via Handoff only |
+| AT-002 | Terminal PTY / shell execution transport / principal | AT | EXTERNAL | - | - | - | - | historical AT-002 identity preserved; Handoff V1 external AT truth: one-shot execution, persistent raw terminal, raw byte IO, Ctrl-C, resize, lifecycle/close, Local + ADB backends, multi-session, transport-loss semantics (PERSISTENT_EXECUTION_CAPABILITY = MATURE_ENOUGH_FOR_EMULATOR); AG current consumer = ONE-SHOT ONLY (AtRuntime.execute); external capability availability != AG implementation |
 | AT-003 | Shell-side network reachability | AT | EXTERNAL | - | - | AT must verify independently | - | historical AT-003 identity preserved; current reachability UNKNOWN; untrusted side-channel |
 | AT-004 | Android in-app egress proxy (VpnService) | Host / Product | OUT_OF_SCOPE | P4 | - | platform asymmetry | - | historical AT-004 identity preserved; too heavy, in-app policy is the ceiling |
 | EXT-BK-001 | Android Framework / OS | OS | EXTERNAL | - | - | - | - | platform substrate |
@@ -588,37 +588,35 @@ risk after the v1.0 normalization. **CURRENT is NONE** immediately after
 AG.ROADMAP-0.REVIEW-1A closes (this repair is documentation-only).
 
 ### CURRENT
-- NONE. HOST-005 is VERIFIED (D1-D4 ALL PASS on real device; D3 root cause
-  identified as fixture SSE framing, fixed and re-tested PASS).
+- NONE. AG.V1-FREEZE = CLOSED by the freeze commit (tag
+  AG.V1-KNOWN-GOOD-FREEZE-V1). V1 is now FROZEN_KNOWN_GOOD: reference /
+  rollback / evidence source; NO new feature development on V1 (only
+  explicitly-authorized critical freeze-line bugfixes).
 
 ### NEXT (<=5, in recommended order)
-Recomputed after AG.HOST-STOP-1.NATURAL-COMPLETION.CLOSEOUT (D3 closeout: fixture
-framing fix + D3 re-test PASS + stop smoke PASS). HOST-005 D1-D4 ALL PASS.
+Recomputed after AG.V1-FREEZE (Controller Strategy B: V1 frozen as Known-Good
+baseline; new feature development moves to the V2 tree after equivalence
+migration). Frozen migration sequence:
+AG.V2-1.BASELINE-MIGRATION -> V2 EQUIVALENCE GATE ->
+AG.V2-2.AT-INTEGRATION -> NEW AT INTEGRATION GATE -> AG.OUTPUT-BOUND.PREFLIGHT.
+TOOL-006 status/priority/identity UNCHANGED; only execution order changes
+(TOOL_006_TARGET = V2). NEXT_OPEN_AUTHORIZED = NO (awaiting Controller Review
+of the freeze evidence).
 
- 1. **AG.OUTPUT-BOUND.PREFLIGHT** — TOOL-006.
+ 1. **AG.V2-1.BASELINE-MIGRATION** — (migration sequence step).
+    V1 -> V2 equivalence migration (same module graph, same architecture,
+    same AT binary, same test baseline). NO new AT, NO feature work.
+ 2. **AG.V2-2.AT-INTEGRATION** — (migration sequence step).
+    New AT integration (Handoff V2 / post-emulator) isolated on V2 only.
+ 3. **AG.OUTPUT-BOUND.PREFLIGHT** — TOOL-006.
     Status DISCOVERED; P0; hard prereq CORE-003 (satisfied); blocker none; risk
-    LOW (shared seam). Why now: P0, independent, cheap; protects every tool
-    (shell output is currently unbounded); a prerequisite for safe long loops.
-    NEXT (HOST-005 D1-D4 ALL PASS; queue ready).
- 2. **AG.PROVIDER-RECOVERY.PREFLIGHT** — PROVIDER-006/003/004/005.
+    LOW (shared seam). Why later: V1 is frozen; new feature development happens
+    on V2 after the AT integration gate. Capability semantics UNCHANGED.
+ 4. **AG.PROVIDER-RECOVERY.PREFLIGHT** — PROVIDER-006/003/004/005.
     Status RESEARCH_REQUIRED / BLOCKED; P1; hard prereq PROVIDER-002 (satisfied);
     blocker = partial-stream design gate; risk MEDIUM (transport semantics).
-    Why now: user-surfaced; freeze the retryable taxonomy + the partial-stream
+    Why later: user-surfaced; freeze the retryable taxonomy + the partial-stream
     gate before any recovery code.
- 3. **AG.PROVIDER-RECOVERY.PREFLIGHT** — PROVIDER-006/003/004/005.
-    Status RESEARCH_REQUIRED / BLOCKED; P1; hard prereq PROVIDER-002 (satisfied);
-    blocker = partial-stream design gate; risk MEDIUM (transport semantics).
-    Why now: user-surfaced; freeze the retryable taxonomy + the partial-stream
-    gate before any recovery code.
- 4. **AG.STATE-COMPACTION.RESEARCH** — STATE-004.
-    Status DISCOVERED; P0; hard prereq CORE-001 (satisfied); blocker none; risk
-    MEDIUM (Core context semantics). Why now: P0 for long-session viability;
-    research step (not implementation).
- 5. **AG.STATE-RETRACT.RESEARCH** — STATE-001.
-    Status RESEARCH_REQUIRED; P1; hard prereqs RUN-003/004 (now VERIFIED), CORE-007
-    (RESEARCH_REQUIRED); blocker = CORE-007 arbitrary rollback. Why now: the Run
-    Control prerequisite (RUN-003/004) is now VERIFIED, so retract is unblocked
-    pending CORE-007.
 
 ### LATER (queued, not next)
 - STATE-001 (retract) — after RUN-CONTROL preflight + build.
@@ -710,6 +708,13 @@ OUT_OF_SCOPE.
 | Execution Queue NEXT | AG.HOST-STOP-1 | AG.OUTPUT-BOUND.PREFLIGHT (TOOL-006) | HOST-005 VERIFIED; next queue item is output bounding preflight |
 | HOST-005 D3 | INCONCLUSIVE (infrastructure SocketTimeoutException) | PASS (root cause = FIXTURE SSE framing; Case E, HIGH confidence) | AG.HOST-STOP-1.NATURAL-COMPLETION.CLOSEOUT: byte-level SSE traces proved fixture kept connection open after [DONE] (keep-alive, no EOF for 24 s); fix = fixture Connection: close (matches real OpenAI endpoints); 2 deterministic JVM transport tests (golden 592-byte stream); D3 re-test PASS (2.2 s, 12 tokens, no timeout); stop smoke PASS (one clean stop, Interrupted, Stopped.); pre-existing :app bug fixed (DebugBridge onRunStateChanged -> setBusy); regression green (ag-core 41, ag-runtime 26, provider 59, app 109) |
 | Execution Queue CURRENT | AG.OUTPUT-BOUND.PREFLIGHT | NONE | D3 closeout complete; HOST-005 D1-D4 ALL PASS; NEXT = AG.OUTPUT-BOUND.PREFLIGHT (NOT opened) |
+| HOST-005 coverage matrix | RESEARCH_REQUIRED | VERIFIED | AG.V1-PRE-FREEZE-NORMALIZATION SSOT residue R1: coverage matrix status column was stale; registry already VERIFIED since D3 closeout; current-status tables now consistent |
+| Execution Queue NEXT | AG.OUTPUT-BOUND.PREFLIGHT (TOOL-006) | AG.V1-FREEZE (then V2 sequence; TOOL-006 after AT integration gate) | AG.V1-PRE-FREEZE-NORMALIZATION: Controller Strategy B (V1 freeze as Known-Good; new feature development moves to V2). TOOL-006 status/priority/identity UNCHANGED; execution order only. Queue dedup: duplicate AG.PROVIDER-RECOVERY.PREFLIGHT entry removed |
+| AT-001 note | "historical AT-001 identity preserved; AT Engine backend, AG integrates via Handoff only" | enriched: ADB pairing/identity/TLS-CNXN/discovery/connectAuto/transport/transport-loss/recovery ALL owned by AT external subsystem; AG does not duplicate (verified NO); Status stays EXTERNAL | AG.V1-PRE-FREEZE-NORMALIZATION: make AT ownership explicit per Handoff V1 intake; identity unchanged |
+| AT-002 note | "historical AT-002 identity preserved" | enriched: Handoff V1 external truth (one-shot, persistent raw terminal, raw byte IO, Ctrl-C, resize, lifecycle, Local+ADB, multi-session); AG current consumer = ONE-SHOT ONLY; Status stays EXTERNAL | AG.V1-PRE-FREEZE-NORMALIZATION: distinguish external capability availability from AG implementation; identity unchanged |
+| Persistent raw terminal | (no capability row) | recorded as PENDING INTAKE (no Stable ID) | AG.V1-PRE-FREEZE-NORMALIZATION per AG.V2-0: CAPABILITY_INTAKE_REQUIRED=YES; intake after V2 baseline / AT integration gate; definition in pre-freeze evidence doc |
+| Execution Queue NEXT | AG.V1-FREEZE (first item) | AG.V2-1.BASELINE-MIGRATION | AG.V1-FREEZE CLOSED by the freeze commit (tag AG.V1-KNOWN-GOOD-FREEZE-V1); V1 = FROZEN_KNOWN_GOOD; NEXT_OPEN_AUTHORIZED = NO (awaiting Controller Review of freeze evidence) |
+| V1 tree policy | active development | FROZEN (reference / rollback / evidence source; no new features except explicitly-authorized critical freeze-line bugfixes) | AG.V1-FREEZE: Known-Good baseline established; new feature development moves to V2 after equivalence migration |
 | RUN-004 note | "USER reason tag" | "per-Run user-interrupt metadata carried into Core (Core never queries Runtime)" | CLOSEOUT C3: Core must not query Runtime; metadata travels Runtime -> Core per-Run |
 | RUN-003 note | "interrupt handle" | "ATOMIC interrupt handle; cancels structured execution child only (send caller survives)" | CLOSEOUT C1/C2/C5 |
 | InterruptReason | enum {USER, HOST_LIFECYCLE} proposed | NOT REQUIRED (V0 ships RunOutcome.Interrupted; reason only if mechanism needs a per-Run type) | CLOSEOUT: remove over-design; lifecycle has no structured consumer now |
@@ -896,7 +901,7 @@ composite/parent row), EXTERNAL (tracked as an external backend), DEFERRED
 | Failure-aware Continuation | Orchestration | ORCH-009 | DISCOVERED | COVERED |
 | Evidence / Remaining Work | Orchestration+State | ORCH-010 | DISCOVERED | COVERED |
 | Workflow / Teams | Orchestration | ORCH-011 | DISCOVERED | COVERED |
-| Stop / Cancel UI | Host | HOST-005 | RESEARCH_REQUIRED | COVERED |
+| Stop / Cancel UI | Host | HOST-005 | VERIFIED | COVERED |
 | Retract UI | Host | HOST-006 | RESEARCH_REQUIRED | COVERED |
 | Approval / Ask UI | Host | HOST-007 | DISCOVERED | COVERED |
 | Execution Mode selector | Host | HOST-008 | DISCOVERED | COVERED |

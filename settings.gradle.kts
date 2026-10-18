@@ -44,4 +44,8 @@ include(":ag-runtime")
 include(":provider-openai-compatible")
 include(":provider-openai-compatible-jdk")
 include(":tool-android-shell")
+// AG.NETWORK-0: second Tool Layer module (network fetch), sibling of the shell tool.
+include(":tool-network")
+// AG.FILE-0: third Tool Layer module (APP_SELF file READ family), sibling of the others.
+include(":tool-file")
 include(":app")

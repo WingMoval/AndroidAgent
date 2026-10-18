@@ -27,11 +27,18 @@ kotlin {
 }
 
 dependencies {
-    // The only production dependency. Everything else is the Kotlin stdlib.
+    // The AG Core types (Session/Run semantics, provider/tool contracts).
     implementation(project(":ag-core"))
 
-    // `suspend` is a Kotlin language feature, so no coroutines library is needed
-    // in production. Tests drive coroutines.
+    // RUN-003 (AG.RUN-CONTROL-1.DETERMINISTIC.FIX): the Runtime owns a REAL
+    // structured execution-child Job for each Run and cancels it on a user Stop.
+    // This is a real production consumer of kotlinx-coroutines (Job ownership +
+    // cancellation + the caller-active conversion guard), NOT future scaffolding:
+    // the host-neutral run lifecycle needs a cancellable child and the standard
+    // coroutine API to check whether the send caller is still active.
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+
+    // Tests drive coroutines.
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")

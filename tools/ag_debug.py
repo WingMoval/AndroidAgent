@@ -72,6 +72,14 @@ def pretty(kind, obj):
         if obj.get("error"):
             s += "\nerror: %s" % obj.get("error")
         return s
+    if kind == "tool_result_direct":
+        s = "[DIRECT] tool=%s success=%s" % (obj.get("tool"), obj.get("success"))
+        out = obj.get("output")
+        if out:
+            s += "\n%s" % out
+        if obj.get("error"):
+            s += "\nerror: %s" % obj.get("error")
+        return s
     if kind == "final_answer":
         return "[ANSWER]\n%s" % obj.get("content")
     if kind == "run_failed":
@@ -120,7 +128,7 @@ def main():
     t = threading.Thread(target=reader_loop, args=(sock,), daemon=True)
     t.start()
 
-    print("AG Debug connected. Type 'send <text>' or 'ping'; Ctrl-C to exit.")
+    print("AG Debug connected. Type 'send <text>', 'invoke <name> <json-args>', or 'ping'; Ctrl-C to exit.")
     try:
         for line in sys.stdin:
             line = line.strip()
@@ -134,8 +142,15 @@ def main():
                     print("[ERROR] send requires text")
                     continue
                 sock.sendall((json.dumps({"type": "send", "text": text}) + "\n").encode("utf-8"))
+            elif line.startswith("invoke "):
+                rest = line[7:].strip()
+                if " " not in rest:
+                    print("[ERROR] invoke requires: invoke <tool-name> <json-args>")
+                    continue
+                name, args_json = rest.split(" ", 1)
+                sock.sendall((json.dumps({"type": "tool_invoke", "name": name, "arguments": args_json}) + "\n").encode("utf-8"))
             else:
-                print("usage: 'send <text>' or 'ping'")
+                print("usage: 'send <text>' | 'invoke <name> <json-args>' | 'ping'")
     except KeyboardInterrupt:
         pass
     finally:

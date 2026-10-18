@@ -38,6 +38,10 @@ dependencies {
     // :ag-core as `implementation`, which is intentionally not transitive.
     testImplementation(project(":ag-core"))
 
+    // L2-FULL Stop E2E drives the REAL AgentRuntime (send + interruptActiveRun)
+    // over this transport, so it needs the runtime types directly.
+    testImplementation(project(":ag-runtime"))
+
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

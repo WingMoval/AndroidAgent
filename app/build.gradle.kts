@@ -70,6 +70,10 @@ dependencies {
     implementation(project(":ag-runtime"))
     implementation(project(":provider-openai-compatible"))
     implementation(project(":tool-android-shell"))
+    // AG.NETWORK-0: second Tool Layer tool (network fetch).
+    implementation(project(":tool-network"))
+    // AG.FILE-0: third Tool Layer tool (APP_SELF file READ family).
+    implementation(project(":tool-file"))
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")

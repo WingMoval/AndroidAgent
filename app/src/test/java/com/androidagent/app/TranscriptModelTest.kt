@@ -90,6 +90,66 @@ class TranscriptModelTest {
         assertTrue(blocks[1] is TranscriptModel.Block.Assistant)
     }
 
+    // ------------------------------------------------- AGA.OBSERVABILITY-1 (T20+)
+    // Real turn order: reasoning streams, THEN content (and possibly a tool call)
+    // is appended, and only then does the provider signal reasoning-finished.
+    // onReasoningFinished must flip THIS turn's Thinking block even though it is
+    // no longer the last block.
+
+    @Test
+    fun T20_reasoning_finished_flips_when_content_already_appended() {
+        val m = TranscriptModel()
+        m.onReasoningStarted()
+        m.onReasoningDelta("thinking about it")
+        m.onContentStarted()
+        m.onContentDelta("the answer")
+        // provider.complete() signals reasoning-finished AFTER the content streamed
+        m.onReasoningFinished()
+        val blocks = m.snapshot()
+        assertEquals(2, blocks.size, "no second block may be inserted")
+        val thinking = blocks[0] as TranscriptModel.Block.Thinking
+        assertEquals(TranscriptModel.Block.Thinking.Phase.THOUGHT, thinking.phase,
+            "the Thinking block must flip to Thought even though it is not last")
+        assertEquals("thinking about it", thinking.text)
+        val assistant = blocks[1] as TranscriptModel.Block.Assistant
+        assertEquals("the answer", assistant.text)
+    }
+
+    @Test
+    fun T21_reasoning_finished_flips_when_content_and_toolcall_already_appended() {
+        val m = TranscriptModel()
+        m.onReasoningStarted()
+        m.onReasoningDelta("plan")
+        m.onContentStarted()
+        m.onContentDelta("I will run a command")
+        m.onToolCallStarted(ToolCall("c1", "android_shell", """{"command":"id"}"""))
+        m.onToolCallFinished(
+            ToolCall("c1", "android_shell", """{"command":"id"}"""),
+            ToolResult(success = true, output = """{"outcome":"COMPLETED","exitCode":0,"stdout":"uid=0","stderr":"","hasError":false}"""),
+        )
+        m.onReasoningFinished()
+        val blocks = m.snapshot()
+        // Thinking, Assistant, Shell, Result
+        assertEquals(4, blocks.size)
+        val thinking = blocks[0] as TranscriptModel.Block.Thinking
+        assertEquals(TranscriptModel.Block.Thinking.Phase.THOUGHT, thinking.phase,
+            "the Thinking block must flip even with Assistant+Shell+Result after it")
+        assertTrue(blocks[1] is TranscriptModel.Block.Assistant)
+        assertTrue(blocks[2] is TranscriptModel.Block.Shell)
+        assertTrue(blocks[3] is TranscriptModel.Block.Result)
+    }
+
+    @Test
+    fun T22_reasoning_finished_with_no_reasoning_is_a_noop() {
+        val m = TranscriptModel()
+        m.onContentStarted()
+        m.onContentDelta("hello")
+        m.onReasoningFinished()
+        val blocks = m.snapshot()
+        assertEquals(1, blocks.size, "no Thinking block must be created")
+        assertTrue(blocks[0] is TranscriptModel.Block.Assistant)
+    }
+
     // ------------------------------------------------------------ T7-T10 content
 
     @Test
@@ -266,5 +326,20 @@ class TranscriptModelTest {
         assertTrue(rendered.indexOf("a.txt") > rendered.indexOf("exitCode=0"))
         assertTrue(rendered.contains("I will list files."), "reasoning text survives the flip")
         assertFalse(rendered.contains("Thinking..."), "no lingering Thinking after flip")
+    }
+
+    // ------------------------------------------------------------ T23 interrupt
+
+    @Test
+    fun T23_interrupted_block_renders_stopped_not_failed() {
+        val m = TranscriptModel()
+        m.onUser("do a long thing")
+        m.onInterrupted()
+        val rendered = m.render()
+        assertTrue(rendered.contains("Stopped"), "interrupt renders a Stopped block: $rendered")
+        assertTrue(rendered.contains("Run stopped by user."))
+        assertFalse(rendered.contains("Failed"), "an interrupt is NOT a failure")
+        val block = m.snapshot().last()
+        assertTrue(block is TranscriptModel.Block.Interrupted, "last block is Interrupted, got $block")
     }
 }

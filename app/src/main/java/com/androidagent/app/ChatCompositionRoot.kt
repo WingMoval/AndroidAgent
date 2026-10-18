@@ -14,6 +14,9 @@ import com.androidagent.provider.openai.OpenAiCompatibleProvider
 import com.androidagent.runtime.AgentRuntime
 import com.androidagent.tool.androidshell.AndroidShellToolImpl
 import com.androidagent.tool.androidshell.ShellConnection
+import com.androidagent.tool.file.FileToolImpl
+import com.androidagent.tool.network.NetworkToolImpl
+import java.io.File
 
 /**
  * The AGA Composition Root: the single place where implementations are chosen and
@@ -51,16 +54,32 @@ class ChatCompositionRoot(
     private val toolRegistry = ToolRegistry()
 
     /**
+     * Read-only view of the registry, for the debug-only Direct Tool Validation
+     * surface (AG.NETWORK-0 L2). The Host owns the registry; exposing it read-only
+     * to the debug bridge lets a PC client invoke the SAME production tools
+     * directly without an LLM. Not a capability owner — just a reference.
+     */
+    val toolRegistryView: ToolRegistry get() = toolRegistry
+
+    /**
      * AT Engine lifecycle binding (Host owns the lifecycle policy; this object
      * performs the AT calls). Never exposes AT-owned types.
      */
     val shell: ShellConnection = ShellConnection(applicationContext)
 
     init {
-        // AG.SHELL-1: register the concrete Android Shell Tool. AG.0's registry
-        // was intentionally empty; concrete tools are registered here in the
-        // composition root, never inside AG Core.
+        // AG.SHELL-1: register the concrete Android Shell Tool (Tool #1).
+        // AG.NETWORK-0: register the concrete Network Tool (Tool #2) in the SAME
+        // ToolRegistry. The Host is the Composition Root: it constructs concrete
+        // Tools and registers them; it owns no tool capability itself. AG Core /
+        // Agent Runtime / Provider are unchanged.
         toolRegistry.register(AndroidShellToolImpl())
+        toolRegistry.register(NetworkToolImpl())
+        // AG.FILE-0: register the concrete File Tool (Tool #3, APP_SELF READ family)
+        // in the SAME ToolRegistry. The Host injects the APP_SELF root
+        // (filesDir/agent/); FileTool scopes all access to it. No new manifest
+        // permission (app-specific dir needs none); no SAF / AT / write capability.
+        toolRegistry.register(FileToolImpl(File(applicationContext.filesDir, "agent")))
     }
 
     /**

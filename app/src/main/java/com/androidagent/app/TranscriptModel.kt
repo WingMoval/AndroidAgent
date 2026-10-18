@@ -55,6 +55,9 @@ class TranscriptModel {
 
         /** The Run ended without an answer. */
         data class Failure(val text: String) : Block
+
+        /** The Run was interrupted by the user (a Stop). NOT a failure. */
+        data class Interrupted(val text: String) : Block
     }
 
     private val blocks = mutableListOf<Block>()
@@ -84,9 +87,18 @@ class TranscriptModel {
     }
 
     fun onReasoningFinished() {
-        val last = blocks.lastOrNull()
-        if (last is Block.Thinking) {
-            blocks[blocks.size - 1] = last.copy(phase = Block.Thinking.Phase.THOUGHT)
+        // Flip the most recent Thinking block that is still in the THINKING phase.
+        // A real turn usually streams reasoning, then content (and possibly a tool
+        // call) AFTER the reasoning section, so the Thinking block is no longer the
+        // last one by the time reasoning finishes. Scanning from the end for the
+        // first still-THINKING block flips exactly this turn's block without ever
+        // inserting a second block.
+        for (i in blocks.indices.reversed()) {
+            val block = blocks[i]
+            if (block is Block.Thinking && block.phase == Block.Thinking.Phase.THINKING) {
+                blocks[i] = block.copy(phase = Block.Thinking.Phase.THOUGHT)
+                return
+            }
         }
     }
 
@@ -141,6 +153,11 @@ class TranscriptModel {
         blocks += Block.Failure(renderFailure(failure))
     }
 
+    /** Records that the Run was interrupted by the user (a Stop). */
+    fun onInterrupted() {
+        blocks += Block.Interrupted("Run stopped by user.")
+    }
+
     // ------------------------------------------------------------- rendering
 
     /** Renders the transcript to plain text for a TextView. */
@@ -160,6 +177,7 @@ class TranscriptModel {
                     is Block.Shell -> append("Shell\n$ ").append(block.command)
                     is Block.Result -> append("Result\n").append(block.text)
                     is Block.Failure -> append("Failed\n").append(block.text)
+                    is Block.Interrupted -> append("Stopped\n").append(block.text)
                 }
                 append("\n\n")
             }

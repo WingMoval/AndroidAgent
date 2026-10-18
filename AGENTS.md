@@ -521,6 +521,45 @@ AGA.OBSERVABILITY-0 PASS      Active Provider Truth & Streaming Agent
                                  (§13: D3 closeout).
 ```
 
+## Current integration snapshot (canonical pointer)
+
+The single authoritative source for "which AT snapshot AG consumes" is:
+
+```text
+docs/integration/AT_TO_AG_HANDOFF_CURRENT.md
+```
+
+Current facts (normalized by AG.V1-PRE-FREEZE-NORMALIZATION; do not restate
+the full AT state in other docs — point to the file above):
+
+```text
+ARCHITECTURE_V1                 = CONFIRMED (structurally valid; unchanged)
+AG Core direct AT dependency    = NONE (verified)
+Agent Runtime direct AT dep     = NONE (verified)
+Current production AT consumer  = tool-android-shell ONLY (verified)
+CAPABILITY_HANDOFF              = AT_TO_AG_HANDOFF_V1
+CURRENT_BINARY_HANDOFF          = at-engine-handoff-v0 @ 0.1.0 (paired AAR, hash-verified)
+AT_CONTRACT_STATUS              = DRAFT (NO final API freeze; wording must say
+                                   "current exposed runtime surface", not "stable/frozen API")
+CURRENT_ANDROID_SHELL_CAPABILITY = ONE-SHOT ONLY (AtRuntime.execute)
+AT persistent raw terminal      = AVAILABLE EXTERNALLY (NOT consumed by AG)
+AG persistent raw terminal      = NOT IMPLEMENTED / ELIGIBLE_FOR_PLANNING (intake pending, no Stable ID)
+SCREEN_AWARE_TERMINAL           = BLOCKED_BY_AT.EMULATOR-0 (RAW_ESCAPE_BYTES != SCREEN_STATE)
+HUMAN_AGENT_SHARED_SESSION      = DEFERRED
+CLI_USED_AS_AG_API              = NO
+ADB_RESPONSIBILITY_DUPLICATED   = NO (ADB pairing/discovery/TLS/recovery all owned by AT)
+NEXT_FORMAL_AT_SYNC             = POST_AT_EMULATOR_0_AND_CONTRACT_1_REVIEW (Handoff V2)
+```
+
+Strategy note (AG.V1-PRE-FREEZE-NORMALIZATION): the technical finding
+`PRODUCTION_REFACTOR_REQUIRED = NO` stands, but the Controller selected
+Strategy B (V1 freeze as Known-Good baseline; V2 as future active tree) for
+migration isolation / rollback safety / new-AT isolation. Frozen migration
+sequence: AG.V1-FREEZE -> AG.V2-1.BASELINE-MIGRATION -> equivalence gate ->
+AG.V2-2.AT-INTEGRATION -> AT gate -> AG.OUTPUT-BOUND.PREFLIGHT (TOOL-006,
+semantics unchanged; execution order only). See
+`D:\codebank\AndCode\AndroidAgent-V2\docs\architecture\AG.V2-CONTROLLER-DECISION.md`.
+
 Implemented and **not** to be described as pending:
 
 ```text

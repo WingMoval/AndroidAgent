@@ -134,5 +134,6 @@ class AgentTraceCollector(
         when (val outcome = event.outcome) {
             is com.androidagent.core.RunOutcome.Answer -> "answer"
             is com.androidagent.core.RunOutcome.Failure -> "failure: ${describeFailure(outcome.failure)}"
+            is com.androidagent.core.RunOutcome.Interrupted -> "interrupted"
         }
 }

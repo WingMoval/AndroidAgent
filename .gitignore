@@ -5,6 +5,10 @@ build/
 out/
 .kotlin/
 
+# Python bytecode (test/fixture tooling)
+__pycache__/
+*.pyc
+
 # IDE
 .idea/
 *.iml
