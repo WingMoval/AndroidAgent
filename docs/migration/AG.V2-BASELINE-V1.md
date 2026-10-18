@@ -31,6 +31,10 @@ V2_BASELINE_TREE   = 5ec605a0343ad10b9f5311f350b644987eb75c54
 V2_BASELINE_TAG    = AG.V2-BASELINE-V1 (annotated; points to the baseline commit)
 ```
 
+> This manifest identifies the immutable V2 baseline. Current repository HEAD
+> may be later than this tag (docs-only closeout commits and later authorized
+> V2 development Steps do not redefine or invalidate the baseline).
+
 ## Production equivalence
 
 ```text

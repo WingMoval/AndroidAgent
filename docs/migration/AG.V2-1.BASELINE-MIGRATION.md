@@ -200,10 +200,11 @@ device runs required or performed (device not attached at migration time).
 ## 11. V2 identities (Gates E9/E10)
 
 ```text
-V2_BASELINE_COMMIT    = (recorded in final report; the single V2 metadata commit)
+V2_BASELINE_COMMIT    = c84bf5ded15c6c6c617a1ac72ac80707226e3b90
 V2_BASELINE_PARENT    = 13df1dbd892c02ff25ce5d8317095bc1deaaaf71 (= V1 freeze)
-V2_BASELINE_TREE      = (recorded in final report)
-V2_BASELINE_TAG       = AG.V2-BASELINE-V1 (annotated; points to the baseline commit)
+V2_BASELINE_TREE      = 5ec605a0343ad10b9f5311f350b644987eb75c54
+V2_BASELINE_TAG       = AG.V2-BASELINE-V1 (annotated; IMMUTABLE — always points
+                        at c84bf5d; never moved / deleted / recreated)
 ```
 
 Ancestry:
@@ -212,9 +213,26 @@ Ancestry:
 AG.V1-KNOWN-GOOD-FREEZE-V1   13df1db
                                  |
                                  v
-            V2 baseline metadata commit (docs/research archive only)
+            V2 verified baseline commit (docs/research archive only)
+            c84bf5d
                                  |
-                                 +-- AG.V2-BASELINE-V1
+                                 +-- AG.V2-BASELINE-V1 (immutable)
+                                 |
+                                 v
+            post-baseline docs-only commit(s)
+            2e5add1
+                                 |
+                                 v
+            current V2 HEAD (may advance beyond the baseline tag)
+```
+
+Baseline vs current-HEAD semantics (frozen):
+
+```text
+AG.V2-BASELINE-V1   = immutable verified equivalence baseline (c84bf5d)
+CURRENT HEAD        = may advance beyond the baseline through docs-only
+                      closeout commits and later authorized V2 development Steps
+BASELINE_INVALIDATED_BY_LATER_DOC_COMMITS = NO
 ```
 
 ## 12. V2 status after this Step
@@ -232,3 +250,15 @@ integration, tool-android-shell compatibility, AT provenance refresh, one-shot
 regression. A persistent-terminal tool is explicitly NOT part of AG.V2-2
 (it requires capability intake -> preflight -> implementation, gated by
 TOOL-006 + AT contract stabilization).
+
+## 13. Controller Closeout Normalization
+
+(added by AG.V2-1.CLOSEOUT-NORMALIZATION)
+
+```text
+AG.V2-1 migration result remains PASS.
+c84bf5d is the immutable verified V2 baseline (tag AG.V2-BASELINE-V1).
+Subsequent docs-only commit(s) (e.g. 2e5add1) do not redefine or invalidate
+the V2 baseline. Current HEAD may advance beyond the baseline tag through
+docs-only closeout commits and later authorized V2 development Steps.
+```

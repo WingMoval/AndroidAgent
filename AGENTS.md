@@ -3,23 +3,32 @@
 ## Repository roles
 
 ```text
-AndroidAgent         = development source of truth
+AndroidAgent-V2      = ACTIVE DEVELOPMENT SOURCE OF TRUTH
+                       (this repository)
+AndroidAgent         = V1 FROZEN_KNOWN_GOOD
+                       (reference / rollback / evidence source only)
 AndroidAgent-Public  = release / export downstream only
 ```
 
 Flow is one-directional:
 
 ```text
-development directory  ->  explicit Release Step  ->  *-Public
+AndroidAgent-V2 (development)  ->  explicit Release Step  ->  *-Public
 ```
 
 Forbidden:
 
 - developing directly in `-Public`
 - fixing a bug in `-Public` and copying it back into development
-- treating both directories as source of truth
+- treating V2 and `-Public` as dual source of truth
 
 Do not create `-Public` for symmetry. Create it at a real release node.
+
+V1 immutability (`D:\codebank\AndCode\AndroidAgent`, tag
+`AG.V1-KNOWN-GOOD-FREEZE-V1`): allowed use = reference / rollback / evidence.
+Forbidden: normal feature development, bugfix-first-then-copy-to-V2, parallel
+active development. V1 may only be modified by an
+explicitly-authorized critical freeze-line fix.
 
 ## Architecture rules
 
