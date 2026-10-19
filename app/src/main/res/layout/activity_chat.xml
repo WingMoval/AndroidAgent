@@ -38,6 +38,31 @@
             android:layout_marginTop="4dp"
             android:text="Reconnect" />
 
+        <!-- AG.V2-2: Minimal ADB pairing UI (first-use bootstrap). -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/pairing_code"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="6-digit code"
+                android:inputType="number"
+                android:maxLength="6"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/pair"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Pair" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/status"
             android:layout_width="match_parent"

@@ -52,6 +52,9 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var newSession: Button
     private lateinit var reconnect: Button
     private lateinit var nodeSpinner: Spinner
+    // AG.V2-2: minimal ADB pairing UI.
+    private lateinit var pairingCode: EditText
+    private lateinit var pairButton: Button
 
     private var root: ChatCompositionRoot? = null
     private var runtime: AgentRuntime? = null
@@ -88,11 +91,14 @@ class ChatActivity : AppCompatActivity() {
         newSession = findViewById(R.id.new_session)
         reconnect = findViewById(R.id.reconnect)
         nodeSpinner = findViewById(R.id.provider_node)
+        pairingCode = findViewById(R.id.pairing_code)
+        pairButton = findViewById(R.id.pair)
 
         send.setOnClickListener { onSend() }
         stop.setOnClickListener { onStopRun() }
         newSession.setOnClickListener { onNewSession() }
         reconnect.setOnClickListener { onReconnect() }
+        pairButton.setOnClickListener { onPair() }
         setupNodeSpinner()
 
         // AGA.DEV-CONFIG-0: at startup, try the device-local provider config.
@@ -267,6 +273,48 @@ class ChatActivity : AppCompatActivity() {
         lifecycleScope.launch {
             reconnecting = false
             reconnect.isEnabled = true
+        }
+    }
+
+    // ----------------------------------------------------------------- ADB pairing
+
+    /**
+     * AG.V2-2: Minimal ADB pairing handler.
+     *
+     * Reads the 6-digit code from the input, calls AdbConsumerBootstrap via
+     * the adapter, and shows the result. The pairing code is NOT persisted,
+     * NOT logged, and NOT stored after the call.
+     */
+    private fun onPair() {
+        val code = pairingCode.text.toString().trim()
+        if (code.length != 6) {
+            atStatusText = "Enter the 6-digit pairing code"
+            renderStatus()
+            return
+        }
+        pairButton.isEnabled = false
+        atStatusText = "Pairing..."
+        renderStatus()
+        lifecycleScope.launch {
+            val adapter = root?.shell?.adapter
+            if (adapter == null) {
+                atStatusText = "Adapter not available"
+                renderStatus()
+                pairButton.isEnabled = true
+                return@launch
+            }
+            val result = adapter.pairDiscovered(code)
+            // Clear the code from the UI (never persist).
+            pairingCode.text.clear()
+            if (result.success) {
+                atStatusText = "Paired. Reconnecting..."
+                // Auto-reconnect after successful pairing.
+                connectShell()
+            } else {
+                atStatusText = "Pairing failed: ${result.outcome.name}"
+            }
+            renderStatus()
+            pairButton.isEnabled = true
         }
     }
 

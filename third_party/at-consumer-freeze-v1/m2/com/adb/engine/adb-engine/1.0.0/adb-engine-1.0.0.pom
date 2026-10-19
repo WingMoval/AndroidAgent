@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.adb.engine</groupId>
+  <artifactId>adb-engine</artifactId>
+  <version>1.0.0</version>
+  <packaging>aar</packaging>
+  <description>ADB Engine — ADB protocol / transport / pairing primitives + AdbRuntime + AdbConsumerBootstrap. Vendored from AT V3 source baseline c9cee21 (AT.AG-CONSUMER-FREEZE-V1). Local metadata only; AAR bytes never repackaged.</description>
+</project>

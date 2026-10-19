@@ -538,26 +538,27 @@ The single authoritative source for "which AT snapshot AG consumes" is:
 docs/integration/AT_TO_AG_HANDOFF_CURRENT.md
 ```
 
-Current facts (updated by AG.V2-2B.AT-ENGINE-FULL-INTEGRATION; do not restate
+Current facts (updated by AG.V2-2.AT-INTEGRATION; do not restate
 the full AT state in other docs — point to the file above):
 
 ```text
-CURRENT_AT                      = AndroidTerminal V3
-                                   (AT.PRE-EMULATOR-FREEZE-V1)
-AT_EXECUTION_SUBSYSTEM          = FULL CURRENT CAPABILITY INTEGRATED
-PROVIDERS                       = LOCAL + ADB
-MODEL_TOOL_EXPOSURE             = android_shell ONE-SHOT ONLY
-PERSISTENT_TERMINAL_ENGINE_CAPABILITY = AVAILABLE INTERNALLY
-PERSISTENT_TERMINAL_TOOL        = NOT IMPLEMENTED
-SCREEN_AWARE_TERMINAL           = NOT IMPLEMENTED (BLOCKED_BY_AT.EMULATOR-0)
-LEGACY_AT_V0                    = SUPERSEDED / INACTIVE
-AG_CORE_DIRECT_AT_DEPENDENCY    = FORBIDDEN / NONE (verified)
-AG_RUNTIME_DIRECT_AT_DEPENDENCY = FORBIDDEN / NONE (verified)
-AG_AT_CONSUMPTION_MODE          = GRADLE_COMPOSITE_BUILD
-AT_CONTRACT_STATUS              = DRAFT (NO final API freeze)
-AT_CONSUMER_BOOTSTRAP_GAP       = YES (no consumer-facing pairing API in Freeze V1;
-                                   identity = UNSAFE_KEY_COPY bootstrap)
-NEXT_FORMAL_AT_SYNC             = POST_AT_EMULATOR_0_AND_CONTRACT_1_REVIEW (Handoff V2)
+AT_CONSUMER_INTEGRATION     = AT.AG-CONSUMER-FREEZE-V1
+AT_HANDOFF                  = AT_TO_AG_CONSUMER_HANDOFF_V1
+SOURCE_BASELINE             = c9cee21
+CONSUMER                    = :tool-android-shell integration boundary
+android_shell               = VERIFIED on real device (uid=2000(shell))
+identity                    = per-consumer app-private / self-generated
+pairing                     = AT-owned via AdbConsumerBootstrap
+ADB_lifecycle               = single AdbRuntime (UNIQUE owner)
+legacy_handoff_v0           = superseded / inactive
+AG_consumption              = ONE-SHOT ONLY
+PERSISTENT_TERMINAL_ENGINE  = CAPABILITY EXISTS IN AT (NOT consumed by AG V2)
+PERSISTENT_TERMINAL_TOOL    = NOT IMPLEMENTED
+SCREEN_AWARE_TERMINAL       = NOT IMPLEMENTED
+AG_CORE_DIRECT_AT_DEP       = NONE (verified)
+AG_RUNTIME_DIRECT_AT_DEP    = NONE (verified)
+AT_CONTRACT_STATUS          = DRAFT
+NEXT_FORMAL_AT_SYNC         = POST_AT_EMULATOR_0_AND_CONTRACT_1_REVIEW
 ```
 
 Strategy note (AG.V1-PRE-FREEZE-NORMALIZATION): the technical finding
@@ -580,10 +581,12 @@ V2 BASELINE      = AG.V2-BASELINE-V1 (equivalent to the V1 freeze; established
                    by AG.V2-1.BASELINE-MIGRATION as a direct clone at the freeze
                    commit — production content byte-equivalent to V1)
 V2 ARCHITECTURE  = INHERITED FROM CONFIRMED V1 / UNCHANGED
-CURRENT AT       = AndroidTerminal V3 (AT.PRE-EMULATOR-FREEZE-V1)
-                   consumed via Gradle composite build (includeBuild)
-AT MODULES       = :at-engine, :at-backend-adb, :at-backend-local, :adb-engine
+CURRENT AT       = AT.AG-CONSUMER-FREEZE-V1 (source baseline c9cee21)
+                   consumed via vendored AAR (self-contained build)
+AT MODULES       = :at-engine, :at-backend-adb, :adb-engine
 AT ADAPTER       = :integration-at (AtExecutionAdapter — unified AT consumption)
+AT BOOTSTRAP     = AdbConsumerBootstrap (AT-owned; AG does not implement pairing)
+IDENTITY         = per-consumer app-private, self-generated
 LEGACY AT V0     = SUPERSEDED / INACTIVE (no longer in dependency graph)
 NEXT             = AG.OUTPUT-BOUND.PREFLIGHT (TOOL-006, per Roadmap queue)
 ```
@@ -678,15 +681,15 @@ Core" — that is wrong.
 AndroidAgent must **not** vendor AT source, copy AT source, reimplement AT Core,
 or push an AT implementation into `:ag-core`, `:ag-runtime` or `:app`.
 
-**The AT integration mechanism is frozen and implemented (`AG.V2-2` +
-`AG.V2-2B`).** The concrete Android Shell Tool consumes AT through the unified
-`:integration-at` adapter (AtExecutionAdapter), which holds the ATEngine
-composition for both Local and ADB backends (one-shot + persistent). The
-V3 AT modules are consumed via Gradle composite build (`includeBuild`), NOT
-AAR binary handoff. No direct AT Core linking in AG Core / Runtime / Provider.
-No second ADB lifecycle owner. AdbRuntime remains the UNIQUE ADB lifecycle
-owner. AG does not wait for future AT Emulator / Screen State work — the AG
-mainline and the AT mainline evolve independently.
+**The AT integration mechanism is frozen and implemented (`AG.V2-2`).** The
+concrete Android Shell Tool consumes AT through the unified `:integration-at`
+adapter (AtExecutionAdapter), which holds the ATEngine composition for ADB
+one-shot + persistent backends. AT modules are consumed via **vendored AARs**
+(self-contained build; no sibling AT source tree required). Identity is
+per-consumer app-private and self-generated. Pairing is AT-owned via
+`AdbConsumerBootstrap`. AdbRuntime remains the UNIQUE ADB lifecycle owner.
+No second recovery owner. AG does not wait for future AT Emulator / Screen
+State work — the AG mainline and the AT mainline evolve independently.
 
 ## Still forbidden without an explicitly opened Step
 

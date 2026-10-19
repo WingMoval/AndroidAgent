@@ -70,6 +70,24 @@ object DebugProtocol {
          * {"type":"session_state","id":1}
          */
         data class SessionState(val id: Int) : ClientMessage
+
+        /**
+         * AG.V2-2: Query ADB consumer bootstrap state.
+         * {"type":"bootstrap_state"}
+         */
+        data object BootstrapState : ClientMessage
+
+        /**
+         * AG.V2-2: Discover pairing service.
+         * {"type":"bootstrap_discover"}
+         */
+        data object BootstrapDiscover : ClientMessage
+
+        /**
+         * AG.V2-2: Pair with 6-digit code (auto-discovered endpoint).
+         * {"type":"bootstrap_pair","code":"123456"}
+         */
+        data class BootstrapPair(val code: String) : ClientMessage
     }
 
     /** Parses one JSONL line from the client. Returns null on empty/blank/malformed. */
@@ -121,6 +139,12 @@ object DebugProtocol {
             "session_state" -> {
                 val id = root["id"]?.let { (it as? JsonPrimitive)?.content?.toIntOrNull() } ?: -1
                 ClientMessage.SessionState(id)
+            }
+            "bootstrap_state" -> ClientMessage.BootstrapState
+            "bootstrap_discover" -> ClientMessage.BootstrapDiscover
+            "bootstrap_pair" -> {
+                val code = root["code"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
+                ClientMessage.BootstrapPair(code)
             }
             else -> null
         }
@@ -224,6 +248,34 @@ object DebugProtocol {
             put("type", JsonPrimitive("session_state"))
             put("id", JsonPrimitive(id))
             put("state", JsonPrimitive(state))
+        },
+    )
+
+    // ------------------------------------------------- AG.V2-2 bootstrap messages
+
+    fun bootstrapState(state: String, hasIdentity: Boolean): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("bootstrap_state"))
+            put("state", JsonPrimitive(state))
+            put("hasIdentity", JsonPrimitive(hasIdentity))
+        },
+    )
+
+    fun bootstrapDiscovery(endpoints: Int, serviceNotFound: Boolean, multiple: Boolean): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("bootstrap_discovery"))
+            put("endpoints", JsonPrimitive(endpoints))
+            put("serviceNotFound", JsonPrimitive(serviceNotFound))
+            put("multiple", JsonPrimitive(multiple))
+        },
+    )
+
+    fun bootstrapPairResult(success: Boolean, outcome: String, error: String): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("bootstrap_pair_result"))
+            put("success", JsonPrimitive(success))
+            put("outcome", JsonPrimitive(outcome))
+            if (error.isNotEmpty()) put("error", JsonPrimitive(error))
         },
     )
 

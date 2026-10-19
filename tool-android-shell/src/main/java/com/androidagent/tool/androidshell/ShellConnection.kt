@@ -2,24 +2,23 @@ package com.androidagent.tool.androidshell
 
 import android.content.Context
 import com.androidagent.integration.at.AtExecutionAdapter
-import com.adb.engine.AdbRuntimeState
+import com.adb.engine.AdbBootstrapState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * AT V3 connection lifecycle binding (Integration-owned, NOT a backend
+ * AT connection lifecycle binding (Integration-owned, NOT a backend
  * abstraction).
  *
- * AG.V2-2B: delegates to the unified [AtExecutionAdapter] for ADB lifecycle.
+ * AG.V2-2: delegates to the unified [AtExecutionAdapter] for ADB lifecycle
+ * and consumer bootstrap.
  *
- * Responsibilities: initialize / connectAuto / readiness / disconnect —
- * exactly the four lifecycle calls the V3 AdbRuntime exposes. The Host decides
- * the lifecycle POLICY (when to connect, when to disconnect, what to show the
- * user); [ShellConnection] performs the adapter calls.
+ * Responsibilities: initialize / ensureReady / bootstrapState / disconnect.
+ * The Host decides the lifecycle POLICY (when to connect, when to show
+ * pairing UI, what to display); [ShellConnection] performs the adapter calls.
  *
  * Public boundary rule: the public API exposes ONLY integration-owned types.
- * No [AtExecutionAdapter], no V3-owned diagnostic/readiness types, no
- * `com.adb.engine.*` or `com.at.engine.*` import is ever visible to the Host.
+ * No [AtExecutionAdapter], no AT-owned types are leaked to the Host.
  */
 class ShellConnection(
     context: Context,
@@ -36,10 +35,15 @@ class ShellConnection(
         val ready: Boolean,
         val code: String,
         val message: String,
-    )
+    ) {
+        /** Whether the Host should offer the pairing UI. */
+        val pairingOffered: Boolean get() =
+            code == AdbBootstrapState.PAIRING_REQUIRED.name ||
+            code == AdbBootstrapState.CONNECT_FAILED.name
+    }
 
     /**
-     * Wire the V3 AdbRuntime platform backends. Idempotent; safe to call
+     * Wire the ADB runtime platform backends. Idempotent; safe to call
      * before [connect].
      */
     fun initialize() {
@@ -47,18 +51,16 @@ class ShellConnection(
     }
 
     /**
-     * Readiness -> (auto-enable WD if WRITE_SECURE_SETTINGS) -> discovery ->
-     * endpoint select -> connect -> READY.
+     * Readiness -> (auto-enable WD) -> discovery -> endpoint select -> connect.
      *
-     * Uses [AtExecutionAdapter.ensureAdbReady] which wraps
-     * [com.adb.engine.AdbRuntime.ensureReady].
+     * Uses [AtExecutionAdapter.ensureAdbReady] which wraps AdbRuntime.ensureReady.
      *
-     * @return an integration-owned [Status]; never leaks V3-owned types.
+     * @return an integration-owned [Status]; never leaks AT-owned types.
      */
     suspend fun connect(): Status = withContext(Dispatchers.IO) {
         initialize()
         val ready = adapter.ensureAdbReady()
-        val state = adapter.adbState()
+        val state = adapter.bootstrapState()
         Status(
             ready = ready,
             code = state.name,
@@ -67,10 +69,14 @@ class ShellConnection(
     }
 
     /**
-     * Current V3 AdbRuntime state as an integration-owned status (non-blocking).
+     * Current consumer-facing ADB bootstrap state (non-blocking, read-only).
+     *
+     * Returns PAIRING_REQUIRED when no identity exists (first use),
+     * READY when connected, CONNECT_FAILED when identity exists but
+     * connection failed.
      */
     fun readiness(): Status {
-        val state: AdbRuntimeState = adapter.adbState()
+        val state: AdbBootstrapState = adapter.bootstrapState()
         return Status(
             ready = state.isReady,
             code = state.name,
@@ -89,6 +95,6 @@ class ShellConnection(
     }
 
     companion object {
-        const val DEFAULT_IDENTITY_DIR: String = "at-identity"
+        const val DEFAULT_IDENTITY_DIR: String = AtExecutionAdapter.DEFAULT_IDENTITY_DIR
     }
 }

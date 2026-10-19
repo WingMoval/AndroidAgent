@@ -45,13 +45,12 @@ android {
 }
 
 dependencies {
-    // AT V3 Freeze V1 consumer modules (resolved via includeBuild in
-    // settings.gradle.kts). The adapter re-exports AT types so consumers
-    // (tool-android-shell, :app) can access them transitively.
-    api("com.at.engine:at-engine")
-    api("com.at.backend.adb:at-backend-adb")
-    api("com.at.backend.local:at-backend-local")
-    api("com.adb.engine:adb-engine")
+    // AT Consumer Freeze V1 — vendored AARs (self-contained; no sibling AT
+    // source tree required). Resolved from third_party/at-consumer-freeze-v1/m2.
+    // See MANIFEST.md for provenance (source baseline c9cee21, SHA256 hashes).
+    api("com.at.engine:at-engine:1.0.0")
+    api("com.at.backend.adb:at-backend-adb:1.0.0")
+    api("com.adb.engine:adb-engine:1.0.0")
 
     // forContext / Dispatchers.IO.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")

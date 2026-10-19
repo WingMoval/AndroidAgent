@@ -208,6 +208,19 @@ class DebugBridge(
                             handleSessionState(msg.id, writer)
                         }
 
+                        // AG.V2-2: ADB consumer bootstrap operations.
+                        is DebugProtocol.ClientMessage.BootstrapState -> {
+                            handleBootstrapState(writer)
+                        }
+
+                        is DebugProtocol.ClientMessage.BootstrapDiscover -> {
+                            bridgeScope.launch { handleBootstrapDiscover(writer) }
+                        }
+
+                        is DebugProtocol.ClientMessage.BootstrapPair -> {
+                            bridgeScope.launch { handleBootstrapPair(msg.code, writer) }
+                        }
+
                         null -> writer.send(DebugProtocol.error("unrecognized message"))
                     }
                 }
@@ -345,10 +358,8 @@ class DebugBridge(
         }
         val session = if (backend.equals("adb", true)) {
             adapter.openAdbSession()
-        } else if (backend.equals("local", true)) {
-            adapter.openLocalSession()
         } else {
-            writer.send(DebugProtocol.error("unknown backend: $backend (expected adb|local)"))
+            writer.send(DebugProtocol.error("unknown backend: $backend (only 'adb' supported)"))
             return
         }
         if (session == null) {
@@ -445,6 +456,45 @@ class DebugBridge(
             return
         }
         writer.send(DebugProtocol.sessionState(id, adapter.sessionState(session)))
+    }
+
+    // ------------------------------------------------- AG.V2-2 bootstrap handlers
+
+    private fun handleBootstrapState(writer: ClientWriter) {
+        val adapter = adapterProvider?.invoke()
+        if (adapter == null) {
+            writer.send(DebugProtocol.error("adapter not wired"))
+            return
+        }
+        val state = adapter.bootstrapState()
+        val hasId = adapter.bootstrap.hasIdentity()
+        writer.send(DebugProtocol.bootstrapState(state.name, hasId))
+    }
+
+    private suspend fun handleBootstrapDiscover(writer: ClientWriter) {
+        val adapter = adapterProvider?.invoke()
+        if (adapter == null) {
+            writer.send(DebugProtocol.error("adapter not wired"))
+            return
+        }
+        val d = adapter.discoverPairing()
+        writer.send(DebugProtocol.bootstrapDiscovery(d.endpoints.size, d.serviceNotFound, d.multiple))
+    }
+
+    private suspend fun handleBootstrapPair(code: String, writer: ClientWriter) {
+        val adapter = adapterProvider?.invoke()
+        if (adapter == null) {
+            writer.send(DebugProtocol.error("adapter not wired"))
+            return
+        }
+        if (code.isBlank()) {
+            writer.send(DebugProtocol.error("pairing code required"))
+            return
+        }
+        val r = adapter.pairDiscovered(code)
+        // DO NOT log the pairing code plaintext.
+        writer.send(DebugProtocol.bootstrapPairResult(r.success, r.outcome.name, r.error))
+        Log.i(TAG, "bootstrap pair: success=${r.success} outcome=${r.outcome.name}")
     }
 
     /** One connected debug client (writer only; read handled by the caller). */

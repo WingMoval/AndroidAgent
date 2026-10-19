@@ -588,9 +588,10 @@ risk after the v1.0 normalization. **CURRENT is NONE** immediately after
 AG.ROADMAP-0.REVIEW-1A closes (this repair is documentation-only).
 
 ### CURRENT
-- NONE. AG.V2-2 + AG.V2-2B = CLOSED. AndroidTerminal V3 Freeze V1 full current
-  execution capability integrated (one-shot + persistent, Local + ADB).
-  Model tool surface = android_shell one-shot only. V1 remains FROZEN_KNOWN_GOOD.
+- NONE. AG.V2-2.AT-INTEGRATION = CLOSED. AT.AG-CONSUMER-FREEZE-V1 (source
+  baseline c9cee21) consumed via vendored AAR (self-contained build).
+  android_shell one-shot VERIFIED on device (uid=2000(shell)). Self-generated
+  identity + AdbConsumerBootstrap pairing. V1 remains FROZEN_KNOWN_GOOD.
 
 ### NEXT (<=5, in recommended order)
 Recomputed after AG.V2-2B.AT-ENGINE-FULL-INTEGRATION (full AT V3 execution
@@ -717,8 +718,8 @@ OUT_OF_SCOPE.
 | RUN-004 note | "USER reason tag" | "per-Run user-interrupt metadata carried into Core (Core never queries Runtime)" | CLOSEOUT C3: Core must not query Runtime; metadata travels Runtime -> Core per-Run |
 | RUN-003 note | "interrupt handle" | "ATOMIC interrupt handle; cancels structured execution child only (send caller survives)" | CLOSEOUT C1/C2/C5 |
 | InterruptReason | enum {USER, HOST_LIFECYCLE} proposed | NOT REQUIRED (V0 ships RunOutcome.Interrupted; reason only if mechanism needs a per-Run type) | CLOSEOUT: remove over-design; lifecycle has no structured consumer now |
-| AT integration | legacy v0 AAR bundle (at-engine-handoff-v0 @ 0.1.0) | AT V3 Freeze V1 via Gradle composite build (includeBuild + dependencySubstitution) | AG.V2-2 + AG.V2-2B: full current execution capability integrated (one-shot + persistent, Local + ADB). D1-D4 + E1-E20 device PASS. 726 tests 0 failures. Full build PASS. Legacy v0 SUPERSEDED/INACTIVE. AT_CONSUMER_BOOTSTRAP_GAP = YES (identity = UNSAFE_KEY_COPY). |
-| Execution Queue NEXT | AG.V2-2.AT-INTEGRATION | AG.OUTPUT-BOUND.PREFLIGHT (TOOL-006) | AG.V2-2 + AG.V2-2B CLOSED: full AT V3 execution engine integrated; NEXT = output bounding preflight. NEXT_OPEN_AUTHORIZED = NO. |
+| AT integration | legacy v0 AAR + AT V3 composite build | AT.AG-CONSUMER-FREEZE-V1 via vendored AAR (self-contained) | AG.V2-2: AT consumer freeze V1 (source c9cee21) consumed via vendored AAR. Self-generated identity + AdbConsumerBootstrap pairing. Gates A-I all PASS on device. 726 tests 0 failures. Full build PASS. Self-contained build gate PASS. Legacy v0 SUPERSEDED/INACTIVE. |
+| Execution Queue NEXT | AG.V2-2.AT-INTEGRATION | AG.OUTPUT-BOUND.PREFLIGHT (TOOL-006) | AG.V2-2 CLOSED: AT consumer freeze V1 integrated; NEXT = output bounding preflight. NEXT_OPEN_AUTHORIZED = NO. |
 | C1 return path (RUN-003/004 note) | "send caller survives & returns Interrupted" (child implied to return the value) | child TERMINATES CANCELLED; the still-active send caller converts THIS USER child cancel to Host-visible Interrupted (IFF caller active + per-Run USER metadata + Core finalization committed); parent-cancelled caller propagates, never converted | CLOSEOUT-FINAL C1: a Job.cancel()'d child must not be relied on to return a value; conversion belongs at the Runtime/send boundary; I15 added |
 | STATE-003 | persistence/resume merged | STATE-003 Persistence + STATE-006 Resume | distinct lifecycles; historical STATE-003 retained for Persistence |
 | STATE-005 | fork/checkpoint merged | STATE-005 Fork + STATE-014 Checkpoint | distinct lifecycles; historical STATE-005 retained for Fork |
