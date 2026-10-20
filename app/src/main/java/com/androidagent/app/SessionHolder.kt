@@ -161,6 +161,58 @@ object SessionHolder {
         endpointLabel = text
     }
 
+    // ---- UI update notification (Activity rebinds via this callback) --------
+
+    @Volatile
+    var onUiUpdate: (() -> Unit)? = null
+
+    /** Called whenever transcript/status changes; the bound Activity re-renders. */
+    fun notifyUiUpdate() {
+        onUiUpdate?.invoke()
+    }
+
+    /**
+     * The process-scoped event handler for AgentEvents. This is what gets wired
+     * into ChatCompositionRoot — it operates on SessionHolder's transcriptModel
+     * directly, NOT on any Activity instance.
+     */
+    fun onRunEvent(event: com.androidagent.core.AgentEvent) {
+        runStatusText = com.androidagent.app.HostStatusModel.runPhaseText(event)
+        when (event) {
+            is com.androidagent.core.AgentEvent.ModelTurnStarted ->
+                transcriptModel.onModelTurnStarted(event.step)
+            is com.androidagent.core.AgentEvent.ToolCallStarted ->
+                transcriptModel.onToolCallStarted(event.call)
+            is com.androidagent.core.AgentEvent.ToolCallFinished ->
+                transcriptModel.onToolCallFinished(event.call, event.result)
+            is com.androidagent.core.AgentEvent.AnswerProduced ->
+                transcriptModel.onAnswerProduced(event.content)
+            is com.androidagent.core.AgentEvent.RunFailed ->
+                transcriptModel.onRunFailed(event.failure)
+            is com.androidagent.core.AgentEvent.RunFinished -> {
+                if (event.outcome is com.androidagent.core.RunOutcome.Interrupted) {
+                    transcriptModel.onInterrupted()
+                }
+                isBusy = false
+            }
+            else -> {}
+        }
+        notifyUiUpdate()
+    }
+
+    /** Process-scoped stream observer (reasoning/content deltas). */
+    fun onStreamEvent(kind: String, text: String?) {
+        when (kind) {
+            "reasoning_started" -> transcriptModel.onReasoningStarted()
+            "reasoning_delta" -> transcriptModel.onReasoningDelta(text ?: "")
+            "reasoning_finished" -> transcriptModel.onReasoningFinished()
+            "content_started" -> transcriptModel.onContentStarted()
+            "content_delta" -> transcriptModel.onContentDelta(text ?: "")
+            "content_finished" -> {}
+        }
+        notifyUiUpdate()
+    }
+
     private const val KEY_SESSION_ID = "ag.session.id"
     private const val KEY_TRANSCRIPT = "ag.session.transcript"
     private const val KEY_PROVIDER_STATUS = "ag.session.provider_status"

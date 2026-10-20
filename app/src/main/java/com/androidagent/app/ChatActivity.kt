@@ -120,6 +120,20 @@ class ChatActivity : AppCompatActivity() {
             // First launch (or process death): initialize normally.
             tryDeviceLocalConfig()
         }
+
+        // Register this Activity as the UI update target. When the process-scoped
+        // SessionHolder receives events (from a Run in progress), it calls back
+        // here to re-render the transcript on this Activity's UI thread.
+        SessionHolder.onUiUpdate = {
+            runOnUiThread {
+                transcriptModel = SessionHolder.transcriptModel
+                runStatusText = SessionHolder.runStatusText
+                atStatusText = SessionHolder.atStatusText
+                setBusy(SessionHolder.isBusy)
+                renderStatus()
+                renderTranscript()
+            }
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -193,9 +207,11 @@ class ChatActivity : AppCompatActivity() {
             cfg,
             applicationContext,
             node,
-            onRunEvent = { onRunEvent(it) },
+            // Process-scoped event handler: operates on SessionHolder.transcriptModel,
+            // NOT on this Activity instance. Survives Activity recreation.
+            onRunEvent = { SessionHolder.onRunEvent(it) },
             onDebugEvent = { e -> sharedDebugBridge?.eventSink?.emit(e) },
-            streamObserver = streamObserver,
+            streamObserver = sessionStreamObserver,
         )
         root = SessionHolder.root
         runtime = SessionHolder.runtime
@@ -212,6 +228,37 @@ class ChatActivity : AppCompatActivity() {
         SessionHolder.setRunStatus(null)
         renderStatus()
         connectShell()
+    }
+
+    /**
+     * AG.HOST-SESSION-CONTINUITY-0: process-scoped stream observer.
+     * Operates on SessionHolder.transcriptModel, NOT on Activity fields.
+     */
+    private val sessionStreamObserver = object : ModelStreamObserver {
+        override fun onReasoningStarted() {
+            bridgeStream(DebugProtocol.STREAM_REASONING_STARTED, null)
+            SessionHolder.onStreamEvent("reasoning_started", null)
+        }
+        override fun onReasoningDelta(text: String) {
+            bridgeStream(DebugProtocol.STREAM_REASONING_DELTA, text)
+            SessionHolder.onStreamEvent("reasoning_delta", text)
+        }
+        override fun onReasoningFinished() {
+            bridgeStream(DebugProtocol.STREAM_REASONING_FINISHED, null)
+            SessionHolder.onStreamEvent("reasoning_finished", null)
+        }
+        override fun onContentStarted() {
+            bridgeStream(DebugProtocol.STREAM_CONTENT_STARTED, null)
+            SessionHolder.onStreamEvent("content_started", null)
+        }
+        override fun onContentDelta(text: String) {
+            bridgeStream(DebugProtocol.STREAM_CONTENT_DELTA, text)
+            SessionHolder.onStreamEvent("content_delta", text)
+        }
+        override fun onContentFinished() {
+            bridgeStream(DebugProtocol.STREAM_CONTENT_FINISHED, null)
+            SessionHolder.onStreamEvent("content_finished", null)
+        }
     }
 
     /**
@@ -257,6 +304,19 @@ class ChatActivity : AppCompatActivity() {
         if (bridge.start()) {
             sharedDebugBridge = bridge
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // AG.HOST-SESSION-CONTINUITY-0: re-render the transcript and status when
+        // the Activity becomes visible again (e.g. returning from freeform/small
+        // window to fullscreen, or from another app). The SessionHolder data is
+        // process-scoped and survives; we just need to push it to the UI.
+        renderTranscript()
+        renderStatus()
+        // Re-sync busy state (a Run may have started/finished while not visible).
+        val r = runtime
+        setBusy(r?.isBusy == true)
     }
 
     override fun onDestroy() {
@@ -346,92 +406,8 @@ class ChatActivity : AppCompatActivity() {
 
     // ----------------------------------------------------------------- Run status
 
-    /**
-     * Host-side observer for AG Core's [AgentEvent] stream. Renders the transient
-     * run phase and feeds tool actions/results into the transcript. All
-     * transcript mutations happen on the UI thread (the stream observer also
-     * mutates it there), so the two channels never race.
-     */
-    private fun onRunEvent(event: AgentEvent) {
-        updateRunStatus(HostStatusModel.runPhaseText(event))
-        runOnUiThread {
-            when (event) {
-                is AgentEvent.ModelTurnStarted -> transcriptModel.onModelTurnStarted(event.step)
-                is AgentEvent.ToolCallStarted -> transcriptModel.onToolCallStarted(event.call)
-                is AgentEvent.ToolCallFinished -> transcriptModel.onToolCallFinished(event.call, event.result)
-                is AgentEvent.AnswerProduced -> transcriptModel.onAnswerProduced(event.content)
-                is AgentEvent.RunFailed -> transcriptModel.onRunFailed(event.failure)
-                is AgentEvent.RunFinished -> {
-                    // HOST-005: terminal reached (Answer, Failure, or Interrupted).
-                    // Any terminal ends the INTERRUPTING ("Stopping...") phase and
-                    // re-enables the Stop button for the next Run (H7: a Stop vs
-                    // natural-terminal race must never leave the UI stuck).
-                    stop.isEnabled = false
-                    // An interrupted Run renders a Stopped block (not a Failure).
-                    if (event.outcome is com.androidagent.core.RunOutcome.Interrupted) {
-                        transcriptModel.onInterrupted()
-                    }
-                }
-                else -> {}
-            }
-            renderStatus()
-            renderTranscript()
-        }
-    }
-
-    // ------------------------------------------------------------- Model stream
-
-    /**
-     * AGA.OBSERVABILITY-0: live model-stream observer. Every callback arrives on
-     * the provider's HTTP thread; the transcript model is updated on the UI
-     * thread, and the event is forwarded to the PC debug bridge (which broadcasts
-     * from its own single-thread executor, so it is thread-safe to call here).
-     */
-    private val streamObserver: ModelStreamObserver = object : ModelStreamObserver {
-        override fun onReasoningStarted() {
-            bridgeStream(DebugProtocol.STREAM_REASONING_STARTED, null)
-            runOnUiThread {
-                transcriptModel.onReasoningStarted()
-                renderTranscript()
-            }
-        }
-
-        override fun onReasoningDelta(text: String) {
-            bridgeStream(DebugProtocol.STREAM_REASONING_DELTA, text)
-            runOnUiThread {
-                transcriptModel.onReasoningDelta(text)
-                renderTranscript()
-            }
-        }
-
-        override fun onReasoningFinished() {
-            bridgeStream(DebugProtocol.STREAM_REASONING_FINISHED, null)
-            runOnUiThread {
-                transcriptModel.onReasoningFinished()
-                renderTranscript()
-            }
-        }
-
-        override fun onContentStarted() {
-            bridgeStream(DebugProtocol.STREAM_CONTENT_STARTED, null)
-            runOnUiThread {
-                transcriptModel.onContentStarted()
-                renderTranscript()
-            }
-        }
-
-        override fun onContentDelta(text: String) {
-            bridgeStream(DebugProtocol.STREAM_CONTENT_DELTA, text)
-            runOnUiThread {
-                transcriptModel.onContentDelta(text)
-                renderTranscript()
-            }
-        }
-
-        override fun onContentFinished() {
-            bridgeStream(DebugProtocol.STREAM_CONTENT_FINISHED, null)
-        }
-    }
+    // NOTE: onRunEvent and streamObserver are now process-scoped in SessionHolder
+    // (AG.HOST-SESSION-CONTINUITY-0). The Activity re-renders via onUiUpdate callback.
 
     private fun bridgeStream(kind: String, text: String?) {
         sharedDebugBridge?.streamSink?.let { sink ->
