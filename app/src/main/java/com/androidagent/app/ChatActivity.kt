@@ -101,11 +101,30 @@ class ChatActivity : AppCompatActivity() {
         pairButton.setOnClickListener { onPair() }
         setupNodeSpinner()
 
-        // AGA.DEV-CONFIG-0: at startup, try the device-local provider config.
-        // If present and valid, the Provider is ready with no manual key entry.
-        // Otherwise (missing or invalid) the Provider stays unconfigured and the
-        // status explains why.
-        tryDeviceLocalConfig()
+        // AG.HOST-SESSION-CONTINUITY-0: rebind to the process-scoped Session
+        // if one already exists (Activity recreation after rotation/config change).
+        if (SessionHolder.restoreState(savedInstanceState)) {
+            root = SessionHolder.root
+            runtime = SessionHolder.runtime
+            transcriptModel = SessionHolder.transcriptModel
+            activeNode = SessionHolder.providerNode
+            providerStatusText = SessionHolder.providerStatusText
+            atStatusText = SessionHolder.atStatusText
+            runStatusText = SessionHolder.runStatusText
+            endpointLabel.text = SessionHolder.endpointLabel
+            setBusy(SessionHolder.isBusy)
+            renderStatus()
+            renderTranscript()
+            ensureDebugBridge()
+        } else {
+            // First launch (or process death): initialize normally.
+            tryDeviceLocalConfig()
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        SessionHolder.saveState(outState)
     }
 
     // ------------------------------------------------------------- Provider node
@@ -142,7 +161,7 @@ class ChatActivity : AppCompatActivity() {
 
             is ProviderSwitchOutcome.Rejected -> {
                 revertSpinner()
-                runStatusText = outcome.reason
+                updateRunStatus(outcome.reason)
                 renderStatus()
             }
         }
@@ -170,22 +189,27 @@ class ChatActivity : AppCompatActivity() {
      * this consolidated Host: the single AGA APK always wires AT.
      */
     private fun applyConfig(cfg: OpenAiCompatibleConfig, node: ProviderNode) {
-        root = ChatCompositionRoot(
+        SessionHolder.createRoot(
             cfg,
             applicationContext,
+            node,
             onRunEvent = { onRunEvent(it) },
             onDebugEvent = { e -> sharedDebugBridge?.eventSink?.emit(e) },
             streamObserver = streamObserver,
         )
-        runtime = root?.runtime
-        sharedRuntime = root?.runtime
+        root = SessionHolder.root
+        runtime = SessionHolder.runtime
         // Start/reuse the process-wide debug bridge AFTER the runtime exists, but
         // BEFORE any Run can happen (applyConfig is the only entry point).
         ensureDebugBridge()
         providerStatusText = HostStatusModel.providerLine(node.displayName)
+        SessionHolder.setProviderStatus(providerStatusText)
         endpointLabel.text = cfg.safeChatCompletionsEndpoint
+        SessionHolder.setEndpoint(cfg.safeChatCompletionsEndpoint)
         atStatusText = null
+        SessionHolder.setAtStatus(null)
         runStatusText = null
+        SessionHolder.setRunStatus(null)
         renderStatus()
         connectShell()
     }
@@ -247,17 +271,19 @@ class ChatActivity : AppCompatActivity() {
     /** Startup / switch / manual-reconnect entry: connect the AT Engine. */
     private fun connectShell() {
         val shellConnection = root?.shell
-        atStatusText = "Connecting..."
+        updateAtStatus("Connecting...")
         renderStatus()
         lifecycleScope.launch {
             val status = shellConnection?.connect()
-            atStatusText = if (status == null) {
-                "Not connected"
-            } else if (status.ready) {
-                "Connected"
-            } else {
-                HostStatusModel.safeAtMessage(status.message)
-            }
+            updateAtStatus(
+                if (status == null) {
+                    "Not connected"
+                } else if (status.ready) {
+                    "Connected"
+                } else {
+                    HostStatusModel.safeAtMessage(status.message)
+                }
+            )
             renderStatus()
         }
     }
@@ -288,17 +314,17 @@ class ChatActivity : AppCompatActivity() {
     private fun onPair() {
         val code = pairingCode.text.toString().trim()
         if (code.length != 6) {
-            atStatusText = "Enter the 6-digit pairing code"
+            updateAtStatus("Enter the 6-digit pairing code")
             renderStatus()
             return
         }
         pairButton.isEnabled = false
-        atStatusText = "Pairing..."
+        updateAtStatus("Pairing...")
         renderStatus()
         lifecycleScope.launch {
             val adapter = root?.shell?.adapter
             if (adapter == null) {
-                atStatusText = "Adapter not available"
+                updateAtStatus("Adapter not available")
                 renderStatus()
                 pairButton.isEnabled = true
                 return@launch
@@ -307,11 +333,11 @@ class ChatActivity : AppCompatActivity() {
             // Clear the code from the UI (never persist).
             pairingCode.text.clear()
             if (result.success) {
-                atStatusText = "Paired. Reconnecting..."
+                updateAtStatus("Paired. Reconnecting...")
                 // Auto-reconnect after successful pairing.
                 connectShell()
             } else {
-                atStatusText = "Pairing failed: ${result.outcome.name}"
+                updateAtStatus("Pairing failed: ${result.outcome.name}")
             }
             renderStatus()
             pairButton.isEnabled = true
@@ -327,7 +353,7 @@ class ChatActivity : AppCompatActivity() {
      * mutates it there), so the two channels never race.
      */
     private fun onRunEvent(event: AgentEvent) {
-        runStatusText = HostStatusModel.runPhaseText(event)
+        updateRunStatus(HostStatusModel.runPhaseText(event))
         runOnUiThread {
             when (event) {
                 is AgentEvent.ModelTurnStarted -> transcriptModel.onModelTurnStarted(event.step)
@@ -432,19 +458,31 @@ class ChatActivity : AppCompatActivity() {
         setStatus(parts.joinToString("\n"))
     }
 
+    /** Sync a status change to both the UI field and the process holder. */
+    private fun updateAtStatus(text: String?) {
+        atStatusText = text
+        SessionHolder.setAtStatus(text)
+    }
+
+    private fun updateRunStatus(text: String?) {
+        runStatusText = text
+        SessionHolder.setRunStatus(text)
+    }
+
     private fun renderTranscript() {
         transcript.text = transcriptModel.render()
     }
 
     private fun onNewSession() {
-        val switched = runtime?.newSession() ?: false
+        val switched = SessionHolder.newSession()
         if (switched) {
-            transcriptModel = TranscriptModel()
+            transcriptModel = SessionHolder.transcriptModel
             transcript.text = ""
-            runStatusText = "New session started."
+            runStatusText = SessionHolder.runStatusText
             renderStatus()
         } else {
             runStatusText = "Cannot start a new session while a run is in progress."
+            SessionHolder.setRunStatus(runStatusText)
             renderStatus()
         }
     }
@@ -455,12 +493,12 @@ class ChatActivity : AppCompatActivity() {
 
         val r = runtime
         if (r == null) {
-            runStatusText = "No provider configured. Select a node first."
+            updateRunStatus("No provider configured. Select a node first.")
             renderStatus()
             return
         }
         if (r.isBusy) {
-            runStatusText = "A run is already in progress for this session."
+            updateRunStatus("A run is already in progress for this session.")
             renderStatus()
             return
         }
@@ -470,6 +508,7 @@ class ChatActivity : AppCompatActivity() {
         input.setText("")
         setBusy(true)
         runStatusText = "Running..."
+        SessionHolder.setRunStatus(runStatusText)
         renderStatus()
 
         lifecycleScope.launch {
@@ -484,7 +523,7 @@ class ChatActivity : AppCompatActivity() {
             // terminal RunFinished(Interrupted) event (via onRunEvent) renders the
             // transcript, and the status shows the interrupted phase.
             if (outcome is com.androidagent.core.RunOutcome.Interrupted) {
-                runStatusText = "Stopped."
+                updateRunStatus("Stopped.")
                 renderStatus()
             }
             setBusy(false)
@@ -503,7 +542,7 @@ class ChatActivity : AppCompatActivity() {
         if (!r.isBusy) return
         when (r.interruptActiveRun()) {
             AgentRuntime.InterruptResult.Requested -> {
-                runStatusText = "Stopping..."
+                updateRunStatus("Stopping...")
                 stop.isEnabled = false
                 renderStatus()
             }
@@ -519,6 +558,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setBusy(busy: Boolean) {
+        SessionHolder.setBusy(busy)
         send.isEnabled = !busy
         newSession.isEnabled = !busy
         stop.isEnabled = busy
@@ -544,14 +584,19 @@ class ChatActivity : AppCompatActivity() {
 
     private companion object {
         /**
-         * AG.DEBUG-0: process-scoped debug bridge and the runtime it currently
-         * points at. Shared across Activity instances so recreation never splits
-         * the listener. Both are only ever set in debug builds.
+         * AG.DEBUG-0: process-scoped debug bridge. Shared across Activity
+         * instances so recreation never splits the listener. Only in debug builds.
          */
         @Volatile
-        private var sharedDebugBridge: DebugBridge? = null
+        var sharedDebugBridge: DebugBridge? = null
+            private set
 
-        @Volatile
-        private var sharedRuntime: AgentRuntime? = null
+        /**
+         * AG.HOST-SESSION-CONTINUITY-0: process-scoped runtime reference.
+         * Delegates to SessionHolder.runtime so the DebugBridge's
+         * runtimeProvider lambda always reads the current Session.
+         */
+        val sharedRuntime: AgentRuntime?
+            get() = SessionHolder.runtime
     }
 }

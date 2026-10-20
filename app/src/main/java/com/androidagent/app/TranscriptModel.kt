@@ -165,6 +165,92 @@ class TranscriptModel {
 
     companion object {
 
+        /**
+         * AG.HOST-SESSION-CONTINUITY-0: Reconstruct a TranscriptModel from its
+         * rendered text (for Activity recreation rebind). The rendering is
+         * lossy (block boundaries are approximate), but the content is preserved.
+         * This is a display-only reconstruction; the live model in the process
+         * holder remains authoritative for ongoing Runs.
+         */
+        fun fromRendered(rendered: String): TranscriptModel {
+            val model = TranscriptModel()
+            val lines = rendered.split("\n")
+            var i = 0
+            while (i < lines.size) {
+                val line = lines[i]
+                when {
+                    line.startsWith("User") -> {
+                        val sb = StringBuilder()
+                        i++
+                        while (i < lines.size && lines[i] != "") {
+                            sb.append(lines[i]).append("\n")
+                            i++
+                        }
+                        if (sb.isNotEmpty()) model.onUser(sb.toString().trimEnd())
+                    }
+                    line.startsWith("Thinking...") -> {
+                        val sb = StringBuilder()
+                        i++
+                        while (i < lines.size && lines[i] != "") {
+                            sb.append(lines[i]).append("\n")
+                            i++
+                        }
+                        model.onReasoningStarted()
+                        if (sb.isNotEmpty()) model.onReasoningDelta(sb.toString().trimEnd())
+                    }
+                    line.startsWith("Thought") -> {
+                        val sb = StringBuilder()
+                        i++
+                        while (i < lines.size && lines[i] != "") {
+                            sb.append(lines[i]).append("\n")
+                            i++
+                        }
+                        model.onReasoningStarted()
+                        if (sb.isNotEmpty()) model.onReasoningDelta(sb.toString().trimEnd())
+                        model.onReasoningFinished()
+                    }
+                    line.startsWith("Assistant") -> {
+                        val sb = StringBuilder()
+                        i++
+                        while (i < lines.size && lines[i] != "") {
+                            sb.append(lines[i]).append("\n")
+                            i++
+                        }
+                        val text = sb.toString().trimEnd()
+                        if (text.isNotEmpty()) {
+                            model.onContentStarted()
+                            model.onContentDelta(text)
+                        }
+                    }
+                    line.startsWith("Shell") -> {
+                        // Skip shell blocks (can't reconstruct ToolCall from text).
+                        i++
+                        if (i < lines.size && lines[i].startsWith("$ ")) i++
+                    }
+                    line.startsWith("Result") -> {
+                        i++
+                        // Skip result blocks (live model is authoritative).
+                        while (i < lines.size && lines[i] != "") i++
+                    }
+                    line.startsWith("Failed") -> {
+                        i++
+                        // Skip failure blocks (live model is authoritative).
+                        while (i < lines.size && lines[i] != "") i++
+                    }
+                    line.startsWith("Stopped") -> {
+                        i++
+                        // Skip interrupted blocks.
+                        while (i < lines.size && lines[i] != "") i++
+                    }
+                    else -> {
+                        // Blank line or continuation; skip.
+                        i++
+                    }
+                }
+            }
+            return model
+        }
+
         /** Renders a block list to plain text. */
         fun render(blocks: List<Block>): String = buildString {
             for (block in blocks) {
