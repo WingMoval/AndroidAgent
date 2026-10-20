@@ -49,8 +49,10 @@ dependencies {
     // source tree required). Resolved from third_party/at-consumer-freeze-v1/m2.
     // See MANIFEST.md for provenance (source baseline c9cee21, SHA256 hashes).
     api("com.at.engine:at-engine:1.0.0")
+    api("com.at.backend.local:at-backend-local:1.0.0")
     api("com.at.backend.adb:at-backend-adb:1.0.0")
     api("com.adb.engine:adb-engine:1.0.0")
+    api("com.at.cli:at-cli:1.0.0")
 
     // forContext / Dispatchers.IO.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")

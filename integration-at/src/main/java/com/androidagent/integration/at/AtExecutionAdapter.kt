@@ -30,6 +30,11 @@ import com.adb.engine.AdbRuntime
 import com.adb.engine.AdbRuntimeState
 import com.at.backend.adb.AdbOneShotBackend
 import com.at.backend.adb.AdbPersistentBackend
+import com.at.backend.local.LocalOneShotBackend
+import com.at.backend.local.LocalPersistentBackend
+import com.at.cli.AdbCliBridgeServer
+import com.at.cli.ATCliExecution
+import com.at.cli.LocalCliBootstrap
 import com.at.engine.ATEngine
 import com.at.engine.ATExecutionRequest
 import com.at.engine.ATExecutionResult
@@ -79,6 +84,13 @@ class AtExecutionAdapter(
         ATEngine(
             oneShot = AdbOneShotBackend(placeholder),
             persistent = AdbPersistentBackend(placeholder),
+        )
+    }
+
+    private val localEngine: ATEngine by lazy {
+        ATEngine(
+            oneShot = LocalOneShotBackend(),
+            persistent = LocalPersistentBackend(),
         )
     }
 
@@ -163,6 +175,80 @@ class AtExecutionAdapter(
             bootstrap.pair(host, port, code)
         }
 
+    // ---- AT CLI bridge (shell-visible adb) ----------------------------------
+
+    private val cliBridge: AdbCliBridgeServer by lazy {
+        AdbCliBridgeServer(File(appContext.filesDir, "cli-bridge"), cliExecution)
+    }
+
+    /** Start the CLI bridge (idempotent). */
+    fun startCliBridge(): Boolean = cliBridge.start()
+
+    /** Stop the CLI bridge. */
+    fun stopCliBridge() = cliBridge.stop()
+
+    /** Whether the CLI bridge is running. */
+    fun cliBridgeRunning(): Boolean = cliBridge.isRunning()
+
+    /** The CLI bridge UDS socket path. */
+    val cliBridgeSocketPath: String get() = cliBridge.socketPath
+
+    /** The host's shell-visible `adb` function bootstrap. */
+    val cliBootstrap: LocalCliBootstrap by lazy {
+        LocalCliBootstrap(CLI_MAIN_CLASS)
+    }
+
+    /** The host's base.apk absolute path (for the `adb` shell function). */
+    val appApkPath: String
+        get() = appContext.applicationInfo.sourceDir
+
+    /**
+     * Write the per-session CLI bootstrap script and return the source line
+     * to inject into a Local PTY session.
+     */
+    fun writeCliBootstrapScript(sessionId: Int): String {
+        val scriptPath = File(appContext.filesDir, "at-cli/adb_bootstrap_$sessionId.sh").apply {
+            parentFile?.mkdirs()
+        }.absolutePath
+        cliBootstrap.writeScript(scriptPath, appApkPath, cliBridgeSocketPath, sessionId)
+        return cliBootstrap.sourceLine(scriptPath)
+    }
+
+    /** Forward a Local session resize to the inner Remote PTY (if active). */
+    fun relayInteractiveResize(sessionId: Int, rows: Int, cols: Int) {
+        cliBridge.relayInteractiveResize(sessionId, rows, cols)
+    }
+
+    private val cliExecution = object : ATCliExecution {
+        override fun adbEngine(): ATEngine = adbEngine
+
+        override fun ensureReady(sessionId: Int, onStatusLine: (String) -> Unit): Boolean {
+            if (AdbRuntime.readinessState().isReady) {
+                onStatusLine("connected")
+                return true
+            }
+            val bs = bootstrap
+            if (!bs.hasIdentity()) {
+                onStatusLine("pairing required: no ADB identity found")
+                onStatusLine(
+                    "open Settings -> Wireless Debugging -> Pair device with pairing code, " +
+                        "then run: adb pair <host>:<port> <code>"
+                )
+                return false
+            }
+            initializeAdb()
+            val finalState = AdbRuntime.ensureReady(identityDir()) { line ->
+                onStatusLine(line)
+            }
+            if (finalState != AdbRuntimeState.READY) {
+                onStatusLine("not connected (identity present)")
+            }
+            return finalState == AdbRuntimeState.READY
+        }
+
+        override fun adbIdentityDir(): String = identityDir()
+    }
+
     // ---- One-shot execution -------------------------------------------------
 
     /**
@@ -174,6 +260,15 @@ class AtExecutionAdapter(
     suspend fun executeAdb(command: String, timeoutMs: Int = 0): ATExecutionResult =
         withContext(Dispatchers.IO) {
             adbEngine.execute(ATExecutionRequest(command, timeoutMs))
+        }
+
+    /**
+     * Execute one command via the Local backend (one-shot).
+     * Spawns /system/bin/sh -c (app UID; does NOT require ADB).
+     */
+    suspend fun executeLocal(command: String, timeoutMs: Int = 0): ATExecutionResult =
+        withContext(Dispatchers.IO) {
+            localEngine.execute(ATExecutionRequest(command, timeoutMs))
         }
 
     // ---- Persistent session -------------------------------------------------
@@ -195,6 +290,26 @@ class AtExecutionAdapter(
             is ATOpenSessionResult.Success -> result.session
             is ATOpenSessionResult.Failure -> {
                 android.util.Log.w("AtExecutionAdapter", "openAdbSession failed: ${result.reason}")
+                null
+            }
+        }
+    }
+
+    /**
+     * Open a persistent Local terminal session (Local PTY → /system/bin/sh -i).
+     * Does NOT require ADB / Wireless Debugging / AdbRuntime READY.
+     */
+    suspend fun openLocalSession(
+        command: String = "/system/bin/sh",
+        initialRows: Int = 24,
+        initialCols: Int = 80,
+    ): ATTerminalSession? = withContext(Dispatchers.IO) {
+        when (val result = localEngine.openSession(
+            ATPersistentBackend.Launch(command, initialRows, initialCols)
+        )) {
+            is ATOpenSessionResult.Success -> result.session
+            is ATOpenSessionResult.Failure -> {
+                android.util.Log.w("AtExecutionAdapter", "openLocalSession failed: ${result.reason}")
                 null
             }
         }
@@ -247,5 +362,8 @@ class AtExecutionAdapter(
          * On first use it is empty → PAIRING_REQUIRED.
          */
         const val DEFAULT_IDENTITY_DIR: String = "at-consumer/identity"
+
+        /** The :at-cli AtCliMain entrypoint (shared in the AAR; loaded via app_process). */
+        const val CLI_MAIN_CLASS: String = "com.at.cli.AtCliMain"
     }
 }

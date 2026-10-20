@@ -83,6 +83,11 @@ class ChatCompositionRoot(
         // (filesDir/agent/); FileTool scopes all access to it. No new manifest
         // permission (app-specific dir needs none); no SAF / AT / write capability.
         toolRegistry.register(FileToolImpl(File(applicationContext.filesDir, "agent")))
+
+        // AG.AT-FULL-CONSUMER-INTEGRATION-0: start the AT CLI bridge (same-UID
+        // UDS). The bridge is a thin frontend over the adapter's shared AdbRuntime
+        // composition. Idempotent; process-local.
+        shell.adapter.startCliBridge()
     }
 
     /**

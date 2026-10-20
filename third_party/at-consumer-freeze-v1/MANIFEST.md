@@ -28,10 +28,23 @@ adb-engine.aar
   module  = :adb-engine
   native  = lib/arm64-v8a/libadbd_engine.so (2876224 B)
 
+at-backend-local.aar
+  size    = 117576 B
+  sha256  = E0CED86923BDE53A7E09305861632E0A6048289DA47CCE5B398A55F584492D6C
+  module  = :at-backend-local
+  native  = lib/arm64-v8a/libat_local_backend.so
+
+at-cli.aar
+  size    = 168777 B
+  sha256  = 5CC456AE82252FA9D34545B32A86E1BDF3EEE59087AF3D5B951397AF30E7F24D
+  module  = :at-cli
+  native  = lib/arm64-v8a/libatcli_env.so
+
 PROVENANCE:
   Built from AT V3 source at exact commit c9cee21 (detached worktree).
   Gradle: :at-engine:assembleRelease :at-backend-adb:assembleRelease :adb-engine:assembleRelease
-  No AT source modifications. No :app dependency. No :at-cli included.
+          :at-backend-local:assembleRelease :at-cli:assembleRelease
+  No AT source modifications. No :app dependency.
 
 NOT A RELEASE:
   This is a vendored consumer snapshot for AG V2 integration.
