@@ -11,29 +11,42 @@
 
 ## 1. Executive Verdict
 
-**当前 AG V2 未满足 Full Current AT V3 Consumer Integration（8 条中满足 4 条）。**
+**当前 AG V2 未满足 Full Current AT V3 Consumer Integration（8 条中满足 5 条）。**
 
 ```text
 CURRENT_AG_FULL_CURRENT_AT_V3_CONSUMER_INTEGRATION = NO
-FULL_INTEGRATION_REQUIREMENTS_SATISFIED = 4/8
+FULL_INTEGRATION_REQUIREMENTS_SATISFIED = 5/8
 ```
 
-满足的 4 条：
+满足的 5 条：
 - **3. ADB one-shot CALLABLE_BY_HOST** — PASS
+- **4. ADB persistent CALLABLE_BY_HOST** — PASS（L5；PRODUCT_EXPOSED = NO；MODEL_VISIBLE = NO）
 - **6. Bootstrap CALLABLE_BY_HOST** — PASS
 - **7. identity owned correctly** — PASS
 - **8. AdbRuntime lifecycle correctly owned** — PASS
 
-缺失的 4 条：
+缺失的 3 条：
 
 | # | Clause | Gap Classification |
 |---|--------|--------------------|
-| 1 | Local one-shot CALLABLE_BY_HOST | MISSING_ARTIFACT + MISSING_DEPENDENCY + MISSING_WIRING |
-| 2 | Local persistent CALLABLE_BY_HOST | MISSING_ARTIFACT + MISSING_DEPENDENCY + MISSING_WIRING |
-| 4 | ADB persistent CALLABLE_BY_HOST | PRESENT_BUT_NOT_CALLABLE（artifact+wiring 存在，adapter 暴露 openAdbSession 但无 model-visible tool） |
-| 5 | AT CLI embedded WIRED_IN_COMPOSITION | MISSING_ARTIFACT + MISSING_DEPENDENCY + MISSING_WIRING（完全不存在） |
+| 1 | Local one-shot CALLABLE_BY_HOST | MISSING_ARTIFACT + MISSING_DEPENDENCY + MISSING_WIRING + REMOVED_DURING_MIGRATION |
+| 2 | Local persistent CALLABLE_BY_HOST | MISSING_ARTIFACT + MISSING_DEPENDENCY + MISSING_WIRING + REMOVED_DURING_MIGRATION |
+| 5 | AT CLI embedded WIRED_IN_COMPOSITION | MISSING_ARTIFACT + MISSING_DEPENDENCY + MISSING_WIRING（HISTORICAL_STATUS = NEVER_CONSUMED_BY_AG） |
 
-**PRIMARY_ROOT_CAUSE = INTENTIONAL_PRODUCT_SCOPE_REDUCTION**
+**Root Cause Summary**：
+
+```text
+CAPABILITY_SURFACE_NARROWED_DURING_MIGRATION = YES
+
+LOCAL_CAPABILITY_SURFACE_REDUCTION_ROOT_CAUSE =
+INTENTIONAL_PRODUCT_SCOPE_REDUCTION
+（Clauses 1/2: commit 22e3f28 明确移除 :at-backend-local + localEngine + executeLocal + openLocalSession）
+
+CURRENT_FULL_INTEGRATION_GAP_ROOT_CAUSE =
+MULTIPLE_CAUSES
+（Clauses 1/2: intentionally removed at 22e3f28;
+  Clause 5: AT CLI never integrated into AG）
+```
 
 直接因果证据存在于 commit `22e3f28` 的 diff 中（见 §16）。
 
@@ -274,18 +287,18 @@ These two effects occurred in the SAME commit (22e3f28) but are separable decisi
 
 | Capability | AT Available | Reference Host Wired | Hist AG Pkg | Hist AG Wired | Hist AG Callable | Current AG Pkg | Current AG Wired | Current AG Callable | Product Exposed | Model Visible | Gap Classification |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Local one-shot | YES | NO | YES | YES | YES | **NO** | **NO** | **NO** | NO | NO | MISSING_ARTIFACT + REMOVED_DURING_MIGRATION |
-| Local persistent PTY | YES | YES | YES | YES | YES | **NO** | **NO** | **NO** | NO | NO | MISSING_ARTIFACT + REMOVED_DURING_MIGRATION |
+| Local one-shot | YES | NO | YES | YES | YES | **NO** | **NO** | **NO** | NO | NO | MISSING_ARTIFACT + MISSING_DEPENDENCY + MISSING_WIRING + REMOVED_DURING_MIGRATION |
+| Local persistent PTY | YES | YES | YES | YES | YES | **NO** | **NO** | **NO** | NO | NO | MISSING_ARTIFACT + MISSING_DEPENDENCY + MISSING_WIRING + REMOVED_DURING_MIGRATION |
 | Local raw I/O | YES | YES | YES | YES | YES | **NO** | **NO** | **NO** | NO | NO | MISSING_ARTIFACT (follows persistent) |
 | Local Ctrl-C | YES | YES | YES | YES | YES | **NO** | **NO** | **NO** | NO | NO | MISSING_ARTIFACT (follows persistent) |
 | Local resize | YES | YES | YES | YES | YES | **NO** | **NO** | **NO** | NO | NO | MISSING_ARTIFACT (follows persistent) |
 | ADB one-shot | YES | YES | YES | YES | YES | YES | YES | YES | YES | **YES** | NONE |
-| ADB persistent PTY | YES | YES | YES | YES | YES | YES | YES | YES* | NO | NO | PRESENT_BUT_NOT_PRODUCT_EXPOSED |
-| ADB stdin | YES | YES | YES | YES | YES | YES | YES | YES* | NO | NO | PRESENT_BUT_NOT_PRODUCT_EXPOSED |
-| ADB Ctrl-C | YES | YES | YES | YES | YES | YES | YES | YES* | NO | NO | PRESENT_BUT_NOT_PRODUCT_EXPOSED |
-| ADB resize | YES | YES | YES | YES | YES | YES | YES | YES* | NO | NO | PRESENT_BUT_NOT_PRODUCT_EXPOSED |
-| ADB multi-session | YES | YES | YES | YES | YES | YES | YES | YES* | NO | NO | PRESENT_BUT_NOT_PRODUCT_EXPOSED |
-| AT CLI (shell-visible adb) | YES | YES | NO | NO | NO | **NO** | **NO** | **NO** | NO | NO | MISSING_ARTIFACT + MISSING_WIRING (never was) |
+| ADB persistent PTY | YES | YES | YES | YES | YES | YES | YES | YES* | NO | NO | NONE (L1-L5 complete; L6/L7 = product policy) |
+| ADB stdin | YES | YES | YES | YES | YES | YES | YES | YES* | NO | NO | NONE (L1-L5 complete; L6/L7 = product policy) |
+| ADB Ctrl-C | YES | YES | YES | YES | YES | YES | YES | YES* | NO | NO | NONE (L1-L5 complete; L6/L7 = product policy) |
+| ADB resize | YES | YES | YES | YES | YES | YES | YES | YES* | NO | NO | NONE (L1-L5 complete; L6/L7 = product policy) |
+| ADB multi-session | YES | YES | YES | YES | YES | YES | YES | YES* | NO | NO | NONE (L1-L5 complete; L6/L7 = product policy) |
+| AT CLI (shell-visible adb) | YES | YES | NO | NO | NO | **NO** | **NO** | **NO** | NO | NO | MISSING_ARTIFACT + MISSING_DEPENDENCY + MISSING_WIRING (HISTORICAL_STATUS = NEVER_CONSUMED_BY_AG) |
 | adb shell one-shot (via CLI) | YES | YES | NO | NO | NO | NO | NO | NO | NO | NO | MISSING_ARTIFACT (follows CLI) |
 | adb shell interactive (via CLI) | YES | YES | NO | NO | NO | NO | NO | NO | NO | NO | MISSING_ARTIFACT (follows CLI) |
 | adb pair host:port code | YES | YES | NO | NO | NO | YES** | YES** | YES** | YES (Pair button) | NO | NONE (via bootstrap) |
@@ -298,7 +311,8 @@ These two effects occurred in the SAME commit (22e3f28) but are separable decisi
 | Transport-loss semantics | YES | YES | YES | YES | YES | YES | YES | YES | — | — | NONE |
 
 \* "Callable" at L5 (adapter exposes openAdbSession + write/read/resize/Ctrl-C/close).
-  NOT callable at L6/L7 (no product tool exposes persistent terminal to user or model).
+  L6/L7 (Product Exposed / Model Visible) = NO; this is consumer product policy,
+  NOT an AT integration gap. Per AT audit §18, L6/L7 are outside the 8-clause definition.
 
 \** Via AdbConsumerBootstrap (added in 22e3f28; not present in 1410d5f adapter).
 
@@ -315,7 +329,7 @@ These two effects occurred in the SAME commit (22e3f28) but are separable decisi
 
 ```text
 CURRENT_AG_FULL_CURRENT_AT_V3_CONSUMER_INTEGRATION = NO
-FULL_INTEGRATION_REQUIREMENTS_SATISFIED = 4/8
+FULL_INTEGRATION_REQUIREMENTS_SATISFIED = 5/8
 ```
 
 | # | Clause | Verdict |
@@ -323,17 +337,16 @@ FULL_INTEGRATION_REQUIREMENTS_SATISFIED = 4/8
 | 1 | Local one-shot CALLABLE_BY_HOST | **FAIL** (no artifact, no wiring) |
 | 2 | Local persistent CALLABLE_BY_HOST | **FAIL** (no artifact, no wiring) |
 | 3 | ADB one-shot CALLABLE_BY_HOST | **PASS** |
-| 4 | ADB persistent CALLABLE_BY_HOST | **PASS** (adapter exposes openAdbSession + full session API) |
-| 5 | AT CLI embedded WIRED_IN_COMPOSITION | **FAIL** (no artifact, no implementation) |
+| 4 | ADB persistent CALLABLE_BY_HOST | **PASS** (L5; adapter exposes openAdbSession + full session API) |
+| 5 | AT CLI embedded WIRED_IN_COMPOSITION | **FAIL** (no artifact, no implementation; never consumed by AG) |
 | 6 | Bootstrap CALLABLE_BY_HOST | **PASS** |
 | 7 | identity owned correctly | **PASS** (app-private, self-generated, no copy) |
 | 8 | AdbRuntime lifecycle correctly owned | **PASS** (unique owner, no second recovery) |
 
-**Correction**: Clause 4 (ADB persistent) IS callable at L5 — the adapter exposes
+Clause 4 (ADB persistent) is **PASS** at L5 `CALLABLE_BY_HOST` — the adapter exposes
 `openAdbSession()` returning `ATTerminalSession` with full write/read/resize/Ctrl-C/close
-surface. The gap is at L6/L7 (no product tool / model tool exposes it), which is
-consumer product policy, NOT an AT integration failure. Per AT audit §18, L6/L7 are
-explicitly NOT part of the 8-clause definition. **Clause 4 = PASS.**
+surface. PRODUCT_EXPOSED = NO and MODEL_VISIBLE = NO; these are consumer product policy
+(L6/L7) and are explicitly NOT part of the 8-clause AT integration definition (AT audit §18).
 
 **MISSING_FULL_INTEGRATION_CLAUSES = 1, 2, 5**
 
@@ -403,7 +416,12 @@ api("com.adb.engine:adb-engine:1.0.0")
 
 ```text
 ROOT_CAUSE_CAUSAL_EVIDENCE = PRESENT
-PRIMARY_ROOT_CAUSE = INTENTIONAL_PRODUCT_SCOPE_REDUCTION
+
+LOCAL_CAPABILITY_SURFACE_REDUCTION_ROOT_CAUSE =
+INTENTIONAL_PRODUCT_SCOPE_REDUCTION
+
+CURRENT_FULL_INTEGRATION_GAP_ROOT_CAUSE =
+MULTIPLE_CAUSES
 ```
 
 The migration simultaneously:
@@ -414,6 +432,10 @@ The migration simultaneously:
 These are three separable decisions in one commit. The Local removal is explicitly
 justified in the commit message as a product scope choice ("not needed for one-shot"),
 not a packaging limitation.
+
+**Clause 5 (AT CLI) is NOT caused by 22e3f28**: AT CLI was never consumed by AG in
+either 1410d5f or 22e3f28. It is a current AT capability available to consumer but
+never integrated into AG so far.
 
 **Secondary observation**: The vendored AAR set (3 AARs) is a SUBSET of the AT
 REQUIRED_RAW_AAR_SET (5 AARs). If AG wanted to restore Local, it would need to vendor
@@ -448,33 +470,47 @@ SSOT_NORMALIZATION_PERFORMED = NO (deferred per §64-65 of task spec)
 Based on evidence:
 
 ```text
-RECOMMENDED_NEXT = D (NEEDS_CONTROLLER_DECISION)
+RECOMMENDED_NEXT =
+AG.AT-FULL-CONSUMER-INTEGRATION-0
+(subject to Controller authorization)
 ```
 
-Reasoning:
-- The capability surface reduction was INTENTIONAL (product scope: one-shot only).
+目标描述：
+
+```text
+restore / integrate missing clauses:
+
+1 Local one-shot
+2 Local persistent
+5 AT CLI
+
+preserve existing clauses:
+
+3 ADB one-shot
+4 ADB persistent
+6 Bootstrap
+7 Identity
+8 AdbRuntime
+```
+
+Scope notes:
 - Restoring Local requires: vendor at-backend-local.aar + add dep + restore adapter surface.
-  Technically straightforward but is a PRODUCT POLICY decision (does AG want Local execution?).
+  Technically straightforward; is a PRODUCT POLICY decision.
 - AT CLI requires: vendor at-cli.aar + implement ATCliExecution + start bridge + provision
-  LocalCliBootstrap. Substantially more host obligation. Also product policy.
-- The SSOT contradictions (S1-S7) are factual errors that should be corrected, but
-  the task spec (§64) defers SSOT normalization to a separate step.
+  LocalCliBootstrap. Substantially more host obligation.
+- The SSOT contradictions (S1-S7) remain deferred to a separate normalization step.
+- This step does NOT define android_shell default, does NOT remove direct ADB,
+  does NOT make persistent terminal model-visible. Those are AG Tool Policy decisions.
 
-**Candidate options** (for Controller decision):
-- A. `AG.AT-FULL-CONSUMER-INTEGRATION-0` — restore Local + (optionally) CLI
-- B. `AT.ARTIFACT-BUNDLE-0` — only if formal AT bundle is the blocker (it is not; AG can vendor)
-- C. `AG.AT-CONSUMER-SSOT-NORMALIZATION` — fix S1-S7 (docs only)
-- D. `NEEDS_CONTROLLER_DECISION` — whether current 4/8 is the intended target or a gap to close
-
-The audit does NOT recommend any of these automatically.
+The audit does NOT authorize implementation. Awaiting Controller authorization.
 
 ---
 
 ## 19. Controller Decision Points
 
-1. **Is 4/8 Full Current Integration the intended target for AG V2's current phase?**
-   If YES → the 4 missing clauses are PRODUCT POLICY, not defects.
-   If NO → which clauses to restore? (Local? CLI? Both?)
+1. **Is 5/8 Full Current Integration the intended target for AG V2's current phase?**
+   If YES → the 3 missing clauses (1, 2, 5) are PRODUCT POLICY, not defects.
+   If NO → authorize `AG.AT-FULL-CONSUMER-INTEGRATION-0` to restore them.
 
 2. **Local execution for AG**: Does the AG product need Local one-shot/persistent?
    (Current model tool is ADB one-shot only. Local would be an ALTERNATIVE execution path.)
