@@ -107,7 +107,14 @@ class DebugBridge(
      */
     val streamSink: ModelStreamObserver = DebugStreamObserver(this)
 
-    /** Starts the listener. Returns true when this call is now listening. */
+    /**
+     * Starts the listener. Returns true when this call is now listening.
+     *
+     * AG.AT-FULL-SUBSYSTEM-INTEGRATION-0: binds 0.0.0.0 (all interfaces) in
+     * debug builds so a PC on the same LAN can reach the bridge directly
+     * without ADB reverse (which is unreliable on some USB/OTG setups).
+     * This is a DEBUG-ONLY surface; release builds never create a DebugBridge.
+     */
     fun start(): Boolean {
         if (running) return true
         val ss = try {
@@ -115,16 +122,16 @@ class DebugBridge(
                 // SO_REUSEADDR: survive TIME_WAIT sockets left by a previous
                 // process/instance on the same port (instrumentation restarts).
                 reuseAddress = true
-                bind(InetSocketAddress("127.0.0.1", port))
+                bind(InetSocketAddress(port))
             }
         } catch (e: Exception) {
-            Log.w(TAG, "debug bridge failed to bind 127.0.0.1:$port: ${e.message}")
+            Log.w(TAG, "debug bridge failed to bind 0.0.0.0:$port: ${e.message}")
             return false
         }
         serverSocket = ss
         running = true
         acceptJob = bridgeScope.launch { acceptLoop(ss) }
-        Log.i(TAG, "debug bridge listening on 127.0.0.1:$port")
+        Log.i(TAG, "debug bridge listening on 0.0.0.0:$port")
         return true
     }
 
@@ -356,11 +363,18 @@ class DebugBridge(
             writer.send(DebugProtocol.error("adapter not wired (persistent session unavailable)"))
             return
         }
-        val session = if (backend.equals("adb", true)) {
-            adapter.openAdbSession()
-        } else {
-            writer.send(DebugProtocol.error("unknown backend: $backend (only 'adb' supported)"))
-            return
+        val session = when {
+            backend.equals("adb", true) -> adapter.openAdbSession()
+            backend.equals("local", true) -> adapter.openLocalSession()
+            backend.equals("local_cli", true) -> {
+                // AG.AT-FULL-SUBSYSTEM-INTEGRATION-0: Local PTY with AT CLI adb() frontend.
+                val cliId = sessionIds.incrementAndGet()
+                adapter.openBootstrappedLocalSession(cliSessionId = cliId)
+            }
+            else -> {
+                writer.send(DebugProtocol.error("unknown backend: $backend (use 'adb', 'local', or 'local_cli')"))
+                return
+            }
         }
         if (session == null) {
             writer.send(DebugProtocol.sessionOpenFailed(backend, "openSession returned null"))

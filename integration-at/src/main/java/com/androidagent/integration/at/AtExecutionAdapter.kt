@@ -178,11 +178,27 @@ class AtExecutionAdapter(
     // ---- AT CLI bridge (shell-visible adb) ----------------------------------
 
     private val cliBridge: AdbCliBridgeServer by lazy {
-        AdbCliBridgeServer(File(appContext.filesDir, "cli-bridge"), cliExecution)
+        val bridgeDir = File(appContext.filesDir, "cli-bridge")
+        bridgeDir.mkdirs()
+        AdbCliBridgeServer(bridgeDir, cliExecution)
     }
 
-    /** Start the CLI bridge (idempotent). */
-    fun startCliBridge(): Boolean = cliBridge.start()
+    /**
+     * Start the CLI bridge (idempotent).
+     *
+     * AG.AT-FULL-SUBSYSTEM-INTEGRATION-0: the result is observable. A
+     * `false` return means the bridge did NOT start; the reason is logged
+     * so the failure is not silently swallowed.
+     */
+    fun startCliBridge(): Boolean {
+        val ok = cliBridge.start()
+        if (ok) {
+            android.util.Log.i(TAG, "CLI bridge started: ${cliBridge.socketPath}")
+        } else {
+            android.util.Log.e(TAG, "CLI bridge FAILED to start: ${cliBridge.socketPath}")
+        }
+        return ok
+    }
 
     /** Stop the CLI bridge. */
     fun stopCliBridge() = cliBridge.stop()
@@ -309,9 +325,49 @@ class AtExecutionAdapter(
         )) {
             is ATOpenSessionResult.Success -> result.session
             is ATOpenSessionResult.Failure -> {
-                android.util.Log.w("AtExecutionAdapter", "openLocalSession failed: ${result.reason}")
+                android.util.Log.w(TAG, "openLocalSession failed: ${result.reason}")
                 null
             }
+        }
+    }
+
+    /**
+     * AG.AT-FULL-SUBSYSTEM-INTEGRATION-0: open a Local PTY session AND inject
+     * the AT CLI `adb()` shell frontend into it.
+     *
+     * This is the complete Local-CLI bootstrap chain:
+     *   openLocalSession → writeCliBootstrapScript → inject into same PTY.
+     *
+     * After this returns, the PTY's shell has an `adb` function that routes
+     * through the AT CLI → UDS bridge → AdbRuntime. The caller owns the
+     * returned session (must close it).
+     *
+     * [cliSessionId] is the identifier passed to [writeCliBootstrapScript]
+     * for per-session UDS routing. Use a unique value per session.
+     *
+     * @return the bootstrapped [ATTerminalSession], or null on failure.
+     */
+    suspend fun openBootstrappedLocalSession(
+        cliSessionId: Int,
+        initialRows: Int = 24,
+        initialCols: Int = 80,
+    ): ATTerminalSession? = withContext(Dispatchers.IO) {
+        val session = openLocalSession(initialRows = initialRows, initialCols = initialCols)
+            ?: return@withContext null
+        try {
+            val sourceLine = writeCliBootstrapScript(cliSessionId)
+            val injected = session.write((sourceLine + "\n").toByteArray(Charsets.UTF_8))
+            if (injected < 0) {
+                android.util.Log.e(TAG, "CLI bootstrap injection failed (write returned $injected)")
+                session.close(true)
+                return@withContext null
+            }
+            android.util.Log.i(TAG, "Local PTY bootstrapped with adb() frontend (cliSessionId=$cliSessionId)")
+            session
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "openBootstrappedLocalSession failed: ${e.message}", e)
+            session.close(true)
+            null
         }
     }
 
@@ -356,6 +412,8 @@ class AtExecutionAdapter(
     }
 
     companion object {
+        private const val TAG: String = "AtExecutionAdapter"
+
         /**
          * AG app-private identity directory (relative to filesDir).
          * This is the AG's OWN directory — never the AndroidTerminal app's.
