@@ -194,12 +194,23 @@ CLI_REUSE_READINESS = READY
 
 ## 11. Known Non-Blocking Debt
 
+Active non-blocking debt (still open):
+
 ```text
 M1. Host direct AT V4 composition imports (ChatCompositionRoot, CompositionAdbSemantic,
-    DebugBridge) — route through :integration-at in a future cleanup round.
-M2. AGENTS.md current-state section not yet synced with the TopicSession persistence line.
-M3. AgentRuntimeInterruptTest I11 = KNOWN TEST STABILITY DEBT (full-matrix flake).
-M4. 86 uncommitted worktree files — Git normalization is a separate authorized task.
+    DebugBridge) — DEFERRED NON-BLOCKING; route through :integration-at in a future
+    cleanup round.
+M3. AgentRuntimeInterruptTest I11 = KNOWN TEST STABILITY DEBT (full-matrix flake;
+    not a product blocker).
+```
+
+Closed during AG.POST-I-GIT-NORMALIZATION-CORE-FREEZE-1:
+
+```text
+M2. CLOSED — AGENTS.md current-state now synced with the TopicSession persistence
+    / freeze line.
+M4. CLOSED — worktree formally Git-frozen (PRE-UI core freeze commit + annotated tag
+    AG.POST-I-CORE-FREEZE-V1); worktree clean.
 ```
 
 ## 12. Frozen Decisions (summary — full list as authorized)

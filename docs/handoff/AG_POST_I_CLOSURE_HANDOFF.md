@@ -1,8 +1,21 @@
 # AG_POST_I_CLOSURE_HANDOFF — Handoff to the Next Phase (UI + Release Preparation)
 
 Quick-read handoff. History (Phases A-I, DEVICE-I) lives in
-`docs/implementation/AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0_FINAL.md` (§1-§20)
+`docs/implementation/AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0_FINAL.md` (§1-§22)
 — do not re-read it all; this file is the current-state pointer.
+
+## PRE-UI CORE FREEZE (current state)
+
+```text
+PRE_UI_CORE_FREEZE = COMPLETE
+FREEZE_NAME        = AG.POST-I-CORE-FREEZE-V1
+FREEZE_COMMIT      = f640ed07f655856888c11f3fb3575e6f84106f7c
+FREEZE_TAG         = AG.POST-I-CORE-FREEZE-V1 (annotated; immutable)
+TOPIC_SESSION_FOUNDATION = FROZEN
+AG_ENGINE_ARCHITECTURE   = FROZEN AT PRE-UI BASELINE
+FULL_USER_VISIBLE_RESUME = REAL_DEVICE_VERIFIED
+NEXT = UI + RELEASE PREPARATION
+```
 
 ## CURRENT ARCHITECTURE
 
@@ -46,8 +59,9 @@ Core <- concrete tools/providers <- Host composition; AT only via :integration-a
     FULL_USER_VISIBLE_RESUME = REAL_DEVICE_VERIFIED
     (kill/force-stop -> relaunch -> visible transcript restore -> continue;
      new session preserves old; 0 durable writes on restore; 0 model calls on restore)
-- Regression baseline (JUnit XML actuals): ag-core 52 / ag-runtime 88 / app 171 /
-  provider-jdk 26, 0 failures; assembleDebug PASS
+- Pre-UI freeze regression (JUnit XML actuals) = 557 tests / 0 failures; assembleDebug PASS:
+    ag-core 52 / ag-runtime 88 / provider-openai-compatible 59 / provider-openai-compatible-jdk 26 /
+    tool-android-shell 20 / tool-network 78 / tool-file 55 / integration-at 8 / app 171
 ```
 
 ## FROZEN BOUNDARIES
@@ -62,14 +76,20 @@ Key lines:
 - AG = Intelligence, AT = Execution; AT only via :integration-at
 - D1/D2/D3, controlled recovery, no auto-replay of unknown tool outcomes
 
-## KNOWN DEBT (non-blocking)
+## KNOWN DEBT
+
+Active non-blocking debt:
 
 ```text
-M1. Host direct AT V4 composition imports (3 files) — future cleanup via adapter
-M2. AGENTS.md current-state not yet synced with persistence line (doc sync)
+M1. Host direct AT V4 composition imports (3 files) — DEFERRED; future cleanup via adapter
 M3. AgentRuntimeInterruptTest I11 full-matrix flake (KNOWN TEST STABILITY DEBT)
-M4. 86 uncommitted worktree files (37 pre-existing modified + 46 untracked) —
-    Git normalization is a separate authorized task
+```
+
+Closed during AG.POST-I-GIT-NORMALIZATION-CORE-FREEZE-1:
+
+```text
+M2. CLOSED — AGENTS.md current-state synced with the persistence / freeze line
+M4. CLOSED — Git worktree normalized + Pre-UI freeze commit/tag created (worktree clean)
 ```
 
 ## DO NOT REOPEN (TopicSession persistence core)

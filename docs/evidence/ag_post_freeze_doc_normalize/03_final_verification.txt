@@ -1,0 +1,48 @@
+AG.POST-I-PRE-UI-DOC-NORMALIZE-1 — Final Verification
+
+Git verification (pre-commit):
+  git status --short       -> 7 M (docs+upload) + 1 D (upload) + 3 untracked (evidence/merged)
+  git diff --name-status   -> all docs/upload only
+  git diff --check         -> 6 lines (pre-existing CRLF warnings only)
+  SOURCE_CODE_CHANGED      = NO  (0 *.kt/*.java/*.kts/AndroidManifest/res/third_party)
+  TEST_CODE_CHANGED        = NO
+  GRADLE_CHANGED           = NO
+  UI_CHANGED               = NO
+
+Freeze tag guard:
+  git rev-parse "AG.POST-I-CORE-FREEZE-V1^{}" = f640ed07f655856888c11f3fb3575e6f84106f7c
+  FREEZE_TAG_MOVED = NO
+
+Upload snapshot parity (SHA256):
+  docs/freeze/...FREEZE-V1.md        == upload/AG.POST-I-ARCHITECTURE-FREEZE-V1.md        PASS
+  docs/handoff/...HANDOFF.md         == upload/AG_POST_I_CLOSURE_HANDOFF.md               PASS
+  docs/implementation/...FINAL.md    == upload/AG.TOPIC-SESSION-...-0_FINAL.md            PASS
+  UPLOAD_SNAPSHOT_PARITY = PASS
+
+Staging:
+  STAGED_TOTAL = 12 (5 ADDED + 6 MODIFIED + 1 DELETED + 0 RENAMED)
+  STAGED_SOURCE_FILES = 0
+  STAGED_TEST_FILES = 0
+  STAGED_GRADLE_FILES = 0
+  STAGED_DIFF_CHECK = PASS (pre-existing CRLF only)
+
+Live residue normalization:
+  R1 FREEZE_DOC_LIVE_DEBT_NORMALIZED = YES
+  R2 HANDOFF_LIVE_DEBT_NORMALIZED = YES
+  R3 IMPLEMENTATION_SECTION_11_NORMALIZED = YES
+  R4 SECTION_22_POST_TAG_NOTE_NORMALIZED = YES
+  TOP_STATUS_CURRENT = YES
+  HISTORICAL_REPORTS_PRESERVED = YES
+
+Debt final state:
+  M1_HOST_AT_IMPORT = DEFERRED NON-BLOCKING
+  M2_AGENTS_DOC_SYNC = CLOSED
+  M3_I11_FLAKE = KNOWN NON-BLOCKING DEBT
+  M4_DIRTY_WORKTREE = CLOSED
+  ACTIVE_NON_BLOCKING_DEBT = M1, M3
+  CLOSED_DEBT = M2, M4
+
+Regression / device:
+  FULL_GRADLE_REGRESSION_RERUN = NOT_REQUIRED (DOCS_ONLY)
+  DEVICE_RETEST = NOT_REQUIRED
+  (freeze baseline 557 tests / 0 failures + assembleDebug PASS stands)

@@ -1,6 +1,6 @@
 # AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0 PROGRESS REPORT
 
-**STATUS: Phase A/B/C/D/E/F COMPLETED, 0F.NORMALIZE-1/1B COMPLETED, 0G.BLOCKER-FIX-1 + NORMALIZE-1 COMPLETED, Phase G COMPLETED, Phase H MERGED INTO G / COMPLETED, Phase I COMPLETED, DEVICE-I VERIFIED (FULL_USER_VISIBLE_RESUME = REAL_DEVICE_VERIFIED), POST-I ARCHITECTURE CLOSURE = PASS (§21; TOPIC_SESSION_FOUNDATION = FROZEN — docs/freeze/AG.POST-I-ARCHITECTURE-FREEZE-V1.md; NEXT = UI + RELEASE PREPARATION)**
+**STATUS: Phase A/B/C/D/E/F COMPLETED, 0F.NORMALIZE-1/1B COMPLETED, 0G.BLOCKER-FIX-1 + NORMALIZE-1 COMPLETED, Phase G COMPLETED, Phase H MERGED INTO G / COMPLETED, Phase I COMPLETED, DEVICE-I VERIFIED (FULL_USER_VISIBLE_RESUME = REAL_DEVICE_VERIFIED), POST-I ARCHITECTURE CLOSURE = PASS (§21), TOPIC_SESSION_FOUNDATION = FROZEN, PRE-UI CORE GIT FREEZE = COMPLETE (§22; FREEZE_NAME = AG.POST-I-CORE-FREEZE-V1, FREEZE_TAG = AG.POST-I-CORE-FREEZE-V1, docs/freeze/AG.POST-I-ARCHITECTURE-FREEZE-V1.md); NEXT = UI + RELEASE PREPARATION**
 
 ## 1. Baseline
 
@@ -365,23 +365,31 @@ PUSH = NO
 
 ## 11. Recommended Next
 
-**TopicSession persistence subsystem = CLOSED / FREEZE CANDIDATE** (device verification completed, see §20; this section's original "device verification PENDING" wording is superseded).
+**TopicSession persistence subsystem = FROZEN** (device verification completed §20; POST-I architecture closure PASS §21; Pre-UI core Git freeze COMPLETE §22). This section is the live current-state pointer; the original "device verification PENDING" / "FREEZE CANDIDATE" / "POST-I closure audit" wording is superseded by §20/§21/§22.
 
 Current durable/user-visible state:
-- TOPIC_SESSION_PERSISTENCE = CLOSED / FREEZE CANDIDATE
+- TOPIC_SESSION_PERSISTENCE = FROZEN
+- TOPIC_SESSION_FOUNDATION = FROZEN
 - Phase F = CLOSED
 - Phase G = CLOSED
 - Phase H = MERGED INTO G / CLOSED
 - Phase I = CLOSED
 - DEVICE-I = VERIFIED (§20)
+- POST_I_ARCHITECTURE_CLOSURE = PASS (§21)
+- PRE_UI_CORE_GIT_FREEZE = COMPLETE (§22)
+- FREEZE_NAME = AG.POST-I-CORE-FREEZE-V1
 - `DURABLE_RUNTIME_RESUME = PASS`
 - `TRANSCRIPT_REPROJECTION = PASS`
 - `FULL_USER_VISIBLE_RESUME = REAL_DEVICE_VERIFIED` (§20)
 
 NEXT:
-- POST-I ARCHITECTURE / IMPLEMENTATION CLOSURE AUDIT (module inventory, Gradle physical dependency graph, package import audit, Core/Runtime boundary, Tool/Provider inversion, persistence freeze audit)
-  - if PASS: UI + RELEASE PREPARATION
-  - if BLOCKED: separate minimal-fix round before any freeze
+- UI + RELEASE PREPARATION
+
+NOT NEXT (already completed — do not re-open):
+- more persistence work
+- POST-I architecture / implementation closure audit (done, §21)
+- device verification (done, §20)
+- Git normalization / freeze (done, §22)
 
 Known test-stability note:
 - `AgentRuntimeInterruptTest I11` has pre-existing flakiness under full-matrix parallel load and passes in isolation; treat it as KNOWN TEST STABILITY DEBT (not a product blocker) unless a reproducible focused regression shows contrary evidence.
@@ -1990,11 +1998,13 @@ PHYSICAL_ISOLATION = EFFECTIVE
 
 RELEASE_BLOCKERS = NONE
 ARCHITECTURE_BLOCKERS = NONE
-MINOR_DEBT =
+MINOR_DEBT (at time of POST-I closure round) =
   M1 Host direct AT V4 composition imports (3 main files) — future adapter routing
   M2 AGENTS.md current-state not yet synced with persistence line (doc sync)
   M3 AgentRuntimeInterruptTest I11 full-matrix flake (KNOWN TEST STABILITY DEBT)
   M4 86 uncommitted worktree files (Git normalization = separate authorized task)
+  [NOTE: M2 and M4 were subsequently CLOSED by AG.POST-I-GIT-NORMALIZATION-CORE-FREEZE-1
+   (§22); only M1 and M3 remain active non-blocking debt. See freeze doc §11.]
 FUTURE_DESIGN = session browser UI, naming, retention, cloud sync, provider fallback,
   AT tool catalog, CLI syntax, final UI visual style (explicitly NOT frozen)
 
@@ -2038,3 +2048,134 @@ TAG = NO
 PUSH = NO
 STOP = YES
 ```
+
+---
+
+## §22 POST-I GIT NORMALIZATION + CORE FREEZE FINAL REPORT
+
+```text
+AG.POST-I-GIT-NORMALIZATION-CORE-FREEZE-1 FINAL REPORT
+
+START_HEAD = a6eea61dc209898a01cd0e7f2e82304fff7ed9d4
+FREEZE_COMMIT = f640ed07f655856888c11f3fb3575e6f84106f7c
+BRANCH = main
+
+DIRTY_START = 85 porcelain lines (37 modified + 4 deleted + 44 untracked-collapsed;
+             88 untracked files when directories expanded)
+DIRTY_END = 0 (worktree CLEAN after freeze commit)
+
+TRACKED_MODIFIED_CLASSIFIED = YES (37 -> Phase A-I / AG.V2-2 / RUN-CONTROL / provider hardening)
+UNTRACKED_CLASSIFIED = YES (88 files -> A/B/C/D)
+UNKNOWN_FILES = 0
+
+SECRET_SCAN = PASS (REAL_CREDENTIAL_FOUND = NO; all hits = false positive /
+  synthetic test value / safe fixture / documentation text)
+PRIVACY_AUDIT = PASS
+DEVICE_IDENTIFIER_POLICY = PRIVATE_REPO_RETAINED (no remote; internal real-device
+  evidence, not credentials; redaction deferred to a future public-repo normalization)
+
+PROVIDER_LOCAL_FIXTURE_DECISION = COMMIT (repo-portable: 127.0.0.1:18080 + "fixture-key",
+  non-secret, no personal endpoint/token/absolute path)
+
+BUILD_ARTIFACTS_STAGED = 0
+MACHINE_LOCAL_FILES_STAGED = 0
+AT_V4_VENDORED_BUILD_INPUT = COMMITTED (third_party/at-v4-consumer-freeze-v1/, 15 files:
+  MANIFEST + 14 AAR/POM; no cache/temp/junk)
+CLEAN_CLONE_BUILD_INPUT_COMPLETE = YES
+
+M1_HOST_AT_IMPORT = DEFERRED NON-BLOCKING (3 Host files preserved, not modified)
+M2_AGENTS_DOC_SYNC = CLOSED (AGENTS.md current-state TopicSession FROZEN line added)
+M3_I11_FLAKE = KNOWN_NON_BLOCKING_DEBT (not reproduced in either full regression)
+M4_DIRTY_WORKTREE = CLOSED (this freeze commit)
+
+AG_CORE_PHYSICAL_ISOLATION = PASS
+AG_RUNTIME_PHYSICAL_ISOLATION = PASS
+TOOL_LAYER_PHYSICAL_ISOLATION = PASS
+PROVIDER_PHYSICAL_ISOLATION = PASS
+PERSISTENCE_PHYSICAL_ISOLATION = PASS
+CORE_RUNTIME_BOUNDARY = CLEAN
+TOOL_DEPENDENCY_INVERSION = PASS
+MODEL_PROVIDER_DEPENDENCY_INVERSION = PASS
+
+AG_CORE_TESTS = 52 (PASS)
+AG_RUNTIME_TESTS = 88 (PASS)
+PROVIDER_CORE_TESTS = 59 (PASS)
+PROVIDER_JDK_TESTS = 26 (PASS)
+TOOL_ANDROID_SHELL_TESTS = 20 (PASS)
+TOOL_NETWORK_TESTS = 78 (PASS)
+TOOL_FILE_TESTS = 55 (PASS)
+INTEGRATION_AT_TESTS = 8 (PASS)
+APP_TESTS = 171 (PASS)
+GRAND_TOTAL = 557 tests, 0 failures (JUnit XML actuals; pre-staging run + final pre-commit run,
+  both fresh --rerun-tasks)
+ASSEMBLE_DEBUG = PASS
+
+PRODUCTION_SEMANTICS_CHANGED = NO
+ARCHITECTURE_CHANGED = NO
+DATABASE_CHANGED = NO
+UI_CHANGED = NO
+
+TOPIC_SESSION_FOUNDATION = FROZEN
+AG_ENGINE_ARCHITECTURE = FROZEN AT PRE-UI BASELINE
+
+FREEZE_NAME = AG.POST-I-CORE-FREEZE-V1
+FREEZE_TYPE = PRE_UI_GIT_FREEZE
+FREEZE_COMMIT = f640ed07f655856888c11f3fb3575e6f84106f7c
+FREEZE_TAG = AG.POST-I-CORE-FREEZE-V1 (annotated)
+TAG_TARGET = f640ed07f655856888c11f3fb3575e6f84106f7c
+TAG_TARGET_MATCHES_HEAD = YES (resolved via `git rev-parse AG.POST-I-CORE-FREEZE-V1^{}`)
+
+WORKTREE_CLEAN = YES (git status --short = 0 lines)
+STAGED_FILE_COUNT = 136 (95 ADDED + 37 MODIFIED + 4 DELETED + 0 RENAMED)
+STAGED_DIFF_CHECK = PASS (only pre-existing doc whitespace warnings; no credentials,
+  no build outputs, no accidental format churn, no unrelated work, no accidental deletion)
+UNSTAGED_PROJECT_CHANGES_AT_COMMIT_TIME = 0
+
+FINAL_UI_FROZEN = NO
+FINAL_RELEASE_CREATED = NO
+
+NEXT = UI + RELEASE PREPARATION
+  (UI may modify Host/Product/Presentation/Android resources/UI state/visual/settings UX/
+   tool-call + loading/running/error presentation. Must NOT silently modify ag-core,
+   ag-runtime, TopicSession persistence invariants, D1/D2/D3, DB schema, Core/Runtime
+   dependency boundaries, Tool/Provider inversion, or the AG/AT frozen boundary — any such
+   need = FREEZE_REOPEN_REQUIRED, separate task.)
+
+AFTER UI / RELEASE BASELINE:
+  return to AG MAINLINE capability development (Agent Loop capability, Model/Provider
+  lifecycle, Tool Layer expansion, Android execution integration with AT, Context/Skill/
+  planning, APK + future CLI productization) — NOT more persistence work.
+
+PASS GATE (all satisfied):
+  ALL_DIRTY_FILES_CLASSIFIED / ALL_TRACKED_MODIFICATIONS_ACCOUNTED_FOR / UNKNOWN_FILES=0
+  SECRET_SCAN=PASS / PRIVACY_AUDIT=PASS / BUILD_ARTIFACTS_STAGED=0 / MACHINE_LOCAL=0
+  M2=CLOSED / M1=DEFERRED / M3=KNOWN_NON_BLOCKING / M4=CLOSED
+  PHYSICAL_ISOLATION_GUARD=PASS / CORE_RUNTIME_BOUNDARY=CLEAN
+  TOPIC_SESSION_FOUNDATION=FROZEN / FULL_MODULE_REGRESSION=PASS / ASSEMBLE_DEBUG=PASS
+  PRODUCTION_SEMANTICS_CHANGED=NO / ARCHITECTURE_CHANGED=NO / DATABASE_CHANGED=NO / UI_CHANGED=NO
+  STAGED_DIFF_CHECK=PASS / WORKTREE_CLEAN_AFTER_COMMIT=YES
+  FREEZE_COMMIT_CREATED=YES / FREEZE_TAG_CREATED=YES / TAG_TARGET_MATCHES_FREEZE_COMMIT=YES
+  PUSH=NO
+
+FINAL_VERDICT = PASS — POST_I_PRE_UI_CORE_GIT_FREEZE_COMPLETE
+
+COMMIT = YES (authorized this round)
+TAG = YES (authorized this round)
+PUSH = NO (no remote configured; no push command run)
+STOP = YES
+```
+
+### §22 notes
+- **§22 records the completed Pre-UI Git Freeze round in the live SSOT.** The immutable
+  freeze identity remains: FREEZE_COMMIT = `f640ed07f655856888c11f3fb3575e6f84106f7c`,
+  FREEZE_TAG = `AG.POST-I-CORE-FREEZE-V1`. Any documentation normalization after that tag is
+  represented by a separate docs-only commit on `main` and does NOT move, rewrite, or amend
+  the freeze tag. The freeze tag remains the authoritative Pre-UI architecture/core baseline
+  (`git rev-parse AG.POST-I-CORE-FREEZE-V1^{}` is the authoritative resolution).
+- **upload/ rolling snapshot**: `upload/` is a tracked, rolling "current doc snapshot" area
+  (not gitignored). The 4 pre-I snapshot files were superseded (deleted) and replaced by the
+  current POST-I snapshot in the freeze commit.
+- **Device identifiers** retained per `PRIVATE_REPO_RETAINED` (no remote; internal evidence).
+  A separate public-repo privacy normalization (redact exact serial) is required only if a
+  remote/public export is later introduced.
+- **No push**: repo has no remote configured; `git push` was not run.

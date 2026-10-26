@@ -1,0 +1,20 @@
+AG.POST-I-PRE-UI-DOC-NORMALIZE-1 — Baseline
+
+START_HEAD = f640ed07f655856888c11f3fb3575e6f84106f7c
+START_WORKTREE = 6 dirty lines (post-freeze docs-only changes from the prior round:
+  M docs/implementation/...-0_FINAL.md        (§22 append)
+  M upload/AG.POST-I-ARCHITECTURE-FREEZE-V1.md
+  M upload/AG.TOPIC-SESSION-...-0_FINAL.md
+  D upload/AG_POST_I_CLOSURE_EVIDENCE_CONSOLIDATED.md  (superseded)
+  ?? docs/evidence/ag_pre_ui_core_freeze/ALL_EVIDENCE_CONSOLIDATED.md
+  ?? upload/AG_POST_I_CORE_FREEZE_EVIDENCE_CONSOLIDATED.md)
+BRANCH = main
+
+FREEZE_NAME = AG.POST-I-CORE-FREEZE-V1
+FREEZE_TAG = AG.POST-I-CORE-FREEZE-V1
+FREEZE_TAG_TARGET = f640ed07f655856888c11f3fb3575e6f84106f7c
+FREEZE_TAG_TARGET_MATCHES_EXPECTED = YES
+  (verified via `git rev-parse "AG.POST-I-CORE-FREEZE-V1^{}"` at round start)
+
+Freeze tag is IMMUTABLE this round. HEAD will advance past it via a docs-only
+normalization commit; that is the EXPECTED post-freeze state (TAG_TARGET != HEAD).

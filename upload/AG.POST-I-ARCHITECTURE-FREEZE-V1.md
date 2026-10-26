@@ -2,20 +2,40 @@
 
 ```text
 FREEZE_IDENTITY
-  FREEZE_TYPE = DOCUMENTED WORKTREE CHECKPOINT
-  BASE_HEAD   = a6eea61dc209898a01cd0e7f2e82304fff7ed9d4
-  BRANCH      = main
-  WORKTREE    = DIRTY / preserved (86 files: 37 modified pre-existing Phases A-I +
-                46 untracked evidence/fixtures; all preserved)
+  FREEZE_NAME   = AG.POST-I-CORE-FREEZE-V1
+  FREEZE_TYPE   = PRE_UI_GIT_FREEZE
+  BASE_HEAD     = a6eea61dc209898a01cd0e7f2e82304fff7ed9d4 (parent of freeze commit)
+  BRANCH        = main
+  WORKTREE      = CLEAN after freeze commit (M4 dirty-worktree debt CLOSED)
   DEVICE_VERIFICATION = PASS (HONOR ALI-AN00, Android 15, serial APLMUT4312005935)
-  FREEZE_COMMIT = NOT CREATED THIS ROUND
-  FREEZE_TAG    = NOT CREATED THIS ROUND
-  EVIDENCE      = docs/evidence/ag_post_i_closure/ (00-08)
+  DEVICE_IDENTIFIER_POLICY = PRIVATE_REPO_RETAINED (no remote; internal real-device
+                evidence; redaction deferred to a future public-repo normalization)
+  FREEZE_COMMIT = RESOLVE VIA TAG (authoritative: `git rev-parse AG.POST-I-CORE-FREEZE-V1^{}
+                `); the real hash is recorded in the round's terminal Final Report,
+                NOT hard-coded into this file (a file cannot know its own commit SHA)
+  FREEZE_TAG    = AG.POST-I-CORE-FREEZE-V1 (annotated)
+  EVIDENCE      = docs/evidence/ag_post_i_closure/ (00-08) + docs/evidence/ag_pre_ui_core_freeze/
   AUDIT_ROUND   = AG.POST-I-ARCHITECTURE-CLOSURE-FREEZE-1
+  GIT_NORMALIZATION_ROUND = AG.POST-I-GIT-NORMALIZATION-CORE-FREEZE-1
 ```
 
-This is a documented checkpoint, not a Git freeze commit/tag. If a release
-commit/tag is ever needed, that is a separate Git-normalization / release task.
+Freeze scope (this is a PRE-UI release baseline, NOT a final product release):
+
+```text
+  AG Engine architecture (AG Core + Agent Runtime)
+  AG Core / Agent Runtime / Tool / Provider dependency boundaries
+  TopicSession Foundation (durable persistence + verified resume)
+  current verified Android execution integration baseline (AT V4 via :integration-at)
+
+  FINAL_UI_FROZEN      = NO
+  FINAL_PRODUCT_RELEASE = NO
+```
+
+This freeze is realized as a real Git baseline commit + annotated tag
+(`AG.POST-I-CORE-FREEZE-V1`). It supersedes the earlier "DOCUMENTED WORKTREE
+CHECKPOINT" identity from the closure round: the worktree is now committed and
+clean. If a final release commit/tag is ever needed, that is a separate release
+task after the UI baseline.
 
 ---
 
@@ -174,12 +194,23 @@ CLI_REUSE_READINESS = READY
 
 ## 11. Known Non-Blocking Debt
 
+Active non-blocking debt (still open):
+
 ```text
 M1. Host direct AT V4 composition imports (ChatCompositionRoot, CompositionAdbSemantic,
-    DebugBridge) — route through :integration-at in a future cleanup round.
-M2. AGENTS.md current-state section not yet synced with the TopicSession persistence line.
-M3. AgentRuntimeInterruptTest I11 = KNOWN TEST STABILITY DEBT (full-matrix flake).
-M4. 86 uncommitted worktree files — Git normalization is a separate authorized task.
+    DebugBridge) — DEFERRED NON-BLOCKING; route through :integration-at in a future
+    cleanup round.
+M3. AgentRuntimeInterruptTest I11 = KNOWN TEST STABILITY DEBT (full-matrix flake;
+    not a product blocker).
+```
+
+Closed during AG.POST-I-GIT-NORMALIZATION-CORE-FREEZE-1:
+
+```text
+M2. CLOSED — AGENTS.md current-state now synced with the TopicSession persistence
+    / freeze line.
+M4. CLOSED — worktree formally Git-frozen (PRE-UI core freeze commit + annotated tag
+    AG.POST-I-CORE-FREEZE-V1); worktree clean.
 ```
 
 ## 12. Frozen Decisions (summary — full list as authorized)
