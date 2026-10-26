@@ -38,6 +38,18 @@ class Session internal constructor(val id: String) {
     private val messages = mutableListOf<Message>()
     private var activeRun = false
 
+    /**
+     * Set to true when an interrupt closeout durability failure left the durable
+     * history in a state that requires reconciliation before the Session can
+     * safely accept another Run. While this flag is set, [tryBeginRun] rejects
+     * all Run admission (fail-closed: no D1, no ModelCall, no ToolCall).
+     *
+     * Cleared by [restoreHistory] (a fresh Session instance is created by
+     * [AgentCore.restoreSession], so the flag is naturally false on the new
+     * instance). Never set by normal Run paths.
+     */
+    private var reconciliationRequired = false
+
     /** Snapshot of the conversation so far, oldest first. */
     fun history(): List<Message> = synchronized(monitor) { messages.toList() }
 
@@ -46,12 +58,49 @@ class Session internal constructor(val id: String) {
     }
 
     /**
+     * Marks this Session as requiring reconciliation (durable history is
+     * inconsistent after an interrupt closeout failure). Subsequent
+     * [tryBeginRun] calls are rejected until [restoreHistory] is called.
+     */
+    internal fun markReconciliationRequired() {
+        synchronized(monitor) { reconciliationRequired = true }
+    }
+
+    /** True if the Session requires reconciliation before the next Run. */
+    internal fun isReconciliationRequired(): Boolean =
+        synchronized(monitor) { reconciliationRequired }
+
+    /**
+     * Restores the full message history from a durable source (e.g., Room/SQLite).
+     *
+     * This is the Core restore seam (AG.TOPIC-SESSION-ARCHITECTURE-FREEZE-0 §12).
+     * It replaces the in-memory history with [history] and clears the
+     * reconciliation flag. Used at startup to hydrate a Session from durable
+     * storage WITHOUT re-triggering durability.
+     *
+     * Must only be called when no Run is active (the Session is fresh).
+     */
+    internal fun restoreHistory(history: List<Message>) {
+        synchronized(monitor) {
+            check(!activeRun) { "Cannot restore history while a Run is active" }
+            messages.clear()
+            messages.addAll(history)
+            reconciliationRequired = false
+        }
+    }
+
+    /**
      * Attempts to claim the single active-Run slot for this Session.
      *
-     * @return true if claimed, false if another Run already holds it.
+     * Rejected if [activeRun] is already held OR if [reconciliationRequired]
+     * is set (fail-closed: the durable history needs repair first).
+     *
+     * @return true if claimed, false if another Run already holds it or the
+     *   Session requires reconciliation.
      */
     internal fun tryBeginRun(): Boolean = synchronized(monitor) {
-        if (activeRun) false else { activeRun = true; true }
+        if (activeRun || reconciliationRequired) false
+        else { activeRun = true; true }
     }
 
     internal fun endRun() {

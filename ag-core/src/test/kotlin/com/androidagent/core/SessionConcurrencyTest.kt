@@ -1,4 +1,4 @@
-package com.androidagent.core
+﻿package com.androidagent.core
 
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -61,7 +61,7 @@ class SessionConcurrencyTest {
                 ModelTurn.FinalAnswer("second run finished"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
         val pool = Executors.newFixedThreadPool(2)
 
         try {
@@ -108,7 +108,7 @@ class SessionConcurrencyTest {
                 ModelTurn.FinalAnswer("first run finished"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
         val pool = Executors.newFixedThreadPool(2)
 
         try {
@@ -149,7 +149,7 @@ class SessionConcurrencyTest {
                 ModelTurn.FinalAnswer("third scripted answer"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
         val pool = Executors.newFixedThreadPool(2)
 
         try {
@@ -192,7 +192,7 @@ class SessionConcurrencyTest {
     @Test
     fun `T12b three sessions coexist and each keeps its own history`() = runBlocking {
         val provider = ScriptedModelProvider(List(6) { ModelTurn.FinalAnswer("answer $it") })
-        val core = AgentCore(provider, ToolRegistry())
+        val core = AgentCore(provider, ToolRegistry(), MessageDurability.Noop)
 
         core.run("A", "a1")
         core.run("B", "b1")

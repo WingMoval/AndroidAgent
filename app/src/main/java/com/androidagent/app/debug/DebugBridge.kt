@@ -481,7 +481,7 @@ class DebugBridge(
             return
         }
         val state = adapter.bootstrapState()
-        val hasId = adapter.bootstrap.hasIdentity()
+        val hasId = adapter.hasIdentity()
         writer.send(DebugProtocol.bootstrapState(state.name, hasId))
     }
 
@@ -492,7 +492,7 @@ class DebugBridge(
             return
         }
         val d = adapter.discoverPairing()
-        writer.send(DebugProtocol.bootstrapDiscovery(d.endpoints.size, d.serviceNotFound, d.multiple))
+        writer.send(DebugProtocol.bootstrapDiscovery(d.endpointCount, d.serviceNotFound, d.multiple))
     }
 
     private suspend fun handleBootstrapPair(code: String, writer: ClientWriter) {
@@ -507,7 +507,7 @@ class DebugBridge(
         }
         val r = adapter.pairDiscovered(code)
         // DO NOT log the pairing code plaintext.
-        writer.send(DebugProtocol.bootstrapPairResult(r.success, r.outcome.name, r.error))
+        writer.send(DebugProtocol.bootstrapPairResult(r.success, r.outcome.name, r.error ?: ""))
         Log.i(TAG, "bootstrap pair: success=${r.success} outcome=${r.outcome.name}")
     }
 

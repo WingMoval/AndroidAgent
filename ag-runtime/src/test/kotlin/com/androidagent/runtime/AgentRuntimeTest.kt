@@ -33,7 +33,7 @@ class AgentRuntimeTest {
     @Test
     fun `R1 runtime drives AG Core and returns its outcome`() = runBlocking {
         val provider = ScriptedProvider(listOf(ModelTurn.FinalAnswer("hello")))
-        val (runtime, _) = runtimeOf(provider)
+        val (runtime, _) = runtimeWithStore(provider)
 
         val outcome = runtime.send("hi")
 
@@ -49,7 +49,7 @@ class AgentRuntimeTest {
         val provider = ScriptedProvider(
             listOf(ModelTurn.FinalAnswer("first reply"), ModelTurn.FinalAnswer("second reply"))
         )
-        val (runtime, _) = runtimeOf(provider)
+        val (runtime, _) = runtimeWithStore(provider)
         val sessionId = runtime.currentSessionId
 
         runtime.send("first")
@@ -78,7 +78,7 @@ class AgentRuntimeTest {
     @Test
     fun `R3 newSession switches identity and does not reuse old history`() = runBlocking {
         val provider = ScriptedProvider(listOf(ModelTurn.FinalAnswer("a"), ModelTurn.FinalAnswer("b")))
-        val (runtime, _) = runtimeOf(provider)
+        val (runtime, _) = runtimeWithStore(provider)
 
         runtime.send("first")
         val oldId = runtime.currentSessionId
@@ -101,8 +101,8 @@ class AgentRuntimeTest {
     fun `R4 a second concurrent send is rejected without opening another Session`() = runBlocking {
         val gate = CompletableDeferred<Unit>()
         val provider = ScriptedProvider(listOf(ModelTurn.FinalAnswer("done"))).apply { this.gate = gate }
-        val (runtime, _) = runtimeOf(provider)
-        val sessionId = runtime.currentSessionId
+        val (runtime, _) = runtimeWithStore(provider)
+        val sessionId = runtime.currentSessionId!!
 
         val first = async(Dispatchers.Default) { runtime.send("A") }
         // Wait until the first Run is genuinely in flight.
@@ -125,7 +125,7 @@ class AgentRuntimeTest {
     fun `R5 newSession during a busy run is rejected and identity is unchanged`() = runBlocking {
         val gate = CompletableDeferred<Unit>()
         val provider = ScriptedProvider(listOf(ModelTurn.FinalAnswer("done"))).apply { this.gate = gate }
-        val (runtime, _) = runtimeOf(provider)
+        val (runtime, _) = runtimeWithStore(provider)
         val sessionId = runtime.currentSessionId
 
         val first = async(Dispatchers.Default) { runtime.send("A") }
@@ -144,7 +144,7 @@ class AgentRuntimeTest {
     fun `R6 a failing Run still releases the busy flag and the runtime stays usable`() = runBlocking {
         // A provider that throws produces a real AG Core provider failure.
         val provider = ThrowingProvider()
-        val (runtime, _) = runtimeOf(provider)
+        val (runtime, _) = runtimeWithStore(provider)
 
         val outcome = runtime.send("boom")
 
@@ -155,7 +155,7 @@ class AgentRuntimeTest {
         // over the same shape is not possible, so assert re-usability via a
         // second send against a provider that now succeeds.
         val ok = ScriptedProvider(listOf(ModelTurn.FinalAnswer("recovered")))
-        val (runtime2, _) = runtimeOf(ok)
+        val (runtime2, _) = runtimeWithStore(ok)
         assertFalse(runtime2.isBusy)
         assertEquals(RunOutcome.Answer("recovered"), runtime2.send("again"))
     }
@@ -167,7 +167,7 @@ class AgentRuntimeTest {
     fun `R7 cancellation propagates and releases the busy flag`() = runBlocking {
         val gate = CompletableDeferred<Unit>()
         val provider = ScriptedProvider(listOf(ModelTurn.FinalAnswer("never"))).apply { this.gate = gate }
-        val (runtime, _) = runtimeOf(provider)
+        val (runtime, _) = runtimeWithStore(provider)
 
         // R7 is a HOST/LIFECYCLE cancellation: the host cancels its own Run Job
         // without a user Stop, so the CancellationException must propagate (NOT be
@@ -190,7 +190,7 @@ class AgentRuntimeTest {
         // Reusable after cancellation.
         gate.complete(Unit)
         val after = ScriptedProvider(listOf(ModelTurn.FinalAnswer("usable")))
-        val (runtime2, _) = runtimeOf(after)
+        val (runtime2, _) = runtimeWithStore(after)
         assertEquals(RunOutcome.Answer("usable"), runtime2.send("again"))
     }
 
@@ -200,8 +200,8 @@ class AgentRuntimeTest {
     fun `R8 independent runtime instances share no state`() = runBlocking {
         val providerA = ScriptedProvider(listOf(ModelTurn.FinalAnswer("a1")))
         val providerB = ScriptedProvider(listOf(ModelTurn.FinalAnswer("b1")))
-        val (runtimeA, _) = runtimeOf(providerA, "A")
-        val (runtimeB, _) = runtimeOf(providerB, "B")
+        val (runtimeA, _) = runtimeWithStore(providerA, "A")
+        val (runtimeB, _) = runtimeWithStore(providerB, "B")
 
         assertNotEquals(runtimeA.currentSessionId, runtimeB.currentSessionId)
 

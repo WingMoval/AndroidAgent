@@ -1,0 +1,11 @@
+DEV-I2 / DEV-I3 / DEV-I4 — Restore-Then-Continue / New Session / Force-Stop
+===========================================================================
+STATUS: NOT STARTED (blocked upstream by the DEV-I1 USB drop).
+
+Because DEV-I1 did not complete (no conversation was created and the device
+dropped before the kill/relaunch), there was no durable state to continue,
+switch, or force-stop. DEV-I2, I3, I4 were not executed.
+
+No product defect was observed; the blocker is environmental (USB/OEM power
+management on the HONOR ALI-AN00), not a runtime/transcript/persistence
+failure.

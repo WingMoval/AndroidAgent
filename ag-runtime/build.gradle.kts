@@ -38,10 +38,19 @@ dependencies {
     // coroutine API to check whether the send caller is still active.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 
+    // TopicSession durable persistence (AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0D):
+    // the Message persistence serializer uses the SAME kotlinx-serialization-json
+    // tree API (JsonElement) the provider modules already use — deliberately NO
+    // serialization compiler plugin, NO new JSON stack.
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+
     // Tests drive coroutines.
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    // kotlin.test assertions bridge to the JUnit 5 engine (same pattern as the
+    // other modules' tests).
+    testImplementation(kotlin("test-junit5"))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

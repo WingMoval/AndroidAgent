@@ -24,12 +24,14 @@ dependencyResolutionManagement {
     repositories {
         mavenCentral()
         google()
-        // AG.V2-2: repo-local Maven for the AT Consumer Freeze V1 bundle.
-        // AARs built from exact AT V3 source baseline c9cee21
-        // (AT.AG-CONSUMER-FREEZE-V1). See third_party/at-consumer-freeze-v1/MANIFEST.md.
+        // AG.AT-V4-INTEGRATION-1: repo-local Maven for the AT V4 Consumer Freeze bundle.
+        // AARs/JARs from AT V4 freeze commit 7216d0e (AT.V4-CONSUMER-FREEZE-V1).
+        // See third_party/at-v4-consumer-freeze-v1/MANIFEST.md.
         maven {
-            url = uri("third_party/at-consumer-freeze-v1/m2")
+            url = uri("third_party/at-v4-consumer-freeze-v1/m2")
         }
+        // LEGACY (V3, superseded): retained for rollback reference only.
+        // maven { url = uri("third_party/at-consumer-freeze-v1/m2") }
     }
 }
 

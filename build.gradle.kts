@@ -10,4 +10,8 @@ plugins {
     kotlin("jvm") version "2.1.0" apply false
     kotlin("android") version "2.1.0" apply false
     id("com.android.application") version "8.5.2" apply false
+    // AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0E: Room compiler. KSP
+    // 2.1.0-1.0.29 is the release pinned to the project's Kotlin 2.1.0
+    // (KSP is versioned per Kotlin release; no Kotlin/AGP/Gradle upgrade).
+    id("com.google.devtools.ksp") version "2.1.0-1.0.29" apply false
 }

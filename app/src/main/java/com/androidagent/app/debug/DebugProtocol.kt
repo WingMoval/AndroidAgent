@@ -375,6 +375,7 @@ object DebugProtocol {
         is RunFailure.MaxStepsReached -> "max_steps_reached: ${failure.maxSteps}"
         is RunFailure.SessionBusy -> "session_busy"
         is RunFailure.RuntimeFailure -> "runtime_failure: ${failure.cause}"
+        is RunFailure.DurabilityFailure -> "durability_failure: ${failure.boundary}: ${failure.cause}"
     }
 
     private fun redact(s: String): String = TraceFormatter.redact(s)

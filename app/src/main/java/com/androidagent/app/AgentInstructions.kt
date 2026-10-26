@@ -26,7 +26,7 @@ import java.security.MessageDigest
  */
 object AgentInstructions {
 
-    const val VERSION: String = "AGENT_INSTRUCTIONS_V0"
+    const val VERSION: String = "AGENT_INSTRUCTIONS_V1"
 
     val CONTENT: String =
         "You are an Android device agent.\n" +
@@ -42,7 +42,12 @@ object AgentInstructions {
             "is necessary.\n" +
             "\n" +
             "When the goal is satisfied, provide the final answer.\n" +
-            "If the goal cannot be completed, report the actual blocking condition."
+            "If the goal cannot be completed, report the actual blocking condition.\n" +
+            "\n" +
+            "Execution environment: android_shell runs in AndroidAgent's local app shell.\n" +
+            "An adb CLI supplied by the AndroidTerminal environment is available there.\n" +
+            "Local shell identity and adb shell identity are different execution principals;\n" +
+            "do not assume they are the same."
 
     /**
      * Deterministic SHA-256 over [CONTENT] as UTF-8, lower-case hex. Computed once

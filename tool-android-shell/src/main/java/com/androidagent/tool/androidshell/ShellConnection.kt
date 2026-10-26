@@ -1,8 +1,7 @@
 package com.androidagent.tool.androidshell
 
-import android.content.Context
+import com.androidagent.integration.at.AtAdbBootstrap
 import com.androidagent.integration.at.AtExecutionAdapter
-import com.adb.engine.AdbBootstrapState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -10,10 +9,11 @@ import kotlinx.coroutines.withContext
  * AT connection lifecycle binding (Integration-owned, NOT a backend
  * abstraction).
  *
- * AG.V2-2: delegates to the unified [AtExecutionAdapter] for ADB lifecycle
- * and consumer bootstrap.
+ * AG.AT-V4-INTEGRATION-1B: delegates to the unified [AtExecutionAdapter]
+ * for ADB lifecycle and consumer bootstrap. All ADB semantic types are
+ * AG integration-owned (AtAdbBootstrap / AtAdbReadiness / AtPairingResult).
  *
- * Responsibilities: initialize / ensureReady / bootstrapState / disconnect.
+ * Responsibilities: ensureReady / bootstrapState / disconnect.
  * The Host decides the lifecycle POLICY (when to connect, when to show
  * pairing UI, what to display); [ShellConnection] performs the adapter calls.
  *
@@ -21,14 +21,8 @@ import kotlinx.coroutines.withContext
  * No [AtExecutionAdapter], no AT-owned types are leaked to the Host.
  */
 class ShellConnection(
-    context: Context,
-    private val identityDirName: String = DEFAULT_IDENTITY_DIR,
+    val adapter: AtExecutionAdapter,
 ) {
-
-    private val appContext: Context = context.applicationContext
-
-    /** Unified AT execution adapter (the single AT consumption point). */
-    val adapter: AtExecutionAdapter = AtExecutionAdapter(appContext, identityDirName)
 
     /** Integration-owned connection status. */
     data class Status(
@@ -38,27 +32,19 @@ class ShellConnection(
     ) {
         /** Whether the Host should offer the pairing UI. */
         val pairingOffered: Boolean get() =
-            code == AdbBootstrapState.PAIRING_REQUIRED.name ||
-            code == AdbBootstrapState.CONNECT_FAILED.name
+            code == AtAdbBootstrap.PAIRING_REQUIRED.name ||
+            code == AtAdbBootstrap.CONNECT_FAILED.name
     }
 
     /**
-     * Wire the ADB runtime platform backends. Idempotent; safe to call
-     * before [connect].
-     */
-    fun initialize() {
-        adapter.initializeAdb()
-    }
-
-    /**
-     * Readiness -> (auto-enable WD) -> discovery -> endpoint select -> connect.
+     * Ensure the ADB connection is READY.
      *
-     * Uses [AtExecutionAdapter.ensureAdbReady] which wraps AdbRuntime.ensureReady.
+     * Uses [AtExecutionAdapter.ensureAdbReady] which wraps the AdbSemantic
+     * interface (Host-implemented via AT composition facade).
      *
      * @return an integration-owned [Status]; never leaks AT-owned types.
      */
     suspend fun connect(): Status = withContext(Dispatchers.IO) {
-        initialize()
         val ready = adapter.ensureAdbReady()
         val state = adapter.bootstrapState()
         Status(
@@ -76,25 +62,27 @@ class ShellConnection(
      * connection failed.
      */
     fun readiness(): Status {
-        val state: AdbBootstrapState = adapter.bootstrapState()
+        val state: AtAdbBootstrap = adapter.bootstrapState()
         return Status(
-            ready = state.isReady,
+            ready = adapter.isAdbReady(),
             code = state.name,
             message = state.name,
         )
     }
 
+    /**
+     * Whether the AG has usable ADB identity material.
+     */
+    fun hasIdentity(): Boolean = adapter.hasIdentity()
+
     /** Tear down the connection. Idempotent. */
-    suspend fun disconnect(): Status {
-        adapter.disconnectAdb()
-        return Status(
+    suspend fun disconnect(): Status =
+        // V4: no explicit disconnect API on ATAndroidAdbControl.
+        // The ADB connection is managed by AdbRuntime internally.
+        // This is a no-op placeholder for API compatibility.
+        Status(
             ready = false,
             code = "DISCONNECTED",
             message = "disconnected",
         )
-    }
-
-    companion object {
-        const val DEFAULT_IDENTITY_DIR: String = AtExecutionAdapter.DEFAULT_IDENTITY_DIR
-    }
 }

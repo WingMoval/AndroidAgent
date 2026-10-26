@@ -192,6 +192,42 @@ class AndroidShellToolImplTest {
         assertFalse(root["hasError"]!!.jsonPrimitive.content.toBoolean())
     }
 
+    // ------------------------------------------------- model-visible semantics
+
+    @Test
+    fun U15_spec_describes_local_shell_and_app_identity() {
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        assertTrue(desc.contains("local shell"), "must mention local shell")
+        assertTrue(desc.contains("application execution identity"), "must mention app execution identity")
+    }
+
+    @Test
+    fun U16_spec_describes_adb_cli_availability() {
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        assertTrue(desc.contains("adb"), "must mention adb")
+        assertTrue(desc.contains("AndroidTerminal"), "must mention AndroidTerminal as adb provider")
+    }
+
+    @Test
+    fun U17_spec_distinguishes_local_and_adb_shell_principals() {
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        assertTrue(desc.contains("adb shell"), "must mention adb shell")
+        assertTrue(desc.contains("different execution identity"), "must state principal distinction")
+    }
+
+    @Test
+    fun U18_spec_preserves_result_semantics() {
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        assertTrue(desc.contains("outcome"), "must document outcome field")
+        assertTrue(desc.contains("exitCode"), "must document exitCode field")
+        assertTrue(desc.contains("success even when exitCode is non-zero"), "must preserve COMPLETED semantics")
+    }
+
+    @Test
+    fun U19_tool_name_unchanged() {
+        assertEquals("android_shell", AndroidShellToolImpl(FakeExecutor(completed())).spec.name)
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private fun call(arguments: String): ToolCall =

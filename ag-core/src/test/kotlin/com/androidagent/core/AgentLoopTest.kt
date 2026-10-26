@@ -1,4 +1,4 @@
-package com.androidagent.core
+﻿package com.androidagent.core
 
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -21,7 +21,7 @@ class AgentLoopTest {
         val tool = RecordingTool(ToolSpec("unused", "never called"))
         val registry = ToolRegistry().apply { register(tool) }
         val provider = ScriptedModelProvider(listOf(ModelTurn.FinalAnswer("42")))
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         val outcome = core.run("s1", "what is 6*7?")
 
@@ -51,7 +51,7 @@ class AgentLoopTest {
                 ModelTurn.FinalAnswer("done: echoed"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         val outcome = core.run("s1", "echo hello")
 
@@ -111,7 +111,7 @@ class AgentLoopTest {
                 ModelTurn.FinalAnswer("all three done"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         val outcome = core.run("s1", "run all three")
 
@@ -153,7 +153,7 @@ class AgentLoopTest {
                 ModelTurn.FinalAnswer("I will answer without tools"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         // Must not throw.
         val outcome = core.run("s1", "use a tool that does not exist")
@@ -178,7 +178,7 @@ class AgentLoopTest {
                 ModelTurn.FinalAnswer("recovered from the failure"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         val outcome = core.run("s1", "trigger a broken tool")
 
@@ -207,7 +207,7 @@ class AgentLoopTest {
             )
         )
         val denyPolicy = ToolApprovalPolicy { ToolApproval.Deny("not permitted in this run") }
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         val outcome = core.run("s1", "run the dangerous tool", RunOptions(approvalPolicy = denyPolicy))
 
@@ -233,7 +233,7 @@ class AgentLoopTest {
             )
         )
 
-        AgentCore(provider, registry).run("s1", "go")
+        AgentCore(provider, registry, MessageDurability.Noop).run("s1", "go")
 
         assertEquals(1, tool.executeCount)
     }
@@ -255,7 +255,7 @@ class AgentLoopTest {
             )
         )
         val sink = RecordingEventSink()
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         val outcome = core.run("s1", "loop forever", RunOptions(maxSteps = 2, eventSink = sink))
 
@@ -278,7 +278,7 @@ class AgentLoopTest {
         )
         val registry = ToolRegistry()
         val sink = RecordingEventSink()
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         val first = core.run("s1", "hello", RunOptions(eventSink = sink))
 
@@ -301,7 +301,7 @@ class AgentLoopTest {
     fun `T9 event order is deterministic for a direct answer`() = runBlocking {
         val provider = ScriptedModelProvider(listOf(ModelTurn.FinalAnswer("hello")))
         val sink = RecordingEventSink()
-        AgentCore(provider, ToolRegistry()).run("s1", "hi", RunOptions(eventSink = sink))
+        AgentCore(provider, ToolRegistry(), MessageDurability.Noop).run("s1", "hi", RunOptions(eventSink = sink))
 
         assertEquals(
             listOf(
@@ -327,7 +327,7 @@ class AgentLoopTest {
             )
         )
         val sink = RecordingEventSink()
-        AgentCore(provider, registry).run("s1", "go", RunOptions(eventSink = sink))
+        AgentCore(provider, registry, MessageDurability.Noop).run("s1", "go", RunOptions(eventSink = sink))
 
         assertEquals(
             listOf(
@@ -355,7 +355,7 @@ class AgentLoopTest {
                 ModelTurn.FinalAnswer("your name is A"),
             )
         )
-        val core = AgentCore(provider, ToolRegistry())
+        val core = AgentCore(provider, ToolRegistry(), MessageDurability.Noop)
 
         core.run("s1", "my name is A")
         core.run("s1", "what is my name?")
@@ -383,7 +383,7 @@ class AgentLoopTest {
     fun `T10b instructions and tool specs reach the provider`() = runBlocking {
         val registry = ToolRegistry().apply { register(RecordingTool(ToolSpec("t", "a tool"))) }
         val provider = ScriptedModelProvider(listOf(ModelTurn.FinalAnswer("done")))
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         core.run("s1", "hi", RunOptions(instructions = "be terse"))
 
@@ -396,7 +396,7 @@ class AgentLoopTest {
     @Test
     fun `T10c an event sink that throws becomes a runtime failure`() = runBlocking {
         val provider = ScriptedModelProvider(listOf(ModelTurn.FinalAnswer("fine now")))
-        val core = AgentCore(provider, ToolRegistry())
+        val core = AgentCore(provider, ToolRegistry(), MessageDurability.Noop)
 
         // The very first event (RunStarted) throws, so the provider is never asked.
         val outcome = core.run("s1", "hi", RunOptions(eventSink = ThrowingEventSink()))
@@ -425,7 +425,7 @@ class AgentLoopTest {
                 ModelTurn.FinalAnswer("the command failed with exit code 7"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         val outcome = core.run("s1", "run false")
 
@@ -456,7 +456,7 @@ class AgentLoopTest {
                 ModelTurn.FinalAnswer("checked"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         val outcome = core.run("s1", "check it")
 
@@ -489,7 +489,7 @@ class AgentLoopTest {
                 ModelTurn.FinalAnswer("done"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         assertEquals(RunOutcome.Answer("done"), core.run("s1", "go"))
 
@@ -511,7 +511,7 @@ class AgentLoopTest {
                 ModelTurn.FinalAnswer("I could not run that"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         core.run("s1", "run it")
 

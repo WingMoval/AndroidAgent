@@ -1,0 +1,33 @@
+DEV-I3 — New Session  =>  PASS
+===========================================================================
+With Session A (session-5043f80d-...) holding 6 messages, the user tapped the
+"New Session" button in the app UI (the button is at the bottom of the
+ScrollView; it was tapped manually because it renders below the initial fold).
+
+SESSION_A = session-5043f80d-d37e-47ba-8255-36b88bd492fd
+SESSION_B = session-721873bf-d7c8-4d86-a56a-39640ba593c7
+A != B  = YES
+
+UI BEHAVIOR:
+  CURRENT_TRANSCRIPT after switch = EMPTY (verified: #id/transcript text empty)
+  Then B-U1 = "B-U1 new session first message" was sent via Debug Bridge:
+    run_start sessionId = session-721873bf-... (B)
+    final_answer = "ECHO msg_count=2 | last_user=B-U1 new session first message"
+    msg_count=2 = [0] system + [1] B-U1  => NO history from A leaked into B.
+  B transcript shows ONLY B-U1 + its answer (no U1/U2/U3 from A).
+
+DURABLE PRESERVATION (DB pulled via `run-as base64` + PC sqlite3, read-only):
+  SESSION_COUNT = 2
+    session-5043f80d (A): count=6, sequence 0..5  -> OLD_SESSION_EXISTS = YES, OLD_MESSAGES_EXIST = YES
+    session-721873bf (B): count=0 at switch (then 2 after B-U1)            -> NEW_SESSION_CREATED = YES
+  OLD_SESSION_DELETED   = NO
+  OLD_MESSAGES_DELETED  = NO
+  => newSession != delete old history  (PROVEN)
+
+VERDICT:
+  A != B                              = YES
+  CURRENT                             = B
+  B_TRANSCRIPT_DOES_NOT_SHOW_A        = YES
+  A_DURABLE_ROW_EXISTS                = YES
+  A_DURABLE_MESSAGES_EXIST            = YES
+DEV-I3 = PASS

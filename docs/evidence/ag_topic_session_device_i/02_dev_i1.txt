@@ -1,0 +1,47 @@
+DEV-I1 — Kill Process + Visible Resume  =>  PASS
+===========================================================================
+Device: HONOR ALI-AN00 (Android 15 / API 35), serial APLMUT4312005935
+Provider: loopback echo fixture via `adb forward tcp:45678` + `adb reverse tcp:18080`
+(Note: `adb reverse tcp:45678` failed with "Address already in use" on this
+host/adb combo; `adb forward tcp:45678 tcp:45678` worked and was used instead.
+Same effect for the test: PC reaches the on-device debug bridge on 45678.)
+
+CONVERSATION CREATED (before kill), via Debug Bridge (AG.DEBUG-0, port 45678):
+  User U1  = "U1 hello resume-marker-731"
+  Asst A1  = "ECHO msg_count=2 | last_user=U1 hello resume-marker-731"
+  User U2  = "U2 what marker did I give you"
+  Asst A2  = "ECHO msg_count=4 | last_user=U2 what marker did I give you"
+
+SESSION_ID_BEFORE   = session-5043f80d-d37e-47ba-8255-36b88bd492fd
+VISIBLE_BLOCKS_BEFORE = 4 (User U1, Asst A1, User U2, Asst A2)
+CORE_HISTORY_COUNT_BEFORE = 4 (U1,A1,U2,A2)
+PID_BEFORE = 7130
+
+PROCESS KILL:
+  `adb shell am kill com.androidagent.app` was IGNORED by the HONOR ROM
+  (PID stayed 7130). `adb shell kill -9 7130` -> "Operation not permitted"
+  (shell user cannot signal the app UID without root).
+  Used `adb shell am force-stop com.androidagent.app` (the DEV-I4 mechanism;
+  it kills the process WITHOUT clearing durable data). This is the task-allowed
+  "equivalent non-data-clearing method" when am kill is a ROM no-op.
+  PID_AFTER_KILL = (empty)  -> process confirmed gone (ps -A shows no com.androidagent.app)
+  Durable DB intact after kill: databases/topic_sessions.db + -wal + -shm present.
+
+RELAUNCH: `adb shell am start -n com.androidagent.app/.ChatActivity`
+  PID_AFTER = 13877   (PID_BEFORE 7130 != PID_AFTER 13877 -> NEW PROCESS CONFIRMED)
+SESSION_ID_AFTER = session-5043f80d-d37e-47ba-8255-36b88bd492fd  (== SESSION_ID_BEFORE)
+
+RESTORED TRANSCRIPT (uiautomator dump of #id/transcript, post-relaunch):
+  User / U1
+  Assistant / ECHO msg_count=2 | last_user=U1 hello resume-marker-731
+  User / U2 what marker did I give you
+  Assistant / ECHO msg_count=4 | last_user=U2 what marker did I give you
+
+VERDICT:
+  PROCESS_RESTART   = CONFIRMED (7130 -> 13877)
+  SESSION_ID_SAME   = YES
+  TRANSCRIPT_VISIBLE= YES
+  TRANSCRIPT_EXACT  = YES (U1,A1,U2,A2 each exactly once)
+  DUPLICATES        = 0
+  MISSING           = 0
+DEV-I1 = PASS

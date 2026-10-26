@@ -1,4 +1,4 @@
-package com.androidagent.provider.openai.jdk
+﻿package com.androidagent.provider.openai.jdk
 
 import com.androidagent.provider.openai.OpenAiCompatibleConfig
 import com.androidagent.provider.openai.OpenAiCompatibleProvider
@@ -7,6 +7,7 @@ import com.androidagent.provider.openai.ProviderConfigResolver
 import com.androidagent.provider.openai.ResolvedProviderConfig
 
 import com.androidagent.core.AgentCore
+import com.androidagent.core.MessageDurability
 import com.androidagent.core.AgentEvent
 import com.androidagent.core.AgentEventSink
 import com.androidagent.core.Message
@@ -144,7 +145,7 @@ class LiveApiTest {
     fun `L2 real tool call`() = runBlocking {
         val tool = ProbeTool()
         val registry = ToolRegistry().apply { register(tool) }
-        val core = AgentCore(provider(), registry)
+        val core = AgentCore(provider(), registry, MessageDurability.Noop)
 
         val outcome = core.run(
             "live-L2",
@@ -166,7 +167,7 @@ class LiveApiTest {
     fun `L3 real tool result continuation`() = runBlocking {
         val tool = ProbeTool()
         val registry = ToolRegistry().apply { register(tool) }
-        val core = AgentCore(provider(), registry)
+        val core = AgentCore(provider(), registry, MessageDurability.Noop)
 
         val outcome = core.run(
             "live-L3",
@@ -197,7 +198,7 @@ class LiveApiTest {
             register(alpha)
             register(beta)
         }
-        val core = AgentCore(provider(), registry)
+        val core = AgentCore(provider(), registry, MessageDurability.Noop)
 
         val outcome = core.run(
             "live-L4",
@@ -230,7 +231,7 @@ class LiveApiTest {
         val tool = ProbeTool()
         val registry = ToolRegistry().apply { register(tool) }
         val recorder = TurnRecorder()
-        val core = AgentCore(provider(), registry)
+        val core = AgentCore(provider(), registry, MessageDurability.Noop)
 
         val outcome = core.run(
             "live-L5",

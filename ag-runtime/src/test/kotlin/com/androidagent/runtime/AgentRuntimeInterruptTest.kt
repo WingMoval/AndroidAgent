@@ -1,6 +1,7 @@
-package com.androidagent.runtime
+﻿package com.androidagent.runtime
 
 import com.androidagent.core.AgentCore
+import com.androidagent.core.MessageDurability
 import com.androidagent.core.AgentEvent
 import com.androidagent.core.ModelProvider
 import com.androidagent.core.ModelRequest
@@ -36,10 +37,10 @@ import java.util.concurrent.CancellationException as JCancellationException
  * `AgentRuntime.interruptActiveRun()` API, which atomically claims the per-Run USER
  * interrupt and cancels the Run's REAL execution Job. The providers/tools below hold
  * at deterministic gates with plain suspensions (like any well-behaved suspend
- * function); they do NOT implement a separate Stop protocol — the Job cancellation
+ * function); they do NOT implement a separate Stop protocol 鈥?the Job cancellation
  * is the cancellation, and it reaches them at their suspension points.
  *
- * Synchronization uses gates / latches / busy-waits — no timing-based `delay` as the
+ * Synchronization uses gates / latches / busy-waits 鈥?no timing-based `delay` as the
  * primary sync.
  */
 class AgentRuntimeInterruptTest {
@@ -84,7 +85,7 @@ class AgentRuntimeInterruptTest {
         val core: AgentCore,
         val sink: RecordingSink,
     ) {
-        val sessionId: String get() = runtime.currentSessionId
+        val sessionId: String get() = runtime.currentSessionId!!
     }
 
     private fun fixture(
@@ -92,13 +93,16 @@ class AgentRuntimeInterruptTest {
         tools: ToolRegistry = ToolRegistry(),
     ): Fixture {
         val sink = RecordingSink()
-        val core = AgentCore(provider, tools)
+        val core = AgentCore(provider, tools, MessageDurability.Noop)
         var counter = 0
+        val store = FakeTopicSessionStore()
         val runtime = AgentRuntime(
             agentCore = core,
             runOptions = RunOptions(eventSink = sink),
             sessionIdFactory = { "is-${++counter}" },
+            topicSessionStore = store,
         )
+        runBlocking { runtime.initialize() }
         return Fixture(runtime, core, sink)
     }
 
@@ -451,7 +455,7 @@ class AgentRuntimeInterruptTest {
         val answering = com.androidagent.runtime.ScriptedProvider(
             listOf(ModelTurn.FinalAnswer("second reply")),
         )
-        val core2 = AgentCore(answering, ToolRegistry())
+        val core2 = AgentCore(answering, ToolRegistry(), MessageDurability.Noop)
         // Verify the first (interrupted) Run's history is consistent: the UserMessage
         // remains, and the run ended as Interrupted (not a partial/corrupt state).
         val firstHistory = fx.core.session(fx.sessionId).history()
@@ -464,7 +468,9 @@ class AgentRuntimeInterruptTest {
             agentCore = core2,
             runOptions = RunOptions(eventSink = fx.sink),
             sessionIdFactory = { fx.sessionId },
+            topicSessionStore = FakeTopicSessionStore(),
         )
+        runBlocking { runtime2.initialize() }
         val outcome = withTimeout(15_000) { runtime2.send("second") }
         assertEquals(RunOutcome.Answer("second reply"), outcome)
     }
@@ -651,7 +657,7 @@ class AgentRuntimeInterruptTest {
 
         // Race: request a user interrupt AND cancel the parent caller simultaneously.
         // The parent caller is cancelled, so the CancellationException must propagate
-        // (NOT be converted to Interrupted) — parent cancellation dominates.
+        // (NOT be converted to Interrupted) 鈥?parent cancellation dominates.
         val interruptJob = async(Dispatchers.Default) { fx.runtime.interruptActiveRun() }
         job.cancel()
         interruptJob.join()
@@ -701,7 +707,7 @@ class AgentRuntimeInterruptTest {
 
         // The provider is suspended INSIDE its turn (at the gate), long before any
         // further Core checkpoint could execute. A user Stop must still cancel the
-        // in-flight operation directly via the execution Job — not by waiting for
+        // in-flight operation directly via the execution Job 鈥?not by waiting for
         // the next checkpoint.
         val job = async(Dispatchers.Default) { fx.runtime.send("hi") }
         waitBusy(fx.runtime)

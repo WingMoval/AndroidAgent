@@ -44,22 +44,35 @@ class AndroidShellToolImpl internal constructor(
 ) : Tool {
 
     /**
-     * Production constructor: consumes one-shot ADB execution through the
-     * unified [AtExecutionAdapter]. The adapter must be initialized (ADB
-     * connection READY) before the tool is used; the Host handles lifecycle.
+     * Production constructor: consumes one-shot LOCAL execution through the
+     * unified [AtExecutionAdapter].
+     *
+     * AG.AT-V4-AGENT-USE-0: Local-first execution semantics. The default
+     * android_shell tool uses AT V4 Local one-shot execution (app UID shell),
+     * NOT ADB. This is the primary execution path on all devices. ADB is
+     * available via the adapter for tasks that specifically need ADB
+     * capabilities (uid=2000 shell, system commands), but is not the default.
      */
     constructor(adapter: AtExecutionAdapter) : this(
-        Executor { command -> adapter.executeAdb(command) }
+        Executor { command -> adapter.executeLocal(command) }
     )
 
     override val spec: ToolSpec = ToolSpec(
         name = TOOL_NAME,
         description =
-            "WHAT: Execute one non-interactive shell command on the connected Android " +
-                "device and return its result.\n" +
-                "WHEN: Use when the task depends on actual Android device state or a " +
-                "shell-accessible Android operation, and the answer is not already known " +
-                "from earlier observations.\n" +
+            "WHAT: Execute one non-interactive command in AndroidAgent's local shell " +
+                "environment and return its result.\n" +
+                "CONTEXT: Commands run locally under AndroidAgent's application execution " +
+                "identity by default. File paths are relative to the app's private storage.\n" +
+                "ADB: An `adb` CLI provided by AndroidTerminal V4 is available inside this " +
+                "shell. Use `adb ...` for ADB-specific operations. Use `adb shell ...` " +
+                "to run commands under the Android shell principal (a different execution " +
+                "identity from the local app shell). Inspect with `adb shell id` when " +
+                "identity matters.\n" +
+                "WHEN: Use the local shell for operations that belong to AndroidAgent's own " +
+                "execution environment (files, local state). Use the `adb` CLI inside this " +
+                "shell when the task requires ADB-specific operations, ADB shell privileges, " +
+                "pairing, or device-side shell access.\n" +
                 "INPUT: A single JSON object with one string field \"command\", " +
                 "for example {\"command\":\"id\"}. No other fields are supported.\n" +
                 "OUTPUT: A JSON object with fields \"outcome\", \"exitCode\", \"stdout\", " +

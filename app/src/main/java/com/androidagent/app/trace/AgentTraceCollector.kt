@@ -128,6 +128,7 @@ class AgentTraceCollector(
         is RunFailure.MaxStepsReached -> "max_steps_reached: ${failure.maxSteps}"
         is RunFailure.SessionBusy -> "session_busy: ${failure.sessionId}"
         is RunFailure.RuntimeFailure -> "runtime_failure: ${failure.cause}"
+        is RunFailure.DurabilityFailure -> "durability_failure: ${failure.boundary}: ${failure.cause}"
     }
 
     private fun outcomeOf(event: AgentEvent.RunFinished): String =

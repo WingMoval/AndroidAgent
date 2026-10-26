@@ -45,14 +45,18 @@ android {
 }
 
 dependencies {
-    // AT Consumer Freeze V1 — vendored AARs (self-contained; no sibling AT
-    // source tree required). Resolved from third_party/at-consumer-freeze-v1/m2.
-    // See MANIFEST.md for provenance (source baseline c9cee21, SHA256 hashes).
-    api("com.at.engine:at-engine:1.0.0")
-    api("com.at.backend.local:at-backend-local:1.0.0")
-    api("com.at.backend.adb:at-backend-adb:1.0.0")
-    api("com.adb.engine:adb-engine:1.0.0")
-    api("com.at.cli:at-cli:1.0.0")
+    // AG.AT-V4-INTEGRATION-1B: AT V4 Consumer Boundary (frozen at 7216d0e,
+    // corrected per AT_V4_CONSUMER_HANDOFF.md §10 AG Handoff Boundary).
+    // The adapter depends ONLY on:
+    //   - :at-engine-api (REQUIRED — public execution/session contract)
+    //   - :at-cli (OPTIONAL — CLI frontend)
+    // The adapter does NOT depend on :at-composition-android (that is the
+    // Host's / :app's responsibility). It does NOT depend on any AT internal
+    // implementation module (:at-engine / :at-engine-spi / :at-backend-* /
+    // :adb-engine).
+    // Resolved from third_party/at-v4-consumer-freeze-v1/m2.
+    api("com.at.engine.api:at-engine-api:4.0.0")
+    api("com.at.cli:at-cli:4.0.0")
 
     // forContext / Dispatchers.IO.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")

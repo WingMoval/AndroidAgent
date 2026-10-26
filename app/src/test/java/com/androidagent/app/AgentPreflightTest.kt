@@ -1,4 +1,4 @@
-package com.androidagent.app
+﻿package com.androidagent.app
 
 import com.androidagent.app.trace.AgentTraceCollector
 import com.androidagent.app.trace.TraceFormatter
@@ -7,6 +7,7 @@ import com.androidagent.app.trace.ToolResultSpan
 import com.androidagent.app.trace.RunFailureSpan
 import com.androidagent.app.trace.FinalAnswerSpan
 import com.androidagent.core.AgentCore
+import com.androidagent.core.MessageDurability
 import com.androidagent.core.ModelProvider
 import com.androidagent.core.ModelRequest
 import com.androidagent.core.ModelTurn
@@ -71,7 +72,7 @@ class AgentPreflightTest {
     @Test
     fun T1_instructions_flow_from_options_into_request() = runBlocking {
         val provider = ScriptedProvider(listOf(ModelTurn.FinalAnswer("done")), emptyList())
-        val core = AgentCore(provider, ToolRegistry())
+        val core = AgentCore(provider, ToolRegistry(), MessageDurability.Noop)
         val options = RunOptions(instructions = AgentInstructions.CONTENT)
 
         core.run("s1", "hello", options)
@@ -85,7 +86,7 @@ class AgentPreflightTest {
     @Test
     fun T4_user_message_enters_next_request_history() = runBlocking {
         val provider = ScriptedProvider(listOf(ModelTurn.FinalAnswer("ok")), emptyList())
-        val core = AgentCore(provider, ToolRegistry())
+        val core = AgentCore(provider, ToolRegistry(), MessageDurability.Noop)
 
         core.run("s1", "find the foreground app", RunOptions(instructions = AgentInstructions.CONTENT))
 
@@ -103,7 +104,7 @@ class AgentPreflightTest {
         val tool = FakeTool(ToolResult(success = true, output = "{\"stdout\":\"uid=2000\"}"))
         val registry = ToolRegistry().apply { register(tool) }
         val provider = ScriptedProvider(listOf(ModelTurn.ToolCalls(listOf(ToolCall("c1", "android_shell", """{"command":"id"}"""))), ModelTurn.FinalAnswer("answer")), registry.specs())
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         core.run("s1", "whoami?", RunOptions(instructions = AgentInstructions.CONTENT))
 
@@ -126,7 +127,7 @@ class AgentPreflightTest {
         val tool = FakeTool(ToolResult(success = true, output = "ok"))
         val registry = ToolRegistry().apply { register(tool) }
         val provider = ScriptedProvider(listOf(ModelTurn.ToolCalls(listOf(ToolCall("c1", "android_shell", """{"command":"id"}"""))), ModelTurn.FinalAnswer("done")), registry.specs())
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
         val sink = newCollector()
 
         core.run("s1", "hi", RunOptions(instructions = AgentInstructions.CONTENT, eventSink = sink))
@@ -150,7 +151,7 @@ class AgentPreflightTest {
         val tool = FakeTool(ToolResult(success = false, output = "", error = "transport error"))
         val registry = ToolRegistry().apply { register(tool) }
         val provider = ScriptedProvider(listOf(ModelTurn.ToolCalls(listOf(ToolCall("c9", "android_shell", """{"command":"getprop ro.build.version.sdk"}"""))), ModelTurn.FinalAnswer("could not reach device")), registry.specs())
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
         val sink = newCollector()
 
         val outcome = core.run("s1", "list packages", RunOptions(instructions = AgentInstructions.CONTENT, eventSink = sink))
@@ -181,7 +182,7 @@ class AgentPreflightTest {
     @Test
     fun T7b_trace_captures_run_failure_outcome() = runBlocking {
         val provider = ScriptedProvider(listOf(ModelTurn.ToolCalls(listOf(ToolCall("c1", "android_shell", """{"command":"x"}""")))), emptyList())
-        val core = AgentCore(provider, ToolRegistry()) // no tools registered -> dispatch fails
+        val core = AgentCore(provider, ToolRegistry(), MessageDurability.Noop) // no tools registered -> dispatch fails
         val sink = newCollector()
 
         val outcome = core.run("s1", "hi", RunOptions(instructions = AgentInstructions.CONTENT, eventSink = sink))
@@ -208,7 +209,7 @@ class AgentPreflightTest {
         val changed = AgentInstructions.CONTENT + " "
         assertNotEquals(AgentInstructions.HASH, sha256(changed))
         // Version identity is stable and non-empty.
-        assertEquals("AGENT_INSTRUCTIONS_V0", AgentInstructions.VERSION)
+        assertEquals("AGENT_INSTRUCTIONS_V1", AgentInstructions.VERSION)
     }
 
     // --------------------------------------------- T10 core boundary
@@ -343,7 +344,7 @@ class AgentPreflightTest {
         val tool = FakeTool(ToolResult(success = true, output = "Authorization: Bearer $sentinel"))
         val registry = ToolRegistry().apply { register(tool) }
         val provider = ScriptedProvider(listOf(ModelTurn.ToolCalls(listOf(ToolCall("c1", "android_shell", """{"command":"env"}"""))), ModelTurn.FinalAnswer("ok")), registry.specs())
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
         val sink = newCollector()
         core.run("s1", "show env", RunOptions(instructions = AgentInstructions.CONTENT, eventSink = sink))
 
@@ -352,7 +353,7 @@ class AgentPreflightTest {
         assertTrue(rendered.contains("<redacted>"))
         // The non-secret parts of the trace survive redaction.
         assertTrue(rendered.contains("android_shell"))
-        assertTrue(rendered.contains("AGENT_INSTRUCTIONS_V0"))
+        assertTrue(rendered.contains("AGENT_INSTRUCTIONS_V1"))
     }
 
     // --------------------------------------------------------------- utilities

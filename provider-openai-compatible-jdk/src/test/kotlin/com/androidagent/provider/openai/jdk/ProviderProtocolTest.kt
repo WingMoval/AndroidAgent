@@ -1,10 +1,14 @@
-package com.androidagent.provider.openai.jdk
+﻿package com.androidagent.provider.openai.jdk
 
 import com.androidagent.provider.openai.OpenAiCompatibleConfig
 import com.androidagent.provider.openai.OpenAiCompatibleProvider
 import com.androidagent.provider.openai.OpenAiProviderException
 
 import com.androidagent.core.Message
+import com.androidagent.core.MessageDurability
+import com.androidagent.runtime.persistence.MessageRecord
+import com.androidagent.runtime.persistence.TopicSessionRecord
+import com.androidagent.runtime.persistence.TopicSessionStore
 import com.androidagent.core.ModelProvider
 import com.androidagent.core.ModelRequest
 import com.androidagent.core.ModelTurn
@@ -481,11 +485,25 @@ class ProviderProtocolTest {
                 val sink = com.androidagent.core.AgentEventSink { event ->
                     if (event is com.androidagent.core.AgentEvent.RunFinished) terminals += event.outcome
                 }
+                val l2Store = object : TopicSessionStore {
+                    private val sessions = mutableSetOf<String>()
+                    override suspend fun createSession(id: String, nowMillis: Long, model: String?, provider: String?, title: String?): TopicSessionRecord {
+                        sessions.add(id); return TopicSessionRecord(id, nowMillis, nowMillis)
+                    }
+                    override suspend fun appendMessage(sessionId: String, message: Message, nowMillis: Long): MessageRecord =
+                        MessageRecord("rec", sessionId, 0L, "USER", "{}", nowMillis)
+                    override suspend fun loadSession(id: String): TopicSessionRecord? = if (id in sessions) TopicSessionRecord(id, 0, 0) else null
+                    override suspend fun loadLatestSession(): TopicSessionRecord? = sessions.firstOrNull()?.let { TopicSessionRecord(it, 0, 0) }
+                    override suspend fun loadMessages(sessionId: String): List<Message>? = if (sessionId in sessions) emptyList() else null
+                    override suspend fun updateModelProviderMetadata(sessionId: String, model: String?, provider: String?) {}
+                }
                 val runtime = com.androidagent.runtime.AgentRuntime(
-                    agentCore = com.androidagent.core.AgentCore(provider, com.androidagent.core.ToolRegistry()),
+                    agentCore = com.androidagent.core.AgentCore(provider, com.androidagent.core.ToolRegistry(), MessageDurability.Noop),
                     runOptions = com.androidagent.core.RunOptions(eventSink = sink),
                     sessionIdFactory = { "l2full" },
+                    topicSessionStore = l2Store,
                 )
+                runtime.initialize()
 
                 var sendOutcome: com.androidagent.core.RunOutcome? = null
                 var sendError: Throwable? = null

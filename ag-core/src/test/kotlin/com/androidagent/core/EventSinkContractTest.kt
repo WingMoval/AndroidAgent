@@ -1,4 +1,4 @@
-package com.androidagent.core
+﻿package com.androidagent.core
 
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -24,7 +24,7 @@ class EventSinkContractTest {
     @Test
     fun `sink failure at RunStarted does not leave the session busy`() = runBlocking {
         val provider = ScriptedModelProvider(listOf(ModelTurn.FinalAnswer("recovered")))
-        val core = AgentCore(provider, ToolRegistry())
+        val core = AgentCore(provider, ToolRegistry(), MessageDurability.Noop)
         val sink = SelectiveThrowingEventSink { it is AgentEvent.RunStarted }
 
         val outcome = core.run("s1", "hi", RunOptions(eventSink = sink))
@@ -50,7 +50,7 @@ class EventSinkContractTest {
         )
         // Faults only on ToolCallFinished, i.e. after the result was recorded.
         val sink = SelectiveThrowingEventSink { it is AgentEvent.ToolCallFinished }
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         val outcome = core.run("s1", "go", RunOptions(eventSink = sink))
 
@@ -87,8 +87,8 @@ class EventSinkContractTest {
         assertTrue(reused.history().isNotEmpty())
         assertEquals(
             RunOutcome.Answer("later run"),
-            AgentCore(ScriptedModelProvider(listOf(ModelTurn.FinalAnswer("later run"))), registry)
-                .run("s2", "next"),
+            AgentCore(ScriptedModelProvider(listOf(ModelTurn.FinalAnswer("later run"))), registry, MessageDurability.Noop)
+                .run("s2", "next", RunOptions()),
             "the agent remains operational after an aborted run",
         )
     }
@@ -105,7 +105,7 @@ class EventSinkContractTest {
                 ModelTurn.FinalAnswer("moved on"),
             )
         )
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         val outcome = core.run("s1", "go")
 
@@ -120,7 +120,7 @@ class EventSinkContractTest {
     @Test
     fun `a sink that always throws cannot turn a failure into an escaping exception`() = runBlocking {
         val provider = ScriptedModelProvider(listOf(ModelTurn.FinalAnswer("never reached")))
-        val core = AgentCore(provider, ToolRegistry())
+        val core = AgentCore(provider, ToolRegistry(), MessageDurability.Noop)
         val sink = SelectiveThrowingEventSink { true }
 
         // Must return a structured outcome rather than propagate anything.
@@ -142,7 +142,7 @@ class EventSinkContractTest {
             List(4) { ModelTurn.ToolCalls(listOf(ToolCall("c$it", "again"))) }
         )
         val sink = SelectiveThrowingEventSink { true }
-        val core = AgentCore(provider, registry)
+        val core = AgentCore(provider, registry, MessageDurability.Noop)
 
         // The sink faults on the very first event, so this exercises the same
         // abort path; the point is that no exception escapes either way.
@@ -157,7 +157,7 @@ class EventSinkContractTest {
         val provider = ScriptedModelProvider(listOf(ModelTurn.FinalAnswer("ok")))
         val sink = RecordingEventSink()
 
-        AgentCore(provider, ToolRegistry()).run("s1", "hi", RunOptions(eventSink = sink))
+        AgentCore(provider, ToolRegistry(), MessageDurability.Noop).run("s1", "hi", RunOptions(eventSink = sink))
 
         assertEquals(
             listOf(

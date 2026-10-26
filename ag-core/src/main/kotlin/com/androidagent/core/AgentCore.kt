@@ -3,6 +3,9 @@ package com.androidagent.core
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
 /**
  * AG Core's recognition of a *user* interrupt for the Run currently executing.
@@ -103,6 +106,7 @@ data class RunOptions(
 class AgentCore(
     private val modelProvider: ModelProvider,
     private val toolRegistry: ToolRegistry,
+    private val messageDurability: MessageDurability,
 ) {
 
     private val sessions = ConcurrentHashMap<String, Session>()
@@ -114,6 +118,22 @@ class AgentCore(
      * singleton.
      */
     fun session(id: String): Session = sessions.computeIfAbsent(id) { Session(it) }
+
+    /**
+     * Creates a Session with pre-loaded durable history (restore seam).
+     *
+     * Used at startup to hydrate a TopicSession from persistent storage.
+     * The [initialHistory] is injected via [Session.restoreHistory] — it does
+     * NOT trigger [MessageDurability] (no re-persistence).
+     *
+     * If a Session with [id] already exists, it is REPLACED with the restored one.
+     */
+    fun restoreSession(id: String, initialHistory: List<Message>): Session {
+        val session = Session(id)
+        session.restoreHistory(initialHistory)
+        sessions[id] = session
+        return session
+    }
 
     /**
      * Runs one user request against one Session.
@@ -212,21 +232,35 @@ class AgentCore(
     }
 
     /**
-     * Appends a truthful synthetic [ToolResultMessage] for every declared-but-
-     * uncompleted tool call so the declared-call/result pairing invariant holds
-     * after an interrupt. Called from the CancellationException catch (a context
-     * that is not itself cancelled), so the synthetic results are reliably
-     * recorded.
+     * Durably appends a truthful synthetic [ToolResultMessage] for every
+     * declared-but-uncompleted tool call so the declared-call/result pairing
+     * invariant holds after an interrupt.
+     *
+     * SYNTHETIC_INTERRUPT_ORDER = DURABLE_FIRST → CORE_SECOND (frozen, matching
+     * D1/D2/D3). Each synthetic result is durably committed BEFORE being appended
+     * to the in-memory Session, so LIVE_CORE_HISTORY == DURABLE_HISTORY is
+     * maintained even after an interrupt.
+     *
+     * Called from the CancellationException catch sites. The caller wraps this in
+     * a controlled [NonCancellable] closeout (see [interruptCloseout]) because the
+     * enclosing coroutine context is cancelled; [MessageDurability.commit] calls
+     * `ensureActive()` which would otherwise re-throw the cancellation.
      *
      * In-flight calls (dispatch started, no result observed) get a synthetic result
      * whose error states the external execution state is UNKNOWN; calls that never
      * started dispatch get one that states they were NOT executed. Neither claims
      * the external operation failed, was rolled back, or did not happen.
+     *
+     * FAIL-CLOSED: if a durability commit fails mid-sequence, the Run fails with
+     * [RunFailure.DurabilityFailure] (boundary = "SYNTHETIC") rather than leaving
+     * the Core/DB histories inconsistent.
      */
-    private fun appendSyntheticToolResults(
+    private suspend fun appendSyntheticToolResults(
         session: Session,
         pairing: InterruptPairing,
-    ) {
+        sink: AgentEventSink,
+        terminalClaimed: AtomicBoolean,
+    ): RunOutcome? {
         val started = pairing.snapshot()
         for (msg in session.history()) {
             if (msg !is ModelMessage || msg.toolCalls.isEmpty()) continue
@@ -235,17 +269,51 @@ class AgentCore(
                 .mapTo(HashSet()) { it.toolCallId }
             for (call in msg.toolCalls) {
                 if (call.id in resultIds) continue
-                // In-flight: dispatch had started (ToolCallStarted emitted) but no
-                // result was observed before the interrupt -> external state unknown.
-                // Not-started: dispatch never began -> it did not execute.
-                val result = if (call.id in started) {
-                    ToolResult(success = false, output = "", error = IN_FLIGHT_INTERRUPTED_ERROR)
-                } else {
-                    ToolResult(success = false, output = "", error = NOT_EXECUTED_DUE_TO_INTERRUPT_ERROR)
+                val synthetic = syntheticInterruptedToolResult(call, inFlight = call.id in started)
+                try {
+                    messageDurability.commit(session.id, synthetic)
+                } catch (e: DurabilityCommitException) {
+                    // Fail-closed: the durable closeout could not complete. Mark the
+                    // Session as requiring reconciliation (subsequent Runs are
+                    // denied until restoreSession replaces it), then return a
+                    // DurabilityFailure. Core/DB remain consistent (both have the
+                    // successfully-committed synthetics; the failed one is in
+                    // neither).
+                    session.markReconciliationRequired()
+                    return failDurability(sink, RunFailure.DurabilityFailure("SYNTHETIC", safeCause(e)), terminalClaimed)
                 }
-                session.append(ToolResultMessage(call.id, call.name, result))
+                session.append(synthetic)
             }
         }
+        return null
+    }
+
+    /**
+     * Controlled [NonCancellable] interrupt closeout.
+     *
+     * The enclosing coroutine context is cancelled (we are in a
+     * CancellationException catch). [MessageDurability.commit] calls
+     * `ensureActive()` which would re-throw the cancellation. This small
+     * NonCancellable scope shields ONLY the synthetic reconciliation +
+     * finalization — NOT the whole Run, NOT the ModelCall, NOT the tool
+     * execution, NOT the normal D1/D2/D3 path.
+     *
+     * If [appendSyntheticToolResults] returns a failure (durability commit
+     * failed), that failure is returned to the caller instead of the
+     * Interrupted outcome.
+     */
+    private suspend fun interruptCloseout(
+        session: Session,
+        pairing: InterruptPairing,
+        sink: AgentEventSink,
+        terminalClaimed: AtomicBoolean,
+        interruptSignal: RunInterruptSignal,
+    ): RunOutcome? = withContext(NonCancellable) {
+        val failure = appendSyntheticToolResults(session, pairing, sink, terminalClaimed)
+        if (failure != null) return@withContext failure
+        interruptSignal.onInterruptedFinalized()
+        emitInterruptedTerminal(sink, terminalClaimed)
+        null
     }
 
     /**
@@ -277,7 +345,15 @@ class AgentCore(
         pairing: InterruptPairing,
     ): RunOutcome {
         val sink = options.eventSink
-        session.append(UserMessage(userInput))
+
+        // D1: UserMessage durability (DURABLE_FIRST: commit → append → ModelCall)
+        val userMsg = UserMessage(userInput)
+        try {
+            messageDurability.commit(session.id, userMsg)
+        } catch (e: DurabilityCommitException) {
+            return failDurability(sink, RunFailure.DurabilityFailure("USER", safeCause(e)), terminalClaimed)
+        }
+        session.append(userMsg)
 
         var completedTurns = 0
         while (true) {
@@ -302,21 +378,18 @@ class AgentCore(
                 // A user Stop interrupts the Run mid-turn. This is coroutine control
                 // flow, not a provider failure: it must propagate so the Run's
                 // execution terminates as cancelled and the interrupt finalization
-                // (in executeRun) can run. This catch is a non-cancelled context (the
-                // exception was observed, not thrown at this point), so the terminal
+                // can run. This catch is a non-cancelled context (the exception was
+                // observed, not thrown at this point), so the terminal
                 // RunFinished(Interrupted) is emitted here rather than in the
                 // executeRun catch (which runs in a cancelled context where emission
                 // would be swallowed).
                 if (interruptSignal.isUserInterrupted() && !terminalClaimed.get()) {
-                    // Interrupt finalization (non-cancelled context): append the
-                    // synthetic tool results and emit the terminal. Acknowledge to
-                    // the per-Run signal (condition C) BEFORE the terminal emission
-                    // so the acknowledgement is committed even if the emission
-                    // throws in a cancelling context. The executeRun catch runs in a
-                    // cancelled context where this finalization would be skipped.
-                    appendSyntheticToolResults(session, pairing)
-                    interruptSignal.onInterruptedFinalized()
-                    emitInterruptedTerminal(sink, terminalClaimed)
+                    // Controlled NonCancellable closeout: durably commit synthetic
+                    // ToolResults (DURABLE_FIRST) then emit the terminal. If the
+                    // durability closeout fails, return a structured Failure instead
+                    // of Interrupted (fail-closed: no Core/DB inconsistency).
+                    val closeoutFailure = interruptCloseout(session, pairing, sink, terminalClaimed, interruptSignal)
+                    if (closeoutFailure != null) return closeoutFailure
                 }
                 throw e
             } catch (e: Exception) {
@@ -328,7 +401,14 @@ class AgentCore(
 
             when (turn) {
                 is ModelTurn.FinalAnswer -> {
-                    session.append(ModelMessage(turn.content))
+                    // D2 (FINAL_ANSWER): commit → append → AnswerProduced → RunFinished
+                    val modelMsg = ModelMessage(turn.content)
+                    try {
+                        messageDurability.commit(session.id, modelMsg)
+                    } catch (e: DurabilityCommitException) {
+                        return failDurability(sink, RunFailure.DurabilityFailure("FINAL_ANSWER", safeCause(e)), terminalClaimed)
+                    }
+                    session.append(modelMsg)
                     sink.emit(AgentEvent.AnswerProduced(turn.content))
                     val outcome = RunOutcome.Answer(turn.content)
                     emitTerminal(sink, AgentEvent.RunFinished(outcome), terminalClaimed)
@@ -340,7 +420,14 @@ class AgentCore(
                     // alongside them. Before AG.PROVIDER-0.R1 this was hardcoded
                     // to "", which silently lost any such prose.
                     val calls = turn.calls.toList()
-                    session.append(ModelMessage(turn.content, calls))
+                    // D2 (MODEL): commit → append → Tool dispatch
+                    val modelMsg = ModelMessage(turn.content, calls)
+                    try {
+                        messageDurability.commit(session.id, modelMsg)
+                    } catch (e: DurabilityCommitException) {
+                        return failDurability(sink, RunFailure.DurabilityFailure("MODEL", safeCause(e)), terminalClaimed)
+                    }
+                    session.append(modelMsg)
                     // Sequential by construction: each dispatch is awaited before
                     // the next begins, preserving the model's ordering.
                     for (call in calls) {
@@ -356,26 +443,43 @@ class AgentCore(
                             // An in-flight tool observed the interrupt (or the Run was
                             // cancelled) and threw CancellationException. This catch is
                             // a non-cancelled context, so the full interrupt
-                            // finalization (synthetic tool results + outcome +
+                            // finalization (durable synthetic ToolResults + outcome +
                             // terminal) is committed here (the executeRun catch runs
                             // in a cancelled context where it would be skipped).
                             if (interruptSignal.isUserInterrupted() && !terminalClaimed.get()) {
-                                appendSyntheticToolResults(session, pairing)
-                                interruptSignal.onInterruptedFinalized()
-                                emitInterruptedTerminal(sink, terminalClaimed)
+                                val closeoutFailure = interruptCloseout(session, pairing, sink, terminalClaimed, interruptSignal)
+                                if (closeoutFailure != null) return closeoutFailure
                             }
                             throw e
                         }
-                        // Append before announcing. If a sink faults, the recorded
-                        // history must not be left declaring a tool call that has
-                        // no matching result.
-                        session.append(ToolResultMessage(call.id, call.name, result))
+                        // D3 (TOOL_RESULT): commit → append → ToolCallFinished → next ModelCall
+                        val resultMsg = ToolResultMessage(call.id, call.name, result)
+                        try {
+                            messageDurability.commit(session.id, resultMsg)
+                        } catch (e: DurabilityCommitException) {
+                            return failDurability(sink, RunFailure.DurabilityFailure("TOOL_RESULT", safeCause(e)), terminalClaimed)
+                        }
+                        session.append(resultMsg)
                         sink.emit(AgentEvent.ToolCallFinished(call, result))
                     }
                 }
             }
         }
     }
+
+    /**
+     * Handles a durability commit failure: emits the failure and returns a
+     * structured [RunOutcome.Failure]. The Run does NOT continue.
+     */
+    private fun failDurability(
+        sink: AgentEventSink,
+        failure: RunFailure.DurabilityFailure,
+        terminalClaimed: AtomicBoolean,
+    ): RunOutcome = failRun(sink, failure, terminalClaimed)
+
+    /** Extracts a safe cause category from a durability exception (never the raw message). */
+    private fun safeCause(e: DurabilityCommitException): String =
+        e.cause?.let { it::class.simpleName ?: "storage_error" } ?: "commit_error"
 
     private fun failRun(
         sink: AgentEventSink,
@@ -414,5 +518,24 @@ class AgentCore(
         /** Synthetic ToolResult error for a declared call that never started dispatch before the interrupt. */
         const val NOT_EXECUTED_DUE_TO_INTERRUPT_ERROR =
             "Tool call was not executed because the Run was interrupted."
+
+        /**
+         * Canonical synthetic ToolResult construction for an interrupted/dangling tool call.
+         *
+         * This is the SINGLE source of truth for the synthetic UNKNOWN semantics,
+         * shared by:
+         *  - same-process interrupt closeout ([appendSyntheticToolResults])
+         *  - cross-process startup repair (AgentRuntime dangling detection)
+         *
+         * Pure function: no Android, no Room, no Store dependency.
+         *
+         * @param call the dangling tool call.
+         * @param inFlight true if dispatch started (external state unknown);
+         *   false if dispatch never started (not executed).
+         */
+        fun syntheticInterruptedToolResult(call: ToolCall, inFlight: Boolean = true): ToolResultMessage {
+            val error = if (inFlight) IN_FLIGHT_INTERRUPTED_ERROR else NOT_EXECUTED_DUE_TO_INTERRUPT_ERROR
+            return ToolResultMessage(call.id, call.name, ToolResult(success = false, output = "", error = error))
+        }
     }
 }

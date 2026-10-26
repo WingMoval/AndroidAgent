@@ -228,6 +228,12 @@ class ChatActivity : AppCompatActivity() {
         SessionHolder.setRunStatus(null)
         renderStatus()
         connectShell()
+        // AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0F.NORMALIZE-1: durably
+        // create the initial TopicSession (Runtime-owned lifecycle). Must happen
+        // before the first Run so SESSION_ROW_EXISTS_BEFORE_D1 = YES.
+        lifecycleScope.launch {
+            SessionHolder.initialize()
+        }
     }
 
     /**
@@ -285,9 +291,17 @@ class ChatActivity : AppCompatActivity() {
             runtimeProvider = { sharedRuntime },
             toolRegistryProvider = { root?.toolRegistryView },
             userInputSink = { text ->
+                // AGA.OBSERVABILITY-1 FIX: operate on the process-scoped
+                // SessionHolder.transcriptModel (the authoritative model),
+                // NOT the Activity's local copy. The Activity's local copy
+                // is rebound from SessionHolder on every onUiUpdate, so
+                // writing to it here would be immediately overwritten.
+                // Must run on the UI thread: TranscriptModel.blocks is a
+                // plain ArrayList (not thread-safe); renderTranscript() runs
+                // on the UI thread and would race with a concurrent onUser().
                 runOnUiThread {
-                    transcriptModel.onUser(text)
-                    renderTranscript()
+                    SessionHolder.transcriptModel.onUser(text)
+                    SessionHolder.notifyUiUpdate()
                 }
             },
             onRunStateChanged = { busy ->
@@ -450,16 +464,18 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun onNewSession() {
-        val switched = SessionHolder.newSession()
-        if (switched) {
-            transcriptModel = SessionHolder.transcriptModel
-            transcript.text = ""
-            runStatusText = SessionHolder.runStatusText
-            renderStatus()
-        } else {
-            runStatusText = "Cannot start a new session while a run is in progress."
-            SessionHolder.setRunStatus(runStatusText)
-            renderStatus()
+        lifecycleScope.launch {
+            val switched = SessionHolder.newSession()
+            if (switched) {
+                transcriptModel = SessionHolder.transcriptModel
+                transcript.text = ""
+                runStatusText = SessionHolder.runStatusText
+                renderStatus()
+            } else {
+                runStatusText = "Cannot start a new session while a run is in progress."
+                SessionHolder.setRunStatus(runStatusText)
+                renderStatus()
+            }
         }
     }
 

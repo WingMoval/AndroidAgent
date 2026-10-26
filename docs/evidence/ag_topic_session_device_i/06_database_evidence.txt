@@ -1,0 +1,37 @@
+DATABASE EVIDENCE (pulled read-only via `run-as com.androidagent.app base64 <file>`
+-> PC base64-decode -> PC sqlite3 3.45.3). The device has no sqlite3 and the
+app-UID cannot write to /data/local/tmp, so base64-over-adb was the only
+binary-safe path. The device DB was NEVER modified.
+===========================================================================
+
+FINAL STATE (after all of DEV-I1..I4):
+  DATABASE_VERSION (PRAGMA user_version) = 1
+  Tables (user)      : topic_sessions, messages   (+ room_master_table, android_metadata)
+  TABLE_COUNT (user) = 2
+  SESSION_COUNT      = 2
+  MESSAGE_COUNT      = 8
+
+  session-5043f80d-d37e-47ba-8255-36b88bd492fd  (A, original)
+      created_at=1793019403262 last_used_at=1793019853364
+      messages: count=6, sequence 0..5 contiguous
+        seq0 USER, seq1 MODEL, seq2 USER, seq3 MODEL, seq4 USER, seq5 MODEL
+        (= U1, A1, U2, A2, U3, A3)
+  session-721873bf-d7c8-4d86-a56a-39640ba593c7  (B, new session)
+      created_at=1793020152096 last_used_at=1793020185210
+      messages: count=2, sequence 0..1 contiguous
+        seq0 USER, seq1 MODEL  (= B-U1, answer)
+
+Message type totals: USER=4, MODEL=4 (8 total).
+
+NO-DESTRUCTIVE / NO-SCHEMA-CHANGE CONFIRMED:
+  - DATABASE_VERSION stayed 1 throughout (no migration, no destructive fallback).
+  - Both sessions and all 8 message rows present at the end (nothing deleted).
+  - Sequences contiguous 0..N-1 in both sessions (no gaps, no corruption).
+
+REPROJECT_DURABLE_WRITE CHECK:
+  Across the kill->relaunch (DEV-I1) and force-stop->relaunch (DEV-I4) cycles,
+  NO new messages were created by the restore itself. Message counts only grew
+  when a NEW user message was sent (U3 in DEV-I2, B-U1 in DEV-I3). The restore
+  projection (TranscriptModel.reproject from Core history) produced 0 durable
+  writes. (No dangling tool calls existed in this conversation, so no repair
+  appends were expected either.)

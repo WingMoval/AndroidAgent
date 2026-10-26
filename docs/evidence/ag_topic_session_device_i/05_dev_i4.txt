@@ -1,0 +1,31 @@
+DEV-I4 — Force Stop + Relaunch (x2, idempotence)  =>  PASS
+===========================================================================
+Session B (session-721873bf-...) held B-U1 + answer (2 messages).
+
+ROUND 1:
+  PID_BEFORE = 13877
+  `adb shell am force-stop com.androidagent.app`
+  PID_AFTER  = (empty)  -> process gone
+  `adb shell am start -n com.androidagent.app/.ChatActivity`
+  PID_NEW    = 16946
+  Transcript after relaunch:
+    User / B-U1 new session first message
+    Assistant / ECHO msg_count=2 | last_user=B-U1 new session first message
+  => latest session B restored, transcript B visible, no A content, no duplicate.
+
+ROUND 2 (repeatability):
+  `adb shell am force-stop com.androidagent.app`
+  PID_AFTER  = (empty)
+  relaunch -> PID_NEW = 17818
+  Transcript after relaunch (IDENTICAL to round 1):
+    User / B-U1 new session first message
+    Assistant / ECHO msg_count=2 | last_user=B-U1 new session first message
+  => RESTORE_IDEMPOTENT_ON_REAL_DEVICE = YES
+
+VERDICT:
+  FORCE_STOP_RELAUNCH    = PASS (both rounds)
+  LATEST_SESSION         = B (session-721873bf-...)
+  VISIBLE_HISTORY_EXACT  = YES (B-U1 + answer, each once)
+  DUPLICATE_COUNT        = 0
+  CROSS_SESSION_MIX      = NO (no A content in B)
+DEV-I4 = PASS

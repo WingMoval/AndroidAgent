@@ -1,8 +1,11 @@
 package com.androidagent.app
 
+import com.androidagent.core.ModelMessage
 import com.androidagent.core.RunFailure
 import com.androidagent.core.ToolCall
 import com.androidagent.core.ToolResult
+import com.androidagent.core.ToolResultMessage
+import com.androidagent.core.UserMessage
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -341,5 +344,198 @@ class TranscriptModelTest {
         assertFalse(rendered.contains("Failed"), "an interrupt is NOT a failure")
         val block = m.snapshot().last()
         assertTrue(block is TranscriptModel.Block.Interrupted, "last block is Interrupted, got $block")
+    }
+
+    // ================================================================
+    // PHASE I — Transcript re-projection from restored Core history
+    // ================================================================
+
+    @Test
+    fun TRANSCRIPT_I1_user_message_projects_one_user_block() {
+        val m = TranscriptModel()
+        m.reproject(listOf(UserMessage("hello 世界 🌍\nline two")))
+        val blocks = m.snapshot()
+        assertEquals(1, blocks.size)
+        val b = blocks[0] as TranscriptModel.Block.User
+        // Content preserved verbatim (no trim / rewrite / summarize).
+        assertEquals("hello 世界 🌍\nline two", b.text)
+    }
+
+    @Test
+    fun TRANSCRIPT_I2_final_model_message_projects_final_assistant_block() {
+        val m = TranscriptModel()
+        m.reproject(listOf(ModelMessage("The answer.", emptyList())))
+        val b = m.snapshot()[0] as TranscriptModel.Block.Assistant
+        assertEquals("The answer.", b.text)
+        assertTrue(b.final, "a model message without tool calls is the final answer")
+    }
+
+    @Test
+    fun TRANSCRIPT_I3_tool_bearing_model_projects_assistant_then_shell_in_live_order() {
+        val m = TranscriptModel()
+        m.reproject(
+            listOf(
+                ModelMessage(
+                    "I will check.",
+                    listOf(
+                        ToolCall("c1", "android_shell", """{"command":"ls"}"""),
+                        ToolCall("c2", "android_shell", """{"command":"pwd"}"""),
+                    ),
+                ),
+            ),
+        )
+        val blocks = m.snapshot()
+        assertEquals(3, blocks.size)
+        val a = blocks[0] as TranscriptModel.Block.Assistant
+        assertEquals("I will check.", a.text)
+        assertFalse(a.final, "a tool-bearing model turn is NOT the final answer")
+        val s1 = blocks[1] as TranscriptModel.Block.Shell
+        assertEquals("ls", s1.command)
+        val s2 = blocks[2] as TranscriptModel.Block.Shell
+        assertEquals("pwd", s2.command)
+    }
+
+    @Test
+    fun TRANSCRIPT_I4_tool_result_success_projects_result_block() {
+        val m = TranscriptModel()
+        m.reproject(
+            listOf(
+                ToolResultMessage(
+                    "c1",
+                    "android_shell",
+                    ToolResult(
+                        success = true,
+                        output = """{"outcome":"ok","exitCode":0,"stdout":"uid=2000","stderr":""}""",
+                    ),
+                ),
+            ),
+        )
+        val rendered = (m.snapshot()[0] as TranscriptModel.Block.Result).text
+        assertTrue(rendered.contains("exitCode=0"))
+        assertTrue(rendered.contains("uid=2000"))
+    }
+
+    @Test
+    fun TRANSCRIPT_I5_tool_result_failure_projects_result_block_with_error() {
+        val m = TranscriptModel()
+        m.reproject(
+            listOf(
+                ToolResultMessage(
+                    "c1",
+                    "android_shell",
+                    ToolResult(
+                        success = false,
+                        output = """{"outcome":"error","exitCode":1,"stdout":"","stderr":"boom"}""",
+                        error = "exitCode 1",
+                    ),
+                ),
+            ),
+        )
+        val rendered = (m.snapshot()[0] as TranscriptModel.Block.Result).text
+        assertTrue(rendered.contains("exitCode=1"))
+        assertTrue(rendered.contains("error: exitCode 1"))
+    }
+
+    @Test
+    fun TRANSCRIPT_I6_synthetic_unknown_result_not_shown_as_confirmed_failure() {
+        val m = TranscriptModel()
+        m.reproject(
+            listOf(
+                ModelMessage("checking", listOf(ToolCall("c1", "android_shell", """{"command":"long"}"""))),
+                // The canonical Phase-G synthetic interrupted result (in-flight):
+                ToolResultMessage(
+                    "c1",
+                    "android_shell",
+                    ToolResult(
+                        success = false,
+                        output = "",
+                        error = "Run interrupted before a ToolResult was observed; external execution state may be unknown.",
+                    ),
+                ),
+            ),
+        )
+        val rendered = m.render()
+        // The unknown-state wording is preserved verbatim.
+        assertTrue(rendered.contains("external execution state may be unknown"))
+        // It must NOT be re-interpreted as a confirmed tool failure.
+        assertFalse(rendered.contains("Failed"), "a synthetic UNKNOWN is not a Run failure block")
+        assertFalse(rendered.contains("error: tool mechanism failure"))
+        val blocks = m.snapshot()
+        val result = blocks.last()
+        assertTrue(result is TranscriptModel.Block.Result, "the unknown outcome is a Result, got $result")
+    }
+
+    @Test
+    fun TRANSCRIPT_I7_multi_tool_preserves_call_order() {
+        val m = TranscriptModel()
+        m.reproject(
+            listOf(
+                ModelMessage(
+                    "",
+                    listOf(
+                        ToolCall("A", "android_shell", """{"command":"alpha"}"""),
+                        ToolCall("B", "android_shell", """{"command":"beta"}"""),
+                        ToolCall("C", "android_shell", """{"command":"gamma"}"""),
+                    ),
+                ),
+            ),
+        )
+        val commands = m.snapshot().filterIsInstance<TranscriptModel.Block.Shell>().map { it.command }
+        assertEquals(listOf("alpha", "beta", "gamma"), commands, "tool call order preserved A,B,C")
+    }
+
+    @Test
+    fun TRANSCRIPT_I8_empty_history_projects_empty_transcript() {
+        val m = TranscriptModel()
+        m.onUser("stale from previous session")
+        m.reproject(emptyList())
+        assertEquals(0, m.snapshot().size, "empty history clears any prior projection")
+        assertEquals("", m.render().trim())
+    }
+
+    @Test
+    fun TRANSCRIPT_I9_reproject_same_history_is_idempotent() {
+        val m = TranscriptModel()
+        val history = listOf(
+            UserMessage("old"),
+            ModelMessage("answer-old", emptyList()),
+        )
+        m.reproject(history)
+        val first = m.snapshot()
+        m.reproject(history)
+        val second = m.snapshot()
+        assertEquals(first, second, "re-projecting the same history yields an identical projection")
+        assertEquals(2, second.size, "no accumulation / duplicates")
+    }
+
+    @Test
+    fun TRANSCRIPT_I10_project_B_replaces_project_A() {
+        val m = TranscriptModel()
+        m.reproject(listOf(UserMessage("A-old"), ModelMessage("A-answer", emptyList())))
+        m.reproject(listOf(UserMessage("B-only")))
+        val blocks = m.snapshot()
+        assertEquals(1, blocks.size, "only B is visible after projecting B")
+        val b = blocks[0] as TranscriptModel.Block.User
+        assertEquals("B-only", b.text)
+    }
+
+    @Test
+    fun TRANSCRIPT_I11_large_history_projects_completely_without_truncation_or_duplicate() {
+        val m = TranscriptModel()
+        // 1000 alternating user/model messages.
+        val history = buildList {
+            for (i in 0 until 1000) {
+                add(UserMessage("user-$i 中文🌍\nline"))
+                add(ModelMessage("answer-$i", emptyList()))
+            }
+        }
+        m.reproject(history)
+        val blocks = m.snapshot()
+        assertEquals(2000, blocks.size, "every message projected, no truncation / duplicate")
+        // Deterministic: content of each is preserved.
+        assertEquals("user-999 中文🌍\nline", (blocks[1998] as TranscriptModel.Block.User).text)
+        assertEquals("answer-999", (blocks[1999] as TranscriptModel.Block.Assistant).text)
+        // Unicode / multiline preserved verbatim.
+        assertEquals("user-0 中文🌍\nline", (blocks[0] as TranscriptModel.Block.User).text)
     }
 }

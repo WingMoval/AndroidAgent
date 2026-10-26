@@ -528,6 +528,27 @@ AGA.OBSERVABILITY-0 PASS      Active Provider Truth & Streaming Agent
                                  D1-D4 ALL PASS. CORE-007 stays RESEARCH_REQUIRED.
                                  Evidence: docs/implementation/AG.HOST-STOP-1.md
                                  (§13: D3 closeout).
+  AG.TOPIC-SESSION     FROZEN    TopicSession durable persistence foundation
+  -PERSISTENCE-0       (AG.POST-I-CORE-FREEZE-V1): Phase A-I + DEVICE-I closed;
+                       Room/SQLite durable SSOT (DATABASE_VERSION=1,
+                       topic_sessions+messages); TranscriptModel = presentation
+                       projection only; Restore = DB -> Runtime/Core ->
+                       Presentation (single pipeline, no second UI->DB path);
+                       D1/D2/D3 FROZEN; controlled recovery, no auto-replay of
+                       unknown external tool outcomes. VERIFIED:
+                       DURABLE_RUNTIME_RESUME=PASS, TRANSCRIPT_REPROJECTION=PASS,
+                       FULL_USER_VISIBLE_RESUME=REAL_DEVICE_VERIFIED (HONOR
+                       ALI-AN00, Android 15). POST-I architecture closure=PASS
+                       (physical isolation effective, Core/Runtime boundary
+                       clean, single ownership). Regression: ag-core 52 /
+                       ag-runtime 88 / app 171 / provider-jdk 26, 0 failures;
+                       assembleDebug PASS. Freeze:
+                       docs/freeze/AG.POST-I-ARCHITECTURE-FREEZE-V1.md; SSOT:
+                       docs/implementation/AG.TOPIC-SESSION-PERSISTENCE-
+                       IMPLEMENTATION-0_FINAL.md. M1 (3 Host AT composition
+                       imports) DEFERRED non-blocking; M3 (I11 full-matrix
+                       flake) known non-blocking; M4 (dirty worktree) CLOSED by
+                       this freeze commit. NEXT = UI + RELEASE PREPARATION.
 ```
 
 ## Current integration snapshot (canonical pointer)

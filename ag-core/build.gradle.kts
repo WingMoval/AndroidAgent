@@ -33,8 +33,13 @@ kotlin {
 }
 
 dependencies {
+    // Production: the interrupt closeout (0G.BLOCKER-FIX-1) uses withContext(
+    // NonCancellable) to shield the durable synthetic ToolResult commit from the
+    // enclosing cancelled context. This is the MINIMAL coroutine API needed; it
+    // does not change AG Core's Android-free / pure-JVM nature.
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+
     // TEST ONLY. Needed to call `suspend` functions from plain JVM test methods.
-    // AG Core production code never imports this library.
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))

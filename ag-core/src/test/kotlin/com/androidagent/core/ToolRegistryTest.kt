@@ -1,4 +1,4 @@
-package com.androidagent.core
+﻿package com.androidagent.core
 
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -113,7 +113,7 @@ class ToolRegistryTest {
     @Test
     fun `an empty agent core run with no tools still answers`() = runBlocking {
         val provider = ScriptedModelProvider(listOf(ModelTurn.FinalAnswer("no tools needed")))
-        val outcome = AgentCore(provider, ToolRegistry()).run("s", "hi")
+        val outcome = AgentCore(provider, ToolRegistry(), MessageDurability.Noop).run("s", "hi")
 
         assertEquals(RunOutcome.Answer("no tools needed"), outcome)
     }

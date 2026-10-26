@@ -1,8 +1,9 @@
-package com.androidagent.provider.openai.jdk
+﻿package com.androidagent.provider.openai.jdk
 
 import com.androidagent.provider.openai.OpenAiCompatibleProvider
 
 import com.androidagent.core.AgentCore
+import com.androidagent.core.MessageDurability
 import com.androidagent.core.ModelTurn
 import com.androidagent.core.RunOptions
 import com.androidagent.core.RunOutcome
@@ -58,7 +59,7 @@ class VerticalSliceTest {
             // Serve a different body per request while reusing one server.
             server.responder = { bodies[turn++] }
 
-            val core = AgentCore(OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()), registry)
+            val core = AgentCore(OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()), registry, MessageDurability.Noop)
 
             val outcome = core.run("s1", "please probe", RunOptions(maxSteps = 4))
 
@@ -118,7 +119,7 @@ class VerticalSliceTest {
 
             val tool = ProbeTool()
             val registry = ToolRegistry().apply { register(tool) }
-            val core = AgentCore(OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()), registry)
+            val core = AgentCore(OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()), registry, MessageDurability.Noop)
 
             val outcome = core.run("s1", "probe it", RunOptions(maxSteps = 4))
 
@@ -167,7 +168,7 @@ class VerticalSliceTest {
                     ToolResult(success = false, output = "", error = "could not reach device")
             }
             val registry = ToolRegistry().apply { register(failing) }
-            val core = AgentCore(OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()), registry)
+            val core = AgentCore(OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()), registry, MessageDurability.Noop)
 
             val outcome = core.run("s1", "probe it")
 
@@ -194,7 +195,7 @@ class VerticalSliceTest {
             server.responder = { bodies[turn++] }
 
             val registry = ToolRegistry()
-            val core = AgentCore(OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()), registry)
+            val core = AgentCore(OpenAiCompatibleProvider(FixtureServer.configFor(server), JdkOpenAiHttpTransport()), registry, MessageDurability.Noop)
 
             val outcome = core.run("s1", "use no_such_tool")
 

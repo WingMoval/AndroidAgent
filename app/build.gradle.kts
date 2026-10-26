@@ -11,6 +11,9 @@
 plugins {
     id("com.android.application")
     kotlin("android")
+    // AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0E: Room schema compiler.
+    // KSP (declared in the root build file, pinned to Kotlin 2.1.0).
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -76,6 +79,9 @@ dependencies {
     implementation(project(":tool-file"))
     // AG.V2-2B: AT Execution Adapter (for DebugBridge session validation).
     implementation(project(":integration-at"))
+    // AG.AT-V4-INTEGRATION-1: the Host directly calls ATAndroid.create().
+    // This is the V4 Android composition root (allowed consumer dependency).
+    implementation("com.at.composition.android:at-composition-android:4.0.0")
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
@@ -84,6 +90,14 @@ dependencies {
 
     // AG.DEBUG-0: debug bridge JSONL wire format (same lib the provider uses).
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+
+    // AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0E: TopicSession durable
+    // persistence backend (Room). 2.7.2 = the last 2.7.x, KSP 1.x-era
+    // compiler proven with AGP 8.5; no unrelated AndroidX upgrade.
+    // room-ktx provides the suspend DAO + withTransaction APIs.
+    implementation("androidx.room:room-runtime:2.7.2")
+    implementation("androidx.room:room-ktx:2.7.2")
+    ksp("androidx.room:room-compiler:2.7.2")
 
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
@@ -98,6 +112,16 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0E: Robolectric lets the Room
+    // integration tests (schema / transaction / sequence / WAL / reopen) run on
+    // the JVM. No device required; no androidTest refactor.
+    // Robolectric 4.13's runner is JUnit 4, so JUnit 4 + the Vintage engine
+    // (which runs JUnit 4 classes on the already-configured JUnit Platform).
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
 }
 
 tasks.withType<Test>().configureEach {

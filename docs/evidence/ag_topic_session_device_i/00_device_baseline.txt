@@ -1,0 +1,17 @@
+DEVICE BASELINE — AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0I.DEVICE-VERIFY-1
+===========================================================================
+Captured: 2026-10-26 (UTC) via C:\android\platform-tools\adb.exe
+
+DEVICE_SERIAL      = APLMUT4312005935
+DEVICE_MODEL       = ALI-AN00 (HONOR)
+ANDROID_VERSION    = 15
+API_LEVEL          = 35
+BUILD_FINGERPRINT  = HONOR/ALI-AN00/HNALI-Q:15/HONORALI-AN00/9DLDLD230CNC00E206:user/release-keys
+
+TRANSPORT          = USB (UsbFfs)
+adb                = C:\android\platform-tools\adb.exe
+
+NOTE: the device is a HONOR (Huawei) device. HONOR/HarmonyOS-adjacent OEMs can
+aggressively manage background USB / power; a USB sleep caused the device to
+drop off adb mid-verification (see 08_final_matrix.md). Reconnect + re-run
+required. This is an OEM_LIFECYCLE_TEST_ARTIFACT, not a product defect.

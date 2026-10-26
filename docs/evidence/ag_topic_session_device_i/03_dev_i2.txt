@@ -1,0 +1,34 @@
+DEV-I2 — Restore Then Continue  =>  PASS
+===========================================================================
+On the SAME restored session (session-5043f80d-d37e-47ba-8255-36b88bd492fd)
+after the DEV-I1 relaunch, a new message was sent via the Debug Bridge.
+
+SENT: U3 = "U3 please tell me my marker"
+RECEIVED (final_answer): "ECHO msg_count=6 | last_user=U3 please tell me my marker"
+
+CONTEXT-CONTINUITY PROOF (the key evidence):
+  The echo fixture returns the number of messages the provider actually
+  received in the request. msg_count=6 =
+      [0] system (agent instructions)
+      [1] U1  (restored)
+      [2] A1  (restored)
+      [3] U2  (restored)
+      [4] A2  (restored)
+      [5] U3  (new)
+  => MODEL_CONTEXT_CONTAINS_RESTORED_HISTORY = YES
+  The restored durable history (U1,A1,U2,A2) was actually supplied to the next
+  model call — not merely shown in the UI transcript. This is proven by the
+  request message count, NOT by model "memory".
+
+SESSION_CONTINUITY  = YES (run_start sessionId = session-5043f80d-... same as before)
+VISIBLE_CONTINUITY  = YES (transcript now shows U1,A1,U2,A2,U3,A3, each once)
+DURABLE_CONTINUITY  = YES (DB after: session-5043f80d count=6 seq 0..5 = U1,A1,U2,A2,U3,A3)
+CONTEXT_CONTINUITY  = YES (msg_count=6)
+OLD_HISTORY_DUPLICATED  = NO (U1,A1,U2,A2 still appear exactly once)
+NEW_MESSAGE_DUPLICATED  = NO (U3,A3 appear exactly once)
+
+DB EVIDENCE (pulled via `run-as base64` + PC sqlite3, read-only):
+  DATABASE_VERSION = 1
+  SESSION_COUNT = 1 (at this point, before DEV-I3)
+  session-5043f80d: count=6, sequence 0..5 contiguous, types = USER,MODEL x3
+DEV-I2 = PASS

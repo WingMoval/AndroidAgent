@@ -53,4 +53,22 @@ sealed interface RunFailure {
 
     /** An unexpected exception escaped the Run loop. */
     data class RuntimeFailure(val cause: String) : RunFailure
+
+    /**
+     * A durability commit failed: the message could NOT be durably persisted.
+     *
+     * [boundary] identifies which safety boundary the failure occurred at:
+     * "USER", "MODEL", "TOOL_RESULT", or "FINAL_ANSWER".
+     *
+     * [cause] is a SAFE category string (e.g., "commit_error", "db_unavailable"),
+     * NOT a SQL statement, file path, or backend exception message.
+     *
+     * A Run that hits this failure must NOT continue: no model call, no tool
+     * dispatch, no next iteration. The durable history is consistent (the
+     * failed message is absent from both Core and DB).
+     */
+    data class DurabilityFailure(
+        val boundary: String,
+        val cause: String,
+    ) : RunFailure
 }

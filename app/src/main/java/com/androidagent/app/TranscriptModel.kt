@@ -60,67 +60,84 @@ class TranscriptModel {
         data class Interrupted(val text: String) : Block
     }
 
-    private val blocks = mutableListOf<Block>()
+    /**
+     * Synchronization lock for [blocks]. The list is mutated from the IO
+     * dispatcher (SessionHolder.onStreamEvent / onRunEvent) AND read from
+     * the UI thread (renderTranscript). A plain ArrayList is not thread-safe;
+     * without this lock, concurrent modification crashes the app.
+     */
+    private val lock = Any()
+
+    private val _blocks = mutableListOf<Block>()
+
+    /** Thread-safe access to the blocks list. */
+    private inline fun <R> withBlocks(block: MutableList<Block>.() -> R): R =
+        synchronized(lock) { _blocks.block() }
 
     /** The step of the most recent model turn (0 before the first turn). */
     var lastStep: Int = 0
         private set
 
     /** Immutable snapshot of the current transcript. */
-    fun snapshot(): List<Block> = blocks.toList()
+    fun snapshot(): List<Block> = withBlocks { toList() }
 
     // ---------------------------------------------------------- stream channel
 
     fun onReasoningStarted() {
-        if (blocks.lastOrNull() !is Block.Thinking) {
-            blocks += Block.Thinking("", Block.Thinking.Phase.THINKING)
+        withBlocks {
+            if (lastOrNull() !is Block.Thinking) {
+                this += Block.Thinking("", Block.Thinking.Phase.THINKING)
+            }
         }
     }
 
     fun onReasoningDelta(text: String) {
-        val last = blocks.lastOrNull()
-        if (last is Block.Thinking) {
-            blocks[blocks.size - 1] = last.copy(text = last.text + text)
-        } else {
-            blocks += Block.Thinking(text, Block.Thinking.Phase.THINKING)
+        withBlocks {
+            val last = lastOrNull()
+            if (last is Block.Thinking) {
+                this[this.size - 1] = last.copy(text = last.text + text)
+            } else {
+                this += Block.Thinking(text, Block.Thinking.Phase.THINKING)
+            }
         }
     }
 
     fun onReasoningFinished() {
-        // Flip the most recent Thinking block that is still in the THINKING phase.
-        // A real turn usually streams reasoning, then content (and possibly a tool
-        // call) AFTER the reasoning section, so the Thinking block is no longer the
-        // last one by the time reasoning finishes. Scanning from the end for the
-        // first still-THINKING block flips exactly this turn's block without ever
-        // inserting a second block.
-        for (i in blocks.indices.reversed()) {
-            val block = blocks[i]
-            if (block is Block.Thinking && block.phase == Block.Thinking.Phase.THINKING) {
-                blocks[i] = block.copy(phase = Block.Thinking.Phase.THOUGHT)
-                return
+        withBlocks {
+            // Flip the most recent Thinking block that is still in the THINKING phase.
+            for (i in indices.reversed()) {
+                val block = this[i]
+                if (block is Block.Thinking && block.phase == Block.Thinking.Phase.THINKING) {
+                    this[i] = block.copy(phase = Block.Thinking.Phase.THOUGHT)
+                    return
+                }
             }
         }
     }
 
     fun onContentStarted() {
-        if (blocks.lastOrNull() !is Block.Assistant) {
-            blocks += Block.Assistant("", final = false)
+        withBlocks {
+            if (lastOrNull() !is Block.Assistant) {
+                this += Block.Assistant("", final = false)
+            }
         }
     }
 
     fun onContentDelta(text: String) {
-        val last = blocks.lastOrNull()
-        if (last is Block.Assistant) {
-            blocks[blocks.size - 1] = last.copy(text = last.text + text)
-        } else {
-            blocks += Block.Assistant(text, final = false)
+        withBlocks {
+            val last = lastOrNull()
+            if (last is Block.Assistant) {
+                this[this.size - 1] = last.copy(text = last.text + text)
+            } else {
+                this += Block.Assistant(text, final = false)
+            }
         }
     }
 
     // ------------------------------------------------------------ event channel
 
     fun onUser(text: String) {
-        blocks += Block.User(text)
+        withBlocks { this += Block.User(text) }
     }
 
     fun onModelTurnStarted(step: Int) {
@@ -128,11 +145,11 @@ class TranscriptModel {
     }
 
     fun onToolCallStarted(call: ToolCall) {
-        blocks += Block.Shell(commandOf(call))
+        withBlocks { this += Block.Shell(commandOf(call)) }
     }
 
     fun onToolCallFinished(call: ToolCall, result: ToolResult) {
-        blocks += Block.Result(renderResult(result))
+        withBlocks { this += Block.Result(renderResult(result)) }
     }
 
     /**
@@ -141,27 +158,93 @@ class TranscriptModel {
      * Only when no streamed block exists is a fallback block created.
      */
     fun onAnswerProduced(content: String) {
-        val last = blocks.lastOrNull()
-        if (last is Block.Assistant) {
-            blocks[blocks.size - 1] = last.copy(final = true)
-        } else {
-            blocks += Block.Assistant(content, final = true)
+        withBlocks {
+            val last = lastOrNull()
+            if (last is Block.Assistant) {
+                this[this.size - 1] = last.copy(final = true)
+            } else {
+                this += Block.Assistant(content, final = true)
+            }
         }
     }
 
     fun onRunFailed(failure: RunFailure) {
-        blocks += Block.Failure(renderFailure(failure))
+        withBlocks { this += Block.Failure(renderFailure(failure)) }
     }
 
     /** Records that the Run was interrupted by the user (a Stop). */
     fun onInterrupted() {
-        blocks += Block.Interrupted("Run stopped by user.")
+        withBlocks { this += Block.Interrupted("Run stopped by user.") }
+    }
+
+    // ---------------------------------------------------- Phase I re-projection
+
+    /**
+     * Phase I — re-project a full restored Core history into the transcript.
+     *
+     * This is the presentation projection for a Session restored from durable
+     * storage (process restart / Activity recreation). It REPLACES the current
+     * projection (one logical atomic replacement under the lock) and maps each
+     * durable [Message] to the SAME block types the live AgentEvent pipeline
+     * produces, so restored and live presentation never drift:
+     *
+     *  - [UserMessage]         → [Block.User]
+     *  - [ModelMessage] (no
+     *    toolCalls)            → [Block.Assistant] (final answer; [final]=true)
+     *  - [ModelMessage] (with
+     *    toolCalls)            → [Block.Assistant] (prose, if any, [final]=false)
+     *    followed by one [Block.Shell] per tool call (original order)
+     *  - [ToolResultMessage]   → [Block.Result]
+     *
+     * Reasoning/Thinking is NOT persisted (frozen), so it is never projected:
+     * a restored transcript contains no Thinking/Thought blocks. This is correct
+     * — we must not fabricate reasoning we do not have.
+     *
+     * Semantics:
+     *  - DETERMINISTIC: the same [history] always yields the same blocks.
+     *  - REPLACE (not append): the prior projection is cleared first.
+     *  - IDEMPOTENT: re-projecting the same [history] twice yields one
+     *    projection (no accumulation / duplicates).
+     *  - PRESENTATION ONLY: no durability write, no model call, no tool
+     *    execution. The history order is preserved exactly (no re-sorting).
+     *  - A synthetic interrupted ToolResult (unknown outcome) is rendered by the
+     *    existing [renderResult] path; its error wording is preserved verbatim
+     *    (it is NOT re-interpreted as a confirmed tool failure).
+     *
+     * @param history the restored Core Session history (oldest first).
+     */
+    fun reproject(history: List<com.androidagent.core.Message>) {
+        withBlocks {
+            clear()
+            for (message in history) {
+                when (message) {
+                    is com.androidagent.core.UserMessage -> {
+                        this += Block.User(message.content)
+                    }
+                    is com.androidagent.core.ModelMessage -> {
+                        if (message.content.isNotEmpty()) {
+                            // A ModelMessage with tool calls is an intermediate
+                            // turn (not the Run's final answer): final = false.
+                            // A ModelMessage without tool calls is the final answer.
+                            this += Block.Assistant(message.content, final = message.toolCalls.isEmpty())
+                        }
+                        // Tool calls are projected as Shell blocks in original order.
+                        for (call in message.toolCalls) {
+                            this += Block.Shell(commandOf(call))
+                        }
+                    }
+                    is com.androidagent.core.ToolResultMessage -> {
+                        this += Block.Result(renderResult(message.result))
+                    }
+                }
+            }
+        }
     }
 
     // ------------------------------------------------------------- rendering
 
     /** Renders the transcript to plain text for a TextView. */
-    fun render(): String = render(blocks)
+    fun render(): String = withBlocks { render(this.toList()) }
 
     companion object {
 
@@ -318,6 +401,7 @@ class TranscriptModel {
             is RunFailure.MaxStepsReached -> "Stopped after ${failure.maxSteps} steps (maxSteps)"
             is RunFailure.SessionBusy -> "Session busy"
             is RunFailure.RuntimeFailure -> "Runtime failure (${failure.cause})"
+            is RunFailure.DurabilityFailure -> "Durability failure at ${failure.boundary} (${failure.cause})"
         }
 
         private fun tryParseShellPayload(output: String): ShellPayload? {

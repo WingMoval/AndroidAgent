@@ -4,11 +4,17 @@ import android.content.Context
 import com.androidagent.app.provider.AndroidOpenAiHttpTransport
 import com.androidagent.app.trace.AgentTrace
 import com.androidagent.app.trace.AgentTraceCollector
+import com.androidagent.app.persistence.RoomTopicSessionStore
+import com.androidagent.app.persistence.StoreMessageDurability
+import com.androidagent.app.persistence.TopicSessionDatabase
 import com.androidagent.core.AgentCore
 import com.androidagent.core.AgentEvent
 import com.androidagent.core.AgentEventSink
+import com.androidagent.core.MessageDurability
 import com.androidagent.core.RunOptions
 import com.androidagent.core.ToolRegistry
+import com.androidagent.runtime.persistence.TopicSessionStore
+import com.androidagent.integration.at.AtExecutionAdapter
 import com.androidagent.provider.openai.OpenAiCompatibleConfig
 import com.androidagent.provider.openai.OpenAiCompatibleProvider
 import com.androidagent.runtime.AgentRuntime
@@ -16,6 +22,8 @@ import com.androidagent.tool.androidshell.AndroidShellToolImpl
 import com.androidagent.tool.androidshell.ShellConnection
 import com.androidagent.tool.file.FileToolImpl
 import com.androidagent.tool.network.NetworkToolImpl
+import com.at.composition.android.ATAndroid
+import com.at.composition.android.ATAndroidConfig
 import java.io.File
 
 /**
@@ -49,6 +57,12 @@ class ChatCompositionRoot(
     private val onDebugEvent: (AgentEvent) -> Unit = {},
     private val streamObserver: com.androidagent.core.ModelStreamObserver =
         com.androidagent.core.ModelStreamObserver.Noop,
+    // AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0F: production durability chain
+    // is injected here so tests can supply a fake store (and a deterministic
+    // clock). Production default (SessionHolder) wires the REAL Room-backed
+    // chain: TopicSessionDatabase -> RoomTopicSessionStore -> StoreMessageDurability.
+    private val messageDurability: MessageDurability,
+    private val topicSessionStore: TopicSessionStore,
 ) {
 
     private val toolRegistry = ToolRegistry()
@@ -62,32 +76,52 @@ class ChatCompositionRoot(
     val toolRegistryView: ToolRegistry get() = toolRegistry
 
     /**
+     * AT V4 composition (Host owns the lifecycle policy; this object
+     * performs the AT calls). Created via the canonical V4 entry point
+     * ATAndroid.create(context, config).
+     */
+    private val atComposition = ATAndroid.create(
+        context = applicationContext,
+        config = ATAndroidConfig(identityProfile = AtExecutionAdapter.IDENTITY_PROFILE),
+    )
+
+    /**
+     * Host-layer ADB semantic bridge. Delegates to the AT composition facade
+     * (ATAndroidAdbControl). The adapter receives this via constructor
+     * injection and never imports com.at.composition.android.* types.
+     */
+    private val adbSemantic = CompositionAdbSemantic(atComposition.adbControl)
+
+    /**
+     * AT execution adapter (the single AT consumption point).
+     * Receives injected ATEngine instances + AdbSemantic (V4 boundary-correct).
+     */
+    private val atAdapter = AtExecutionAdapter(
+        localEngine = atComposition.localEngine,
+        adbEngine = atComposition.adbEngine,
+        adbSemantic = adbSemantic,
+        cliBridgeDir = File(applicationContext.filesDir, "at-cli-bridge"),
+    ).apply {
+        appApkPath = applicationContext.applicationInfo.sourceDir
+    }
+
+    /**
      * AT Engine lifecycle binding (Host owns the lifecycle policy; this object
      * performs the AT calls). Never exposes AT-owned types.
      */
-    val shell: ShellConnection = ShellConnection(applicationContext)
+    val shell: ShellConnection = ShellConnection(atAdapter)
 
     init {
-        // AG.SHELL-1: register the concrete Android Shell Tool (Tool #1).
-        // AG.NETWORK-0: register the concrete Network Tool (Tool #2) in the SAME
-        // ToolRegistry. The Host is the Composition Root: it constructs concrete
-        // Tools and registers them; it owns no tool capability itself. AG Core /
-        // Agent Runtime / Provider are unchanged.
-        // AG.V2-2B: the tool consumes AT through the unified adapter (owned by
-        // ShellConnection). The adapter holds the ATEngine composition + ADB
-        // lifecycle; the tool is a thin one-shot consumer.
-        toolRegistry.register(AndroidShellToolImpl(shell.adapter))
+        // AG.AT-V4-INTEGRATION-1: register the concrete Android Shell Tool (Tool #1).
+        // The tool consumes AT through the unified adapter (V4 composition).
+        toolRegistry.register(AndroidShellToolImpl(atAdapter))
         toolRegistry.register(NetworkToolImpl())
         // AG.FILE-0: register the concrete File Tool (Tool #3, APP_SELF READ family)
-        // in the SAME ToolRegistry. The Host injects the APP_SELF root
-        // (filesDir/agent/); FileTool scopes all access to it. No new manifest
-        // permission (app-specific dir needs none); no SAF / AT / write capability.
+        // in the SAME ToolRegistry.
         toolRegistry.register(FileToolImpl(File(applicationContext.filesDir, "agent")))
 
-        // AG.AT-FULL-CONSUMER-INTEGRATION-0: start the AT CLI bridge (same-UID
-        // UDS). The bridge is a thin frontend over the adapter's shared AdbRuntime
-        // composition. Idempotent; process-local.
-        shell.adapter.startCliBridge()
+        // Start the AT CLI bridge (same-UID UDS).
+        atAdapter.startCliBridge()
     }
 
     /**
@@ -99,7 +133,7 @@ class ChatCompositionRoot(
      */
     private val provider = OpenAiCompatibleProvider(config, AndroidOpenAiHttpTransport())
 
-    private val agentCore = AgentCore(provider, toolRegistry)
+    private val agentCore = AgentCore(provider, toolRegistry, messageDurability)
 
     /**
      * AGENT-0.PREFLIGHT: the Agent Instructions are frozen in [AgentInstructions]
@@ -129,8 +163,24 @@ class ChatCompositionRoot(
         streamObserver = streamObserver,
     )
 
-    /** The runnable Agent lifecycle handed to the UI. */
-    val runtime: AgentRuntime = AgentRuntime(agentCore, runOptions = runOptions)
+    /**
+     * The runnable Agent lifecycle handed to the UI.
+     *
+     * AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0F.NORMALIZE-1: the session-id
+     * factory is PURE (UUID generation only, no DB side effect). The durable
+     * TopicSession creation is owned by [AgentRuntime] (frozen architecture:
+     * TOPIC_SESSION_LIFECYCLE_OWNER = AG Runtime). The Host calls
+     * [AgentRuntime.initialize] (suspend) before the first Run to durably create
+     * the initial session; [AgentRuntime.newSession] durably creates subsequent
+     * sessions. SESSION_ROW_EXISTS_BEFORE_D1 = YES by construction: the Runtime
+     * only makes a session current AFTER the store row is committed.
+     */
+    val runtime: AgentRuntime = AgentRuntime(
+        agentCore,
+        runOptions = runOptions,
+        sessionIdFactory = { "session-" + java.util.UUID.randomUUID() },
+        topicSessionStore = topicSessionStore,
+    )
 
     /** Forwards every event to every observer. No observer may break the Run. */
     private class CompositeSink(

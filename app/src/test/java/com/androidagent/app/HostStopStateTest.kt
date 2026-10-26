@@ -1,6 +1,7 @@
-package com.androidagent.app
+﻿package com.androidagent.app
 
 import com.androidagent.core.AgentEvent
+import com.androidagent.core.MessageDurability
 import com.androidagent.core.ModelTurn
 import com.androidagent.core.ModelProvider
 import com.androidagent.core.ModelRequest
@@ -11,6 +12,9 @@ import com.androidagent.core.AgentEventSink
 import com.androidagent.core.ToolRegistry
 import com.androidagent.core.UserMessage
 import com.androidagent.runtime.AgentRuntime
+import com.androidagent.runtime.persistence.MessageRecord
+import com.androidagent.runtime.persistence.TopicSessionRecord
+import com.androidagent.runtime.persistence.TopicSessionStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +45,21 @@ import org.junit.jupiter.api.Test
  * No Android, no Activity, no live endpoint.
  */
 class HostStopStateTest {
+
+    /** Minimal in-memory TopicSessionStore for Host Stop integration tests. */
+    private class NoopStore : TopicSessionStore {
+        private val sessions = mutableSetOf<String>()
+        override suspend fun createSession(id: String, nowMillis: Long, model: String?, provider: String?, title: String?): TopicSessionRecord {
+            sessions.add(id)
+            return TopicSessionRecord(id, nowMillis, nowMillis)
+        }
+        override suspend fun appendMessage(sessionId: String, message: com.androidagent.core.Message, nowMillis: Long): MessageRecord =
+            MessageRecord("rec", sessionId, 0L, "USER", "{}", nowMillis)
+        override suspend fun loadSession(id: String): TopicSessionRecord? = if (id in sessions) TopicSessionRecord(id, 0, 0) else null
+        override suspend fun loadLatestSession(): TopicSessionRecord? = sessions.firstOrNull()?.let { TopicSessionRecord(it, 0, 0) }
+        override suspend fun loadMessages(sessionId: String): List<com.androidagent.core.Message>? = if (sessionId in sessions) emptyList() else null
+        override suspend fun updateModelProviderMetadata(sessionId: String, model: String?, provider: String?) {}
+    }
 
     // --------------------------------------------------------------- state machine
 
@@ -239,11 +258,13 @@ class HostStopStateTest {
         val gate = CompletableDeferred<Unit>()
         val provider = GatedProvider(gate)
         val recorder = EventRecorder()
-        val core = AgentCore(provider, ToolRegistry())
+        val core = AgentCore(provider, ToolRegistry(), MessageDurability.Noop)
         val runtime = AgentRuntime(
             agentCore = core,
             runOptions = RunOptions(eventSink = recorder),
+            topicSessionStore = NoopStore(),
         )
+        runtime.initialize()
 
         // The Host presentation state + transcript, as ChatActivity keeps them.
         var state = HostStopState.IDLE
@@ -301,11 +322,13 @@ class HostStopStateTest {
         val gate = CompletableDeferred<Unit>()
         val provider = GatedProvider(gate)
         val recorder = EventRecorder()
-        val core = AgentCore(provider, ToolRegistry())
+        val core = AgentCore(provider, ToolRegistry(), MessageDurability.Noop)
         val runtime = AgentRuntime(
             agentCore = core,
             runOptions = RunOptions(eventSink = recorder),
+            topicSessionStore = NoopStore(),
         )
+        runtime.initialize()
 
         var state = HostStopState.IDLE
         val job = async(Dispatchers.Default) {

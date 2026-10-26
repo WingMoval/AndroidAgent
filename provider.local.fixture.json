@@ -1,0 +1,9 @@
+{
+  "provider": {
+    "type": "openai-compatible",
+    "baseUrl": "http://127.0.0.1:18080/v1",
+    "apiKey": "fixture-key",
+    "model": "fixture-stream",
+    "requestTimeoutSeconds": 60
+  }
+}
