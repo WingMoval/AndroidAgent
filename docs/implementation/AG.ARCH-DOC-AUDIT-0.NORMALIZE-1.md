@@ -183,7 +183,7 @@ START_HEAD =
 edfc603eadb0067bd010c04ca26b4bc28de2e685
 
 FINAL_HEAD =
-(见 commit 后 git rev-parse；docs-only atomic commit)
+a79c0628e67948512e5cc72636866ab60bbc7f88
 
 WORKTREE_BEFORE =
 DIRTY (2 tracked upload files deleted externally + prior untracked docs)
@@ -312,7 +312,7 @@ COMMIT =
 YES
 
 COMMIT_SHA =
-(see git rev-parse HEAD post-commit)
+a79c0628e67948512e5cc72636866ab60bbc7f88
 
 COMMIT_MESSAGE =
 docs: normalize post-UI architecture and roadmap SSOT
