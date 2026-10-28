@@ -1,0 +1,194 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — Regression Baseline (BEFORE)
+
+记录修改前 UI 与 Debug 的真实代码路径,用于修改后逐一比对,
+确保 PRESERVE_EXISTING_BEHAVIOR = YES。
+
+============================================================
+UI 路径 (ChatActivity)
+============================================================
+
+UI Send:
+  ChatActivity.onSend()
+    → text = input.text.toString().trim(); if blank return
+    → runtime ?: "No provider configured"; if busy "A run is already in progress"
+    → autoFollow = true
+    → transcriptModel.onUser(text)        # User block 注入
+    → renderTranscript()
+    → input.setText("")
+    → setBusy(true)                        # 驱动 Send/Stop slot
+    → runStatusText = "Running..."; SessionHolder.setRunStatus
+    → renderStatus()
+    → lifecycleScope.launch {
+        outcome = runtime.send(text)       # 真实 AgentRuntime.send
+        logTrace()
+        if Interrupted → runStatusText = "Stopped."
+        setBusy(false)
+      }
+
+UI Stop:
+  ChatActivity.onStopRun()
+    → runtime ?: return; if !isBusy return
+    → when (runtime.interruptActiveRun()) {
+        Requested          → runStatusText = "Stopping..."; stop.isEnabled = false
+        AlreadyInterrupting→ (no-op, renderStatus)
+        NoActiveRun        → setBusy(false)
+      }
+
+UI New Session:
+  ChatActivity.onNewSession()
+    → lifecycleScope.launch {
+        switched = SessionHolder.newSession()
+        if switched → transcriptModel = holder.transcriptModel; autoFollow = true
+                      transcript.text = ""; runStatusText = holder.runStatusText
+                      renderStatus()
+        else → runStatusText = "Cannot start a new session while a run is in progress."
+      }
+
+UI ADB Reconnect:
+  ChatActivity.onReconnect()
+    → if reconnecting return; reconnecting = true; reconnect.isEnabled = false
+    → connectShell()
+    → lifecycleScope.launch { reconnecting = false; reconnect.isEnabled = true }
+
+  ChatActivity.connectShell()
+    → shellConnection = root?.shell
+    → updateAtStatus("Connecting..."); updateAdbIndicator(); renderStatus()
+    → lifecycleScope.launch {
+        statusResult = shellConnection?.connect()   # ShellConnection.connect
+        updateAtStatus(ready ? "Connected" : safeAtMessage)
+        pairRow.visibility = pairingOffered ? VISIBLE : GONE
+        renderStatus(); updateAdbIndicator()
+      }
+
+UI Provider Switch:
+  ChatActivity.setupNodeSpinner() → onItemSelected → switchNode(node)
+
+  ChatActivity.switchNode(node)
+    → outcome = resolveProviderSwitch(node, DeviceLocalProviderNodeLoader.load(app, node))
+    → when (outcome) {
+        Applied  → activeNode = outcome.node; applyConfig(outcome.config, node)
+        Rejected → revertSpinner(); updateRunStatus(reason); renderStatus()
+      }
+
+  ChatActivity.applyConfig(cfg, node)
+    → SessionHolder.createRoot(cfg, app, node, onRunEvent, onDebugEvent, streamObserver)
+    → root = SessionHolder.root; runtime = SessionHolder.runtime
+    → ensureDebugBridge()
+    → providerStatusText = HostStatusModel.providerLine(node.displayName)
+    → SessionHolder.setProviderStatus; endpointLabel.text = cfg.safeChatCompletionsEndpoint
+    → SessionHolder.setEndpoint
+    → atStatusText = null; runStatusText = null; SessionHolder.setAtStatus/RunStatus(null)
+    → activeModel = cfg.model; modelLabel.text = workspaceModelLabel(cfg.model)
+    → renderStatus(); connectShell()
+    → lifecycleScope.launch { SessionHolder.initialize() }
+
+============================================================
+Debug 路径 (DebugBridge)
+============================================================
+
+Debug Ping:
+  handleClient → Ping → writer.send(pong())
+
+Debug Send:
+  handleClient → Send → bridgeScope.launch { handleSend(text, writer) }
+
+  handleSend(text, writer)
+    → if blank → error("blank send rejected")
+    → runtime = runtimeProvider(); if null → error("runtime not ready")
+    → if runtime.isBusy → busy()
+    → accepted()
+    → userInputSink?.invoke(text)        # 镜像 UI:User block 注入
+    → onRunStateChanged?.invoke(true)    # 镜像 UI:busy state
+    → outcome = try { runtime.send(text) } finally { onRunStateChanged?.invoke(false) }
+    → Log.i "debug run finished: $outcome"
+
+Debug Observe:
+  DebugBridge.eventSink (AgentEventSink) → broadcast(event) → eventToJson → JSONL
+  DebugBridge.streamSink (ModelStreamObserver) → emitStream(kind, text) → JSONL
+  两者均通过 Host CompositeSink / streamObserver 接入,观察 UI-originated Run。
+
+Debug 无 stop / new_session / adb_reconnect / provider_switch / snapshot
+(本轮新增)
+
+============================================================
+共享状态源 (Snapshot 数据源)
+============================================================
+
+SessionHolder (process-scoped):
+  root: ChatCompositionRoot?
+  runtime: AgentRuntime? (root?.runtime)
+  transcriptModel: TranscriptModel
+  providerNode: ProviderNode
+  providerStatusText: String?
+  atStatusText: String?
+  runStatusText: String?
+  isBusy: Boolean
+  endpointLabel: String
+
+AgentRuntime (frozen, ag-runtime):
+  currentSessionId: String?
+  currentHistory(): List<Message>
+  isBusy: Boolean
+  interruptActiveRun(): InterruptResult
+  newSession(): Boolean (suspend)
+  send(userInput): RunOutcome (suspend)
+  initialize(): String (suspend)
+
+ChatCompositionRoot:
+  shell: ShellConnection
+  toolRegistryView: ToolRegistry
+
+ShellConnection:
+  readiness(): Status (ready/code/message/pairingOffered)
+  connect(): Status (suspend)
+
+TranscriptModel:
+  snapshot(): List<Block>
+  render(): String
+
+ProviderNode (DeviceLocalProviderConfig.kt):
+  OPENROUTER("OpenRouter", "provider.openrouter.json")
+  EMG("EMG", "provider.local.json")
+
+resolveProviderSwitch(attempted, load): ProviderSwitchOutcome
+  Applied(node, config) / Rejected(attempted, reason)
+
+DeviceLocalProviderNodeLoader.load(context, node): DeviceLocalProviderConfig
+  Loaded(config) / Missing / Invalid
+
+OpenAiCompatibleConfig:
+  model: String
+  safeChatCompletionsEndpoint: String
+
+============================================================
+Release 边界
+============================================================
+
+ChatActivity.ensureDebugBridge():
+  if (!BuildConfig.DEBUG) return   # release 不创建 bridge
+DebugBridge.start():
+  仅 debug build 被 ChatActivity 调用
+HostActions 可存在于 release(UI 也调用),但 DebugBridge external
+  protocol 必须继续 debug-only。
+
+============================================================
+本轮修改约束
+============================================================
+
+PRESERVE_EXISTING_BEHAVIOR = YES
+MINIMAL_INTRUSION = YES
+BACKWARD_COMPATIBILITY = REQUIRED
+
+UI callback 名称保留:onSend / onStopRun / onNewSession / onReconnect / switchNode
+只把内部核心动作改为调用 HostActions。
+
+Debug 新 handler 只做代理:parse → call HostActions → serialize safe result。
+DebugBridge 自己不得实现 run cancellation / session creation / provider
+switching / ADB reconnect semantics。
+
+旧 Debug 命令行为 UNCHANGED:
+  ping / send / tool_invoke / session_* / bootstrap_*
+
+Send 特别谨慎:SEND_REGRESSION_RISK = HIGH。
+UI Send behavior BEFORE == AFTER
+Debug Send behavior BEFORE == AFTER

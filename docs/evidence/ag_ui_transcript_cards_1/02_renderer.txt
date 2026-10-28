@@ -1,0 +1,69 @@
+AG.UI-TRANSCRIPT-CARDS-1 — Renderer
+
+日期: 2026-10-27
+
+============================================================
+BEFORE
+============================================================
+
+TranscriptModel.render() → one large String
+→ single TextView (transcript)
+→ ScrollView (transcript_scroll)
+
+限制:
+- 无法 per-block Copy
+- 无法 per-block Retry
+- 无法 per-block collapse
+- 无法 per-block native selection
+- 无法 Tool Result expansion
+
+============================================================
+AFTER
+============================================================
+
+TranscriptModel.snapshot() → List<Block>
+→ TranscriptCardAdapter (RecyclerView)
+→ item_transcript_card.xml (per-block card)
+
+依赖新增:
+  androidx.recyclerview:recyclerview:1.3.2
+  WHY_REQUIRED: 单 TextView 无法支持 per-block 交互。
+  DEPENDENCY: androidx.recyclerview 1.3.2 (stable)。
+
+布局:
+  activity_chat.xml:
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/transcript_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="8dp"
+        android:scrollbars="none" />
+
+Adapter:
+  TranscriptCardAdapter.kt
+  - updateBlocks(newBlocks): 更新 visible blocks
+  - bind(block, position): 根据 block 类型渲染 Card
+  - findOriginUserText(position): 向后扫描找 nearest User block
+  - copyToClipboard(text): ClipboardManager
+  - showMoreMenu(userText): PopupMenu (Copy / Edit & Resend)
+
+Card Layout:
+  item_transcript_card.xml
+  - card_label: TextView (label)
+  - card_copy: ImageButton (Copy)
+  - card_retry: ImageButton (Retry, 默认 GONE)
+  - card_more: ImageButton (More, 默认 GONE)
+  - card_body: TextView (content, textIsSelectable=true)
+  - card_collapse: TextView (Show more / Show less, 默认 GONE)
+
+Scroll Behaviour:
+  - 用户在底部: streaming → follow bottom
+  - 用户向上滚动: streaming → 不强制拉回底部
+  - OnScrollListener: lastVisible >= count-3 → autoFollow=true
+
+PRESENTATION ONLY:
+  SSOT 仍是 TranscriptModel.Block。
+  Adapter 通过 snapshot() 读取 blocks。
+  无新 domain entity，无持久化，无第二 transcript pipeline。

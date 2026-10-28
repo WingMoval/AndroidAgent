@@ -1,0 +1,67 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — Send Shared Entry (AFTER)
+
+整改后 Send 路径:
+
+UI Send:
+  ChatActivity.onSend()
+    → text = input.text.toString().trim(); if empty return
+    → input.setText("")                    # 纯 UI: 清空输入
+    → autoFollow = true                    # 纯 UI: 自动跟随
+    → lifecycleScope.launch {
+        result = HostActions.send(text)    # 共享入口 (suspend)
+        when (result) {
+            is SendResult.Rejected -> updateRunStatus(msg); renderStatus()
+            is SendResult.Sent -> logTrace(); if Interrupted -> updateRunStatus("Stopped.")
+        }
+        renderTranscript()
+      }
+
+Debug Send:
+  DebugBridge.handleSend(text, writer)
+    → if blank -> error("blank send rejected")
+    → if SessionHolder.runtime == null -> error("runtime not ready")
+    → if SessionHolder.runtime.isBusy -> busy()
+    → accepted()
+    → result = HostActions.send(text)     # 共享入口 (suspend)
+    → Log.i("debug run finished: $result")
+
+HostActions.send (唯一公共 Send 语义):
+  1. text.isBlank() -> Rejected("blank send rejected")
+  2. SessionHolder.runtime == null -> Rejected("runtime not ready")
+  3. r.isBusy -> Rejected("busy")
+  4. SessionHolder.transcriptModel.onUser(text)     # User block 注入 (1 次)
+  5. SessionHolder.setBusy(true)                     # busy=true
+  6. SessionHolder.setRunStatus("Running...")
+  7. SessionHolder.notifyUiUpdate()
+  8. outcome = r.send(text)                         # AgentRuntime.send (1 次)
+     finally { SessionHolder.setBusy(false) }       # busy=false
+  9. if Interrupted -> SessionHolder.setRunStatus("Stopped.")
+  10. SessionHolder.notifyUiUpdate()
+  11. return SendResult.Sent(outcome)
+
+整改前:
+  UI onSend -> r.send(text)              [独立路径]
+  Debug handleSend -> runtime.send(text) [独立路径]
+  HostActions.send -> 死代码 (无人调用)
+  SEND_SHARED_ENTRY = NO
+
+整改后:
+  UI onSend -> HostActions.send -> r.send(text)
+  Debug handleSend -> HostActions.send -> r.send(text)
+  SEND_SHARED_ENTRY = YES
+
+User block: exactly 1 (HostActions.send 内 onUser 只调 1 次)
+Run count: exactly 1 (HostActions.send 内 r.send 只调 1 次)
+busy: true->false 各 1 次 (HostActions.send 内)
+
+UI 独有副作用 (保留在 onSend):
+  input.setText("")
+  autoFollow = true
+  renderTranscript()
+  renderStatus()
+  logTrace()
+  Interrupted -> updateRunStatus("Stopped.")
+
+Debug 独有副作用 (保留在 handleSend):
+  accepted() / error() / busy() wire 响应
+  Log.i

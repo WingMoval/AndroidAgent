@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AG.UI-SHELL-1.PRODUCT-CONTROLS-ALIGNMENT — Provider Settings Dialog.
+  Manages Provider / Endpoint / API Key / Model. API Key is masked by default.
+  Empty API Key on Save = keep existing (never deletes a stored key).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/ws_provider_settings_title"
+        android:textColor="@color/ws_text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <!-- Provider selector -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/ws_provider_label"
+        android:textColor="@color/ws_text_secondary"
+        android:textSize="@dimen/ws_text_label" />
+
+    <Spinner
+        android:id="@+id/provider_selector"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:minHeight="@dimen/ws_touch" />
+
+    <!-- Endpoint -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/ws_endpoint_label"
+        android:textColor="@color/ws_text_secondary"
+        android:textSize="@dimen/ws_text_label" />
+
+    <EditText
+        android:id="@+id/provider_endpoint_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:hint="@string/ws_endpoint_hint"
+        android:inputType="textUri"
+        android:minHeight="@dimen/ws_touch"
+        android:textSize="@dimen/ws_text_caption" />
+
+    <!-- API Key -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/ws_api_key_label"
+        android:textColor="@color/ws_text_secondary"
+        android:textSize="@dimen/ws_text_label" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/provider_api_key_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="@string/ws_api_key_hint"
+            android:inputType="textPassword"
+            android:minHeight="@dimen/ws_touch"
+            android:textSize="@dimen/ws_text_caption" />
+
+        <ImageButton
+            android:id="@+id/provider_key_toggle"
+            android:layout_width="@dimen/ws_touch"
+            android:layout_height="@dimen/ws_touch"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/ws_key_toggle"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_menu_view" />
+    </LinearLayout>
+
+    <!-- Model -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/ws_model_label_settings"
+        android:textColor="@color/ws_text_secondary"
+        android:textSize="@dimen/ws_text_label" />
+
+    <EditText
+        android:id="@+id/provider_model_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:hint="@string/ws_model_hint"
+        android:inputType="text"
+        android:minHeight="@dimen/ws_touch"
+        android:textSize="@dimen/ws_text_caption" />
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/provider_cancel"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="@dimen/ws_touch"
+            android:text="@string/ws_cancel"
+            android:textColor="@color/ws_text_secondary" />
+
+        <Button
+            android:id="@+id/provider_save"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:minHeight="@dimen/ws_touch"
+            android:text="@string/ws_save"
+            android:textColor="@color/ws_primary" />
+    </LinearLayout>
+</LinearLayout>

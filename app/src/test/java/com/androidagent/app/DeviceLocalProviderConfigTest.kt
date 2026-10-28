@@ -197,21 +197,75 @@ class DeviceLocalProviderConfigTest {
         assertEquals(DeviceLocalProviderConfigLoader.REASON_INVALID, (invalid as DeviceLocalProviderConfig.Invalid).safeReason)
     }
 
-    // ------------------------------------------------------------ T10 read-only
+    // ------------------------------------------------------------ T10 read-only loader
 
     @Test
-    fun T10_app_never_writes_provider_local_json() {
-        // Static guarantee: the production source of the device-local loader only
-        // opens the file read-only (File.readText) and never opens an output
-        // stream, FileWriter, or FileOutputStream on it.
+    fun T10_loader_is_read_only() {
+        // AG.UI-SHELL-1.PRODUCT-CONTROLS-ALIGNMENT: The core DeviceLocalProviderConfigLoader
+        // remains read-only (File.readText). The NodeLoader now has a save() method for the
+        // Provider Settings Dialog, but the core loader itself never writes.
+        // We verify the core loader section (before the NodeLoader) has no write operations.
         val src = File("src/main/java/com/androidagent/app/DeviceLocalProviderConfig.kt")
         val text = src.readText()
-        assertFalse(text.contains("FileOutputStream"), "loader must not open a file output stream")
-        assertFalse(text.contains("FileWriter"), "loader must not open a file writer")
-        assertFalse(text.contains("writeText"), "loader must not write text")
-        assertFalse(text.contains("createNewFile"), "loader must not create the file")
+        // The core loader object ends before the NodeLoader. Extract just that section.
+        val loaderStart = text.indexOf("object DeviceLocalProviderConfigLoader")
+        val nodeLoaderStart = text.indexOf("object DeviceLocalProviderNodeLoader")
+        val coreLoaderText = text.substring(loaderStart, nodeLoaderStart)
+        assertFalse(coreLoaderText.contains("FileOutputStream"), "core loader must not open a file output stream")
+        assertFalse(coreLoaderText.contains("FileWriter"), "core loader must not open a file writer")
+        assertFalse(coreLoaderText.contains("writeText"), "core loader must not write text")
         // It does read via readText (normal private-file read).
-        assertTrue(text.contains("readText"))
+        assertTrue(coreLoaderText.contains("readText"))
+    }
+
+    // ------------------------------------------------------------ T10b save round-trip
+
+    @Test
+    fun T10b_save_and_load_roundtrip() {
+        // AG.UI-SHELL-1.PRODUCT-CONTROLS-ALIGNMENT: The NodeLoader.save() writes
+        // the same format that load() reads. Verify round-trip integrity.
+        val dir = newTempDir()
+        val node = ProviderNode.EMG
+        val file = File(dir, node.configFileName)
+
+        val original = OpenAiCompatibleConfig(
+            baseUrl = "https://api.example.com/v1",
+            apiKey = "test-key-123",
+            model = "test-model",
+            requestTimeout = java.time.Duration.ofSeconds(30),
+        )
+
+        // Write via buildConfigJson (the same path save() uses)
+        file.writeText(DeviceLocalProviderNodeLoader.buildConfigJson(original))
+
+        // Read back
+        val loaded = DeviceLocalProviderConfigLoader.load(file)
+        assertTrue(loaded is DeviceLocalProviderConfig.Loaded, "round-trip should load")
+        val cfg = (loaded as DeviceLocalProviderConfig.Loaded).config
+        assertEquals(original.baseUrl, cfg.baseUrl)
+        assertEquals(original.apiKey, cfg.apiKey)
+        assertEquals(original.model, cfg.model)
+        assertEquals(30L, cfg.requestTimeout.toSeconds())
+    }
+
+    // ------------------------------------------------------------ T10c secret-safe save
+
+    @Test
+    fun T10c_save_does_not_expose_key_in_json_structure() {
+        // The saved JSON must not contain the key in any loggable/echoable form.
+        // The key IS in the file (it's the stored credential) but the JSON structure
+        // is standard and the key is under the expected "apiKey" field.
+        val cfg = OpenAiCompatibleConfig(
+            baseUrl = "https://api.example.com/v1",
+            apiKey = "super-secret-key",
+            model = "m1",
+        )
+        val json = DeviceLocalProviderNodeLoader.buildConfigJson(cfg)
+        // The key appears exactly once (in the apiKey field)
+        assertEquals(1, json.split("super-secret-key").size - 1, "key must appear exactly once")
+        // No raw exception-style exposure
+        assertFalse(json.contains("Exception"))
+        assertFalse(json.contains("stacktrace"))
     }
 
     // ------------------------------------------------------------ T11 not packaged

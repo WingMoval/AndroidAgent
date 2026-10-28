@@ -55,6 +55,120 @@ class DebugProtocolTest {
         assertEquals("", (msg as DebugProtocol.ClientMessage.Send).text)
     }
 
+    // ------------------------- AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION (additive)
+
+    @Test
+    fun parse_stop() {
+        val msg = DebugProtocol.parseClientLine("""{"type":"stop"}""")
+        assertTrue(msg is DebugProtocol.ClientMessage.Stop)
+    }
+
+    @Test
+    fun parse_new_session() {
+        val msg = DebugProtocol.parseClientLine("""{"type":"new_session"}""")
+        assertTrue(msg is DebugProtocol.ClientMessage.NewSession)
+    }
+
+    @Test
+    fun parse_adb_reconnect() {
+        val msg = DebugProtocol.parseClientLine("""{"type":"adb_reconnect"}""")
+        assertTrue(msg is DebugProtocol.ClientMessage.AdbReconnect)
+    }
+
+    @Test
+    fun parse_provider_switch() {
+        val msg = DebugProtocol.parseClientLine("""{"type":"provider_switch","node":"OpenRouter"}""")
+        assertTrue(msg is DebugProtocol.ClientMessage.ProviderSwitch)
+        assertEquals("OpenRouter", (msg as DebugProtocol.ClientMessage.ProviderSwitch).node)
+    }
+
+    @Test
+    fun parse_provider_switch_missing_node_is_empty() {
+        val msg = DebugProtocol.parseClientLine("""{"type":"provider_switch"}""")
+        assertTrue(msg is DebugProtocol.ClientMessage.ProviderSwitch)
+        assertEquals("", (msg as DebugProtocol.ClientMessage.ProviderSwitch).node)
+    }
+
+    @Test
+    fun parse_snapshot() {
+        val msg = DebugProtocol.parseClientLine("""{"type":"snapshot"}""")
+        assertTrue(msg is DebugProtocol.ClientMessage.Snapshot)
+    }
+
+    // ---- new responses -------------------------------------------------------
+
+    @Test
+    fun stop_result_encodes_all_three_mappings() {
+        val requested = kotlinx.serialization.json.Json.parseToJsonElement(
+            DebugProtocol.stopResult("requested")).jsonObject
+        assertEquals("stop_result", requested["type"]!!.jsonPrimitive.content)
+        assertEquals("requested", requested["result"]!!.jsonPrimitive.content)
+
+        val already = kotlinx.serialization.json.Json.parseToJsonElement(
+            DebugProtocol.stopResult("already_interrupting")).jsonObject
+        assertEquals("already_interrupting", already["result"]!!.jsonPrimitive.content)
+
+        val none = kotlinx.serialization.json.Json.parseToJsonElement(
+            DebugProtocol.stopResult("no_active_run")).jsonObject
+        assertEquals("no_active_run", none["result"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun new_session_result_encodes_success() {
+        val ok = kotlinx.serialization.json.Json.parseToJsonElement(
+            DebugProtocol.newSessionResult(true)).jsonObject
+        assertEquals("new_session_result", ok["type"]!!.jsonPrimitive.content)
+        assertEquals("true", ok["success"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun adb_reconnect_result_encodes_ready_and_state() {
+        val r = kotlinx.serialization.json.Json.parseToJsonElement(
+            DebugProtocol.adbReconnectResult(true, "READY")).jsonObject
+        assertEquals("adb_reconnect_result", r["type"]!!.jsonPrimitive.content)
+        assertEquals("true", r["ready"]!!.jsonPrimitive.content)
+        assertEquals("READY", r["state"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun provider_switch_result_applied_carries_safe_endpoint() {
+        val r = kotlinx.serialization.json.Json.parseToJsonElement(
+            DebugProtocol.providerSwitchResult(true, "OpenRouter", "http://127.0.0.1:18080/v1/chat/completions")
+        ).jsonObject
+        assertEquals("provider_switch_result", r["type"]!!.jsonPrimitive.content)
+        assertEquals("true", r["success"]!!.jsonPrimitive.content)
+        assertEquals("OpenRouter", r["node"]!!.jsonPrimitive.content)
+        // The endpoint is the SAFE endpoint (scheme+host+port+path) — no secret.
+        assertEquals("http://127.0.0.1:18080/v1/chat/completions",
+            r["endpoint"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun provider_switch_result_rejected_carries_reason() {
+        val r = kotlinx.serialization.json.Json.parseToJsonElement(
+            DebugProtocol.providerSwitchResult(false, "EMG", reason = "EMG config not provisioned")
+        ).jsonObject
+        assertEquals("false", r["success"]!!.jsonPrimitive.content)
+        assertEquals("EMG config not provisioned", r["reason"]!!.jsonPrimitive.content)
+    }
+
+    // ---- old messages still parse (regression) --------------------------------
+
+    @Test
+    fun old_messages_still_parse_after_additive_extension() {
+        // The additive extension must NOT break the existing wire shape.
+        assertTrue(DebugProtocol.parseClientLine("""{"type":"ping"}""")
+            is DebugProtocol.ClientMessage.Ping)
+        assertTrue(DebugProtocol.parseClientLine(
+            """{"type":"session_open","backend":"adb"}""")
+            is DebugProtocol.ClientMessage.SessionOpen)
+        assertTrue(DebugProtocol.parseClientLine(
+            """{"type":"bootstrap_state"}""")
+            is DebugProtocol.ClientMessage.BootstrapState)
+        // Unknown type still yields null (no accidental match).
+        assertNull(DebugProtocol.parseClientLine("""{"type":"totally_unknown"}"""))
+    }
+
     // ------------------------------------------------------------- encode
 
     @Test

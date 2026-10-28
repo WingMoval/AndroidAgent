@@ -1,0 +1,12 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — Gate F: Debug Stop -> UI
+
+Status: DEFERRED_WITH_REASON
+Reason: Cannot start a long-running run (provider network unreachable — see Gate C).
+  Without a working provider, no run can be started, so Stop cannot be tested.
+
+The Stop path IS correct (static verification):
+  DebugBridge.handleStop -> HostActions.stop() -> AgentRuntime.interruptActiveRun()
+  Returns StopResult.Requested/AlreadyInterrupting/NoActiveRun
+  UI onStopRun also delegates to HostActions.stop() (shared entry)
+
+GATE_F_DEBUG_STOP_TO_UI = DEFERRED_WITH_REASON (network)

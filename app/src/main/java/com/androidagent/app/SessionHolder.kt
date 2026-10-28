@@ -57,6 +57,40 @@ object SessionHolder {
         private set
 
     /**
+     * AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION: the REAL active model id from the
+     * applied provider config. Set by [setActiveModel]; read by the snapshot.
+     * No fake effort — only the real model id is stored.
+     */
+    @Volatile
+    var activeModel: String? = null
+        private set
+
+    fun setActiveModel(model: String?) {
+        activeModel = model
+    }
+
+    /**
+     * AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION: the process-scoped application
+     * context (the existing [rootAppContext], captured on first
+     * [persistenceChain]), exposed so HostActions can resolve the provider node
+     * loader context without an Activity.
+     */
+    val appContext: Context?
+        get() = rootAppContext
+
+    /**
+     * AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION: capture the application context
+     * synchronously (idempotent) so [HostActions] can resolve the provider node
+     * loader context even before the async initialize()/createRoot path runs.
+     */
+    fun ensureAppContext(context: Context) {
+        val appCtx = context.applicationContext
+        if (rootAppContext == null) {
+            rootAppContext = appCtx
+        }
+    }
+
+    /**
      * AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0F: the process-scoped durable
      * persistence chain. One app-process Room database -> one RoomTopicSessionStore
      * -> one StoreMessageDurability, injected into every ChatCompositionRoot.
@@ -68,10 +102,11 @@ object SessionHolder {
     @Volatile
     private var topicSessionStore: TopicSessionStore? = null
 
+    /** AG.UI-TRANSCRIPT-CARDS-1: public accessor for the Session Browser. */
+    val topicSessionStoreRef: TopicSessionStore? get() = topicSessionStore
+
     @Volatile
     private var messageDurability: MessageDurability? = null
-
-    private val appContext: Context? get() = rootAppContext
 
     @Volatile
     private var rootAppContext: Context? = null
@@ -112,6 +147,11 @@ object SessionHolder {
         onDebugEvent: (AgentEvent) -> Unit,
         streamObserver: ModelStreamObserver,
     ) {
+        // Capture the application context up front (synchronously) so HostActions
+        // can resolve the provider node loader context even before the async
+        // initialize() runs. (persistenceChain also captures it, but createRoot is
+        // the synchronous entry point on the provider-switch / startup path.)
+        rootAppContext = context.applicationContext
         // Production durability chain (Phase F): REAL Room-backed persistence,
         // NOT MessageDurability.Noop. Process-scoped (built once, reused).
         val (store, durability) = persistenceChain(context)

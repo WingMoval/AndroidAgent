@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AG.UI-SHELL-1 — VNext light workspace palette.
+  Design SSOT §3: soft white workspace / white surface / near-black primary text /
+  medium secondary text / subtle light dividers. No heavy shadows, no gradients,
+  no saturated colors, no chat bubbles.
+-->
+<resources>
+    <!-- Surfaces -->
+    <color name="ws_workspace_bg">#F4F5F7</color>
+    <color name="ws_surface">#FFFFFF</color>
+    <color name="ws_header_bg">#FFFFFF</color>
+
+    <!-- Text -->
+    <color name="ws_text_primary">#1A1C1E</color>
+    <color name="ws_text_secondary">#6B7075</color>
+    <color name="ws_text_hint">#9AA0A6</color>
+
+    <!-- Lines -->
+    <color name="ws_divider">#E3E5E8</color>
+    <color name="ws_border">#D8DADD</color>
+
+    <!-- Controls -->
+    <color name="ws_control_bg">#EEF0F2</color>
+    <color name="ws_control_stroke">#D8DADD</color>
+    <color name="ws_input_bg">#FFFFFF</color>
+
+    <!-- Primary action (Send) — restrained, not a giant blue FAB -->
+    <color name="ws_primary">#3B82F6</color>
+    <color name="ws_primary_text">#FFFFFF</color>
+
+    <!-- Stop action -->
+    <color name="ws_stop_bg">#FDECEA</color>
+    <color name="ws_stop_text">#B42318</color>
+    <color name="ws_stop_stroke">#F3C1BB</color>
+
+    <!-- ADB status semantics -->
+    <color name="ws_adb_ready">#188038</color>
+    <color name="ws_adb_connecting">#B54708</color>
+    <color name="ws_adb_disconnected">#B0B4B8</color>
+
+    <!-- Sidebar scrim -->
+    <color name="ws_scrim">#59000000</color>
+</resources>

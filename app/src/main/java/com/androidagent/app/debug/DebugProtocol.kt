@@ -88,6 +88,45 @@ object DebugProtocol {
          * {"type":"bootstrap_pair","code":"123456"}
          */
         data class BootstrapPair(val code: String) : ClientMessage
+
+        // ---------------------------------------------------- AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION
+        // Additive extension. Old messages (ping / send / tool_invoke /
+        // session_* / bootstrap_*) keep their exact wire shape and behavior.
+
+        /**
+         * Interrupt the active Run through the shared HostActions.stop
+         * (AgentRuntime.interruptActiveRun).
+         * {"type":"stop"}
+         */
+        data object Stop : ClientMessage
+
+        /**
+         * Start a new durable Session through the shared HostActions.newSession
+         * (SessionHolder.newSession -> AgentRuntime.newSession).
+         * {"type":"new_session"}
+         */
+        data object NewSession : ClientMessage
+
+        /**
+         * Re-run the ADB connect flow through the shared HostActions.adbReconnect
+         * (ShellConnection.connect -> integration-at).
+         * {"type":"adb_reconnect"}
+         */
+        data object AdbReconnect : ClientMessage
+
+        /**
+         * Switch the active provider node through the shared
+         * HostActions.providerSwitch (resolveProviderSwitch + applyConfig).
+         * Only an existing, valid ProviderNode identity is accepted.
+         * {"type":"provider_switch","node":"OpenRouter"}
+         */
+        data class ProviderSwitch(val node: String) : ClientMessage
+
+        /**
+         * Read-only automation state (HostActions.snapshot). SECRET-FREE.
+         * {"type":"snapshot"}
+         */
+        data object Snapshot : ClientMessage
     }
 
     /** Parses one JSONL line from the client. Returns null on empty/blank/malformed. */
@@ -146,6 +185,15 @@ object DebugProtocol {
                 val code = root["code"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
                 ClientMessage.BootstrapPair(code)
             }
+            // ---- AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION (additive)
+            "stop" -> ClientMessage.Stop
+            "new_session" -> ClientMessage.NewSession
+            "adb_reconnect" -> ClientMessage.AdbReconnect
+            "provider_switch" -> {
+                val node = root["node"]?.let { (it as? JsonPrimitive)?.content }.orEmpty()
+                ClientMessage.ProviderSwitch(node)
+            }
+            "snapshot" -> ClientMessage.Snapshot
             else -> null
         }
     }
@@ -276,6 +324,55 @@ object DebugProtocol {
             put("success", JsonPrimitive(success))
             put("outcome", JsonPrimitive(outcome))
             if (error.isNotEmpty()) put("error", JsonPrimitive(error))
+        },
+    )
+
+    // ------------------------------------- AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION responses
+
+    /**
+     * {"type":"stop_result","result":"requested|already_interrupting|no_active_run"}
+     * Faithful mapping of AgentRuntime.InterruptResult.
+     */
+    fun stopResult(result: String): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("stop_result"))
+            put("result", JsonPrimitive(result))
+        },
+    )
+
+    /**
+     * {"type":"new_session_result","success":true|false}
+     */
+    fun newSessionResult(success: Boolean): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("new_session_result"))
+            put("success", JsonPrimitive(success))
+        },
+    )
+
+    /**
+     * {"type":"adb_reconnect_result","ready":true|false,"state":"READY|..."}
+     */
+    fun adbReconnectResult(ready: Boolean, state: String): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("adb_reconnect_result"))
+            put("ready", JsonPrimitive(ready))
+            put("state", JsonPrimitive(state))
+        },
+    )
+
+    /**
+     * {"type":"provider_switch_result","success":true|false,
+     *  "node":"...","endpoint":"<safe endpoint>","reason":"..."}
+     * endpoint is the existing SAFE endpoint (no secret).
+     */
+    fun providerSwitchResult(success: Boolean, node: String, endpoint: String? = null, reason: String? = null): String = encode(
+        buildJsonObject {
+            put("type", JsonPrimitive("provider_switch_result"))
+            put("success", JsonPrimitive(success))
+            put("node", JsonPrimitive(node))
+            if (endpoint != null) put("endpoint", JsonPrimitive(endpoint))
+            if (reason != null) put("reason", JsonPrimitive(reason))
         },
     )
 

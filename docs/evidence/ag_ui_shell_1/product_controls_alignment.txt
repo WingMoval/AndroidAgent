@@ -1,0 +1,135 @@
+AG.UI-SHELL-1.PRODUCT-CONTROLS-ALIGNMENT — 真机验证证据
+
+日期: 2026-10-27
+设备: HONOR ALI-AN00 APLMUT4312005935, Android 15 (1200x2652)
+APK: debug build (product controls alignment)
+截图: product_controls_screenshot.png (同目录)
+
+============================================================
+V1: "+" visible in Composer
+============================================================
+composer_add: ImageButton 48x48dp, VISIBLE in composer
+  位置: Composer 内, input 左侧
+  contentDescription: "Add context"
+  点击: 显示 Toast "Attachment context is not yet available." (诚实提示)
+V1 = PASS
+
+============================================================
+V2: Composer model control = real LLM selector
+============================================================
+composer_model_selector: LinearLayout (clickable)
+  内含: composer_model_label (TextView) + 12dp dropdown arrow (ImageView)
+  当前显示: "fixture-stream" (真实 active model)
+  点击: 打开 AlertDialog 单选择列表 (来自 buildModelCatalog)
+  选择后: HostActions.switchModel(node, modelId) → canonical apply path
+V2 = PASS
+
+============================================================
+V3: Composer does NOT expose API key
+============================================================
+Composer 内只有: + / input / LLM selector / Send-Stop
+  无 endpoint URL, 无 API key, 无 provider name
+  model_label 只显示模型名 (fixture-stream)
+V3 = PASS
+
+============================================================
+V4: Provider Settings entry exists
+============================================================
+sidebar_provider_settings: "Models & Provider" (clickable row)
+  位置: Sidebar 第二区 (ADB 之后)
+  点击: 打开 Provider Settings Dialog
+V4 = PASS
+
+============================================================
+V5: Provider Settings dialog contents
+============================================================
+dialog_provider_settings.xml 包含:
+  - provider_selector (Spinner: EMG / OpenRouter)
+  - provider_endpoint_input (EditText, textUri)
+  - provider_api_key_input (EditText, textPassword)
+  - provider_key_toggle (ImageButton, show/hide)
+  - provider_model_input (EditText)
+  - provider_cancel / provider_save (Buttons)
+V5 = PASS
+
+============================================================
+V6: API Key masked
+============================================================
+provider_api_key_input: inputType="textPassword" (默认 masked)
+  重新打开 Dialog: 不预填真实 key (hint="Saved" 表示已有)
+  空白 Save = 保留已有 key (secret semantics)
+V6 = PASS
+
+============================================================
+V7: Session section moved below Provider
+============================================================
+Sidebar 顺序 (uiautomator dump 验证):
+  1. ADB (sidebar_adb_section)
+  2. Models & Provider (sidebar_provider_settings + sidebar_provider_status)
+  3. Session (sidebar_session_section + sidebar_current_session + sidebar_new_session)
+SESSION_SECTION_POSITION = BELOW_PROVIDER
+V7 = PASS
+
+============================================================
+V8: New Session no longer giant top-level blue action
+============================================================
+sidebar_new_session: borderless Button, "+ NEW SESSION"
+  textColor: ws_text_secondary (灰色, 非蓝色)
+  位置: Session section 内 (Sidebar 底部)
+  不再是 Sidebar 顶部的大号蓝色全大写按钮
+NEW_SESSION_VISUAL = COMPACT
+V8 = PASS
+
+============================================================
+V9: Header only shows compact "ADB ●"
+============================================================
+Header ADB 区域:
+  "ADB" label (11sp) + 8dp dot (adb_dot)
+  无重复的 "ADB disconnected" 文本 (adb_label 已移除)
+  完整状态在 Sidebar ADB section (adb_status)
+  contentDescription 保留在 adb_dot 上 (accessibility)
+HEADER_ADB_SUMMARY = COMPACT
+V9 = PASS
+
+============================================================
+V10: Composer remains one coherent visual unit
+============================================================
+composer: 单一 LinearLayout, bg=ws_composer_surface (白+border+12dp圆角)
+  内含: composer_add / composer_input / composer_model_selector / send-stop slot
+  所有控件在同一 surface 内, 无割裂
+V10 = PASS
+
+============================================================
+Provider Status (Sidebar)
+============================================================
+sidebar_provider_status: "EMG · Configured"
+  不显示完整 endpoint URL (http://127.0.0.1:18080/...)
+  轻量状态: provider name + configured/not-configured
+  详细 endpoint 进入 Dialog
+V45 (Provider 主区域) = PASS
+
+============================================================
+Callback Debug Regression
+============================================================
+DebugBridge ping: {"type":"pong"} ✓
+Snapshot: runtimeReady=true, activeProvider=EMG, activeModel=fixture-stream ✓
+SECRET_SAFE = YES (no key/endpoint in snapshot)
+SEND_SHARED_ENTRY = YES (HostActions.send unchanged)
+STOP_SHARED_ENTRY = YES (HostActions.stop unchanged)
+NEW_SESSION_SHARED_ENTRY = YES (HostActions.newSession unchanged)
+PROVIDER_SWITCH_SHARED_ENTRY = YES (HostActions.switchProvider unchanged)
+SECOND_RUNTIME = NO
+SECOND_SESSION_STATE = NO
+
+CALLBACK_DEBUG_REGRESSION = NONE
+
+============================================================
+Build
+============================================================
+.\gradlew :app:test → 410 tests, 0 failures
+.\gradlew :app:assembleDebug → BUILD SUCCESSFUL
+
+============================================================
+结论
+============================================================
+PRODUCT_CONTROLS_ALIGNMENT = PASS

@@ -1,0 +1,120 @@
+AG.UI-BASELINE-AUDIT-1 — Transcript Block Map
+
+TranscriptModel.Block (sealed interface) — CURRENT block types:
+  User(text)
+  Thinking(text, phase: THINKING|THOUGHT)
+  Assistant(text, final: Boolean)
+  Shell(command)                      <- tool action (named Shell but generic command)
+  Result(text)                        <- tool result (rendered text)
+  Failure(text)
+  Interrupted(text)
+
+RENDER PATH:
+  TranscriptModel.render() -> single String -> ONE TextView (textIsSelectable=true).
+  The whole transcript is one selectable text block. There are NO per-block views,
+  NO cards, NO per-block copy, NO collapse. fromRendered() is a LOSSY rebuild (used
+  only for Activity-recreation rebind when holder model empty).
+
+PER-BLOCK MATRIX (design target vs current):
+
+User
+  exists: YES (Block.User)
+  data source: user input (onSend) / Debug userInputSink / reproject(UserMessage)
+  created by: TranscriptModel.onUser (Host) ; reproject (restore)
+  updated: never (immutable once added)
+  durable: YES (UserMessage in DB)
+  presentation-only: NO (durable)
+  current render: "User\n<text>" in the single TextView
+  streaming: N/A (not streamed)
+  stable identity: NO (list index only)
+  card-mappable: YES -> UserCard (Copy/Retry/Edit&Resend/More)
+
+Thinking / Thought
+  exists: YES (Block.Thinking, phase flips THINKING->THOUGHT)
+  data source: ModelStreamObserver reasoning_started/delta/finished
+  created by: onReasoningStarted / onReasoningDelta ; flipped by onReasoningFinished
+  updated: appended deltas (same block); phase flip on finish
+  durable: NO (reasoning NOT persisted — frozen)
+  presentation-only: YES
+  current render: "Thinking...\n<text>" or "Thought\n<text>" in the single TextView
+  streaming: YES (deltas grow the block)
+  stable identity: NO (list index)
+  card-mappable: YES -> ThoughtCard (Collapse/Expand/Copy/Select); SAME block lifecycle
+    (Thinking->Thought is the same block; design §11 matches current semantics)
+  NOTE: restored transcript has NO Thought (reasoning not persisted) — correct.
+
+Assistant
+  exists: YES (Block.Assistant, final flag)
+  data source: ModelStreamObserver content_started/delta ; AnswerProduced (final)
+  created by: onContentStarted/onContentDelta ; onAnswerProduced marks final
+  updated: appended deltas (one block per model turn); final flag on answer
+  durable: YES (ModelMessage in DB; final answer = no toolCalls)
+  presentation-only: NO (durable)
+  current render: "Assistant\n<text>" in the single TextView
+  streaming: YES (content deltas grow the block incrementally — design §12 requirement met)
+  stable identity: NO (list index)
+  card-mappable: YES -> AssistantCard (Copy/Select/Retry). FinalAnswer de-duplication
+    already correct (onAnswerProduced marks existing block final, no duplicate).
+    Intermediate Assistant (with toolCalls) kept as final=false — matches design.
+
+Tool Action (Shell block)
+  exists: YES (Block.Shell(command))
+  data source: AgentEvent.ToolCallStarted(call) ; reproject(ModelMessage.toolCalls)
+  created by: onToolCallStarted ; reproject
+  updated: never
+  durable: YES (ModelMessage.toolCalls in DB)
+  presentation-only: NO (durable)
+  current render: "Shell\n$ <command>" in the single TextView
+  streaming: N/A
+  stable identity: NO
+  card-mappable: YES -> ToolExecutionCard (action half). NOTE: block is NAMED "Shell"
+    but commandOf(call) extracts the command from ANY tool's JSON args; for non-shell
+    tools it shows raw args. A generic ToolExecutionCard should use call.name (tool id)
+    + arguments, not assume shell. (Presentation rename + generic render; no domain change.)
+
+Tool Result (Result block)
+  exists: YES (Block.Result(text))
+  data source: AgentEvent.ToolCallFinished(call,result) ; reproject(ToolResultMessage)
+  created by: onToolCallFinished -> renderResult(result)
+  updated: never
+  durable: YES (ToolResultMessage in DB)
+  presentation-only: NO (durable)
+  current render: "Result\n<rendered>" in the single TextView. renderResult() parses the
+    android_shell JSON payload (exitCode/stdout/stderr) and appends error on !success.
+  streaming: N/A
+  stable identity: NO
+  card-mappable: YES -> ToolExecutionCard (result half: Preview/Expand/Collapse/Copy).
+    Tool-level output is BOUNDED upstream (see 06: file truncated flag, network caps);
+    the Result block stores the (possibly tool-truncated) text. UI collapse must not
+    pretend to expand data the tool already truncated (FULL_RESULT_AVAILABLE_TO_UI =
+    SOMETIMES — bounded by tool caps).
+
+Failure
+  exists: YES (Block.Failure(text))
+  data source: AgentEvent.RunFailed(failure)
+  created by: onRunFailed -> renderFailure(failure)
+  updated: never
+  durable: NO (failure is a run outcome, not a Message)
+  presentation-only: YES
+  current render: "Failed\n<text>" in the single TextView
+  card-mappable: YES -> FailureCard (Copy/Select). Tool-level failure is shown inside
+    the Tool Result block (renderResult appends "error: ..."); run/provider failure is
+    a separate Failure block. Matches design §14 (tool failure in-card, run failure standalone).
+
+Interrupted
+  exists: YES (Block.Interrupted(text))
+  data source: AgentEvent.RunFinished(outcome=Interrupted)
+  created by: onInterrupted() (SessionHolder.onRunEvent when outcome is Interrupted)
+  updated: never
+  durable: NO (interrupted is a run outcome; partial history is durable per CORE-007
+    synthetic interrupted ToolResult)
+  presentation-only: YES (the block)
+  current render: "Stopped\n<text>" in the single TextView
+  card-mappable: YES -> InterruptedCard (NOT a Failure). Matches design §14/§19:
+    user Stop != Failure; partial transcript preserved; Interrupted appended.
+
+TRANSCRIPT_RENDERING = single TextView (render() -> one string)
+THINKING_TO_THOUGHT = SUPPORTED (same block, phase flip — verified in code)
+ASSISTANT_STREAMING = SUPPORTED (content deltas grow one block per turn)
+TOOL_RENDERING = generic command + rendered result (shell-payload-aware; rename to generic
+  ToolExecutionCard is presentation-only)

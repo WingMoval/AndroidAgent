@@ -1,0 +1,21 @@
+AG.UI-BASELINE-AUDIT-1 — Device Baseline
+
+DEVICE_BASELINE = DEFERRED_WITH_REASON
+
+Reason:
+  `adb devices` (C:\android\platform-tools\adb.exe) returned an EMPTY device list at audit
+  time. No device is connected. Capturing a CURRENT DEVICE UI BASELINE (app launch / main UI /
+  transcript / provider selector / ADB state / session restore / tool transcript / running
+  state) requires a connected device, which is unavailable this round.
+
+Per the task rules, a missing device does NOT fail the audit:
+  DEVICE_BASELINE = DEFERRED_WITH_REASON  (device unavailable; will be captured in
+  AG.UI-DEVICE-ACCEPTANCE-1 where a device is required anyway).
+
+No production code was modified to attempt a device baseline. The code-level current state
+(single-Activity XML/View UI, single-TextView transcript, provider Spinner, AT status line,
+New Session button, DebugBridge debug-only) is fully documented from source in this evidence
+set (02/03/04/05/06/07/08/09/10), so the device step only needs to CONFIRM on hardware.
+
+The prior round's device (HONOR ALI-AN00, serial APLMUT4312005935) was used for
+FULL_USER_VISIBLE_RESUME verification; it is not connected for this audit round.

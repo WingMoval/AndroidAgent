@@ -1,0 +1,35 @@
+AG.UI-BASELINE-AUDIT-1 — VNext Design SSOT
+
+VNEXT_DESIGN_SSOT = docs/design/AndroidAgent_V2_VNext_UI_设计基线.md
+LOCATED = YES (actual path resolved, not assumed)
+SIZE = 592 lines
+VNEXT_DESIGN_SSOT_MODIFIED = NO (USER_OWNED_DESIGN_SSOT; read-only this round)
+
+The file is the authoritative VNext UI TARGET DESIGN. This audit maps CURRENT
+code to that target. Key target sections used as audit anchors:
+
+  §1  版本与定位 — 继续 V2；UI 世代 VNext；架构不变；AG Core/Runtime/Tool/Provider/
+       AT/TopicSession 冻结；本轮演进 Host/Presentation/UI/Transcript/交互
+  §2  产品形态 — 浅色优先 Codex-like Agent Workspace（非聊天 App/终端模拟器）
+  §3  视觉基线 — Light Theme；Workspace 灰白 / Card 白 / 留白+细边框+圆角+分隔线
+  §4  主界面布局 — Header 固定 / Conversation Viewport 固定 / Composer 固定底部
+  §5  Conversation Viewport — 自然纵向滚动；底部自动跟随 streaming；上滑不强制拉回
+  §6  Transcript 层级 — TopicSession > User Turn/Run Group > User/Thought/Assistant/Tool
+       Turn Group = Presentation grouping（不创建第二套领域模型）
+  §7  一级视觉分隔 — User/Thought/Assistant 前分隔线；Tool/Result 属当前 execution
+  §8  Card 体系 — UserCard/ThoughtCard/AssistantCard/ToolExecutionCard/FailureCard/
+       InterruptedCard；Presentation state（expanded/collapsed/...）不入 SSOT
+  §9-15 Card 操作矩阵 — Copy/Select/Retry/Edit&Resend/Collapse 等
+  §16-18 Composer — ＋Context/File、Input、Model·effort、Submit/Stop
+  §19  Submit/Stop — Idle:↑ / Running:■；UI=Stop / AG=Interrupt / Runtime=cancellation
+  §20-21 Sidebar + Session Browser — New/Switch/Current highlight/Rename/Today-Yesterday
+  §22  ADB 状态 — Header ADB● / Sidebar Connected-Reconnect
+  §23  Provider/API Key — 设置页（不常驻主界面）
+  §24  Debug 通道 — 现有 DebugBridge 保留复用不重建；UI/Debug 同一 action path
+  §27  V1 必须完成 / §28 V1 明确不做 / §29 Architecture Guard
+  §31  建议 UI 阶段 — AUDIT -> SHELL -> TRANSCRIPT-CARDS -> CONTROLS -> DEVICE -> RELEASE
+  §32  V3 开启条件 — CREATE_ANDROIDAGENT_V3 = NO
+
+Deferred (NOT V1 blockers, per §28 + §25/§26): Grok turn switching, Focus View,
+pinch zoom, 复杂动画, 真正 Redo/Unrevert, 任意历史 Fork, Checkpoint UI, Export,
+复杂 syntax highlighting, Voice, 新 Debug protocol, 第二套 Debug runtime, 架构重构.

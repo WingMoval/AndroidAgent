@@ -1,0 +1,20 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — Gate B: Snapshot
+
+Command: {"type":"snapshot"}
+Response (real device, after EMG provider Applied):
+{
+  "type": "snapshot",
+  "runtimeReady": true,
+  "busy": false,
+  "currentSessionId": "session-7221a867-8cdc-41f3-88b3-e1ec20ea0cd2",
+  "activeProvider": "EMG",
+  "activeModel": "fixture-stream",
+  "adbState": "PAIRING_REQUIRED",
+  "transcriptBlockCount": 2,
+  "lastBlockType": "Assistant"
+}
+
+All required fields present. No secret keys in response.
+SNAPSHOT_SECRET_SAFE = YES
+
+GATE_B_SNAPSHOT = PASS

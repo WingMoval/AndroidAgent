@@ -147,4 +147,51 @@ object DeviceLocalProviderNodeLoader {
     /** Loads [node]'s device-local config. Never throws. */
     fun load(context: Context, node: ProviderNode): DeviceLocalProviderConfig =
         DeviceLocalProviderConfigLoader.load(configFile(context, node))
+
+    /**
+     * Saves [config] to [node]'s device-local file.
+     *
+     * AG.UI-SHELL-1.PRODUCT-CONTROLS-ALIGNMENT: minimal Host-side save path
+     * for the Provider Settings Dialog. Writes the same JSON format that
+     * [DeviceLocalProviderConfigLoader.load] reads — no second storage system.
+     *
+     * Secret semantics: [config.apiKey] is written to the file (it IS the
+     * stored credential). The file is in the app's private filesDir with
+     * default 0700 permissions. This is NOT a new storage location — it
+     * reuses the EXISTING device-local config file.
+     *
+     * @return true if the file was written successfully.
+     */
+    fun save(context: Context, node: ProviderNode, config: OpenAiCompatibleConfig): Boolean {
+        val file = configFile(context, node)
+        return try {
+            val json = buildConfigJson(config)
+            file.writeText(json)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Builds the device-local config JSON from [config].
+     * Matches the format that [OpenAiCompatibleConfigLoader.parse] expects.
+     */
+    internal fun buildConfigJson(config: OpenAiCompatibleConfig): String {
+        val timeoutSeconds = config.requestTimeout.toSeconds()
+        return buildString {
+            append("{\n")
+            append("  \"provider\": {\n")
+            append("    \"type\": \"openai-compatible\",\n")
+            append("    \"baseUrl\": \"").append(jsonEscape(config.baseUrl)).append("\",\n")
+            append("    \"apiKey\": \"").append(jsonEscape(config.apiKey)).append("\",\n")
+            append("    \"model\": \"").append(jsonEscape(config.model)).append("\",\n")
+            append("    \"requestTimeoutSeconds\": ").append(timeoutSeconds).append("\n")
+            append("  }\n")
+            append("}\n")
+        }
+    }
+
+    private fun jsonEscape(s: String): String =
+        s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
 }

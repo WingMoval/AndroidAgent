@@ -59,6 +59,7 @@ class HostStopStateTest {
         override suspend fun loadLatestSession(): TopicSessionRecord? = sessions.firstOrNull()?.let { TopicSessionRecord(it, 0, 0) }
         override suspend fun loadMessages(sessionId: String): List<com.androidagent.core.Message>? = if (sessionId in sessions) emptyList() else null
         override suspend fun updateModelProviderMetadata(sessionId: String, model: String?, provider: String?) {}
+        override suspend fun listSessions(): List<TopicSessionRecord> = sessions.map { TopicSessionRecord(it, 0, 0) }
     }
 
     // --------------------------------------------------------------- state machine

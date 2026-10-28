@@ -1,4 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.AndroidAgent" parent="Theme.AppCompat.DayNight.DarkActionBar" />
+<!--
+  AG.UI-SHELL-1 — VNext light-first workspace theme.
+  Before: Theme.AppCompat.DayNight.DarkActionBar
+  After:  Theme.AppCompat.Light.NoActionBar (custom workspace header replaces the ActionBar).
+  No new UI framework / dependency — AppCompat only (already a project dependency).
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.AndroidAgent" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/ws_primary</item>
+        <item name="colorPrimaryDark">@color/ws_workspace_bg</item>
+        <item name="colorAccent">@color/ws_primary</item>
+        <item name="android:windowBackground">@color/ws_workspace_bg</item>
+        <item name="android:statusBarColor">@color/ws_workspace_bg</item>
+        <item name="android:navigationBarColor">@color/ws_workspace_bg</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+    </style>
 </resources>

@@ -103,4 +103,13 @@ interface TopicSessionStore {
         model: String?,
         provider: String?,
     )
+
+    /**
+     * AG.UI-TRANSCRIPT-CARDS-1: Lists all sessions for the Session Browser.
+     * ADDITIVE — does not change existing semantics.
+     *
+     * @return all sessions ordered by last_used_at DESC (most recent first).
+     *         Empty list if no sessions exist.
+     */
+    suspend fun listSessions(): List<TopicSessionRecord>
 }

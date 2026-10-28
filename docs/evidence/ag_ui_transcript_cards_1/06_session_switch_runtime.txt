@@ -1,0 +1,111 @@
+AG.UI-TRANSCRIPT-CARDS-1 — Session Switch Runtime
+
+日期: 2026-10-27
+
+============================================================
+AgentRuntime.switchSession (ADDITIVE)
+============================================================
+
+签名:
+  suspend fun switchSession(targetSessionId: String): Boolean
+
+规则:
+  1. if (isBusy) return false
+     - Active Run 时 reject，不能强制切换。
+  2. if (startupState != READY) initialize()
+     - 必须先 READY。
+  3. val record = store.loadSession(targetId) ?: return false
+     - 验证 target session 存在于 durable store。
+     - 不存在 → reject。
+  4. restoreExistingSession(targetId)
+     - 复用现有恢复语义:
+       - load durable messages
+       - controlled repair if required (dangling tool calls)
+       - hydrate Core
+  5. sessionId = targetId
+  6. return true
+
+旧 session:
+  - 保留在 store + Core
+  - 不删除、不修改
+  - SESSION_ROW_EXISTS_BEFORE_CURRENT 不变量保持
+
+ADDITIVE:
+  - 不修改 initialize() / newSession() / send() / stop()
+  - 不重开 TopicSession domain / persistence semantics / Run durability
+
+============================================================
+HostActions.switchSession (SHARED ENTRY)
+============================================================
+
+签名:
+  suspend fun switchSession(sessionId: String): SessionSwitchResult
+
+行为:
+  1. val r = SessionHolder.runtime ?: return Rejected("runtime not ready")
+  2. if (r.isBusy) return Rejected("busy")
+  3. val switched = r.switchSession(sessionId)
+  4. if (switched):
+     - SessionHolder.projectCurrentHistory()
+     - SessionHolder.setRunStatus("Switched to session.")
+     - SessionHolder.notifyUiUpdate()
+     - return Ok(sessionId)
+  5. else: return Rejected("session not found")
+  6. catch (e: Exception): return Rejected("switch failed")
+
+Shared entry:
+  UI sidebar click ─┐
+                    ├→ HostActions.switchSession
+  Debug (future) ──┘
+                    ↓
+          AgentRuntime.switchSession
+
+不能两套实现。
+
+============================================================
+SessionSwitchResult
+============================================================
+
+sealed interface SessionSwitchResult {
+    data class Ok(val sessionId: String) : SessionSwitchResult
+    data class Rejected(val reason: String) : SessionSwitchResult
+}
+
+============================================================
+HostActions.listSessions
+============================================================
+
+签名:
+  suspend fun listSessions(): List<SessionSummary>
+
+行为:
+  1. val store = SessionHolder.topicSessionStoreRef ?: return emptyList()
+  2. store.listSessions().map { SessionSummary(...) }
+  3. catch (e: Exception): return emptyList()
+
+Shared entry (与 switch 相同)。
+
+============================================================
+SessionHolder.topicSessionStoreRef
+============================================================
+
+新增公开访问器:
+  val topicSessionStoreRef: TopicSessionStore? get() = topicSessionStore
+
+允许 HostActions 访问 store (不直接暴露 private field)。
+
+============================================================
+SSOT
+============================================================
+
+DB → Runtime/Core → Transcript projection → Cards
+
+Session switch 路径:
+  UI tap → HostActions.switchSession
+  → AgentRuntime.switchSession
+  → restoreExistingSession (load + repair + hydrate)
+  → projectCurrentHistory()
+  → Transcript Cards update
+
+禁止: UI 自己从 DB 拼 Transcript。
+SECOND_TRANSCRIPT_PIPELINE = NO

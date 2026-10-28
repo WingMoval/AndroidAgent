@@ -1,0 +1,61 @@
+AG.UI-TRANSCRIPT-CARDS-1 — Architecture Boundary
+
+日期: 2026-10-27
+
+============================================================
+AG_CORE_CHANGE_REQUIRED = NO
+============================================================
+AG Core (Message, AgentEvent, Run, RunOutcome, MessageDurability)
+未修改。Transcript Card 是 presentation-only 层。
+
+============================================================
+AG_RUNTIME_CHANGE = ADDITIVE_SESSION_SWITCH_ONLY
+============================================================
+新增: AgentRuntime.switchSession(targetSessionId): Boolean
+  - 检查 isBusy (reject if active Run)
+  - 检查 store.loadSession(targetId) (reject if not found)
+  - 复用 restoreExistingSession (load + repair + hydrate)
+  - sessionId = targetId
+  未修改: initialize(), newSession(), send(), stop() 等现有方法。
+
+============================================================
+TOPIC_SESSION_STORE_CHANGE = ADDITIVE_LIST_ONLY
+============================================================
+新增: TopicSessionStore.listSessions(): List<TopicSessionRecord>
+  - 接口方法 (ag-runtime)
+  - RoomTopicSessionStore 实现 (app)
+  - TopicSessionDao.listAll() 查询
+  未修改: createSession(), appendMessage(), loadSession() 等。
+
+============================================================
+DB_SCHEMA_CHANGE = NO
+============================================================
+无新表、无新列、无 migration。
+listAll() 仅查询现有 topic_sessions table。
+
+============================================================
+TOOL_CHANGE = NO
+PROVIDER_CHANGE = NO
+AT_CHANGE = NO
+============================================================
+Tool/Provider/AT Engine 未修改。
+
+============================================================
+CALLBACK_DEBUG_REGRESSION = NONE
+============================================================
+Debug bridge 正常工作 (snapshot, new_session 均响应)。
+未新增 debug command (topic_session_list/switch 留待未来)。
+
+============================================================
+SECOND_TRANSCRIPT_PIPELINE = NO
+============================================================
+SSOT 保持:
+  DB → Runtime/Core → Transcript projection → Cards
+UI 不直接读 DB。Session switch 通过 Runtime seam。
+
+============================================================
+DEPENDENCY ADDITION
+============================================================
+androidx.recyclerview:recyclerview:1.3.2
+WHY_REQUIRED: 单 TextView 无法支持 per-block Copy/Retry/collapse/selection。
+DEPENDENCY: androidx.recyclerview 1.3.2 (stable, 无意外传递依赖)。

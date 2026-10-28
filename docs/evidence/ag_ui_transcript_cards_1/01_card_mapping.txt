@@ -1,0 +1,89 @@
+AG.UI-TRANSCRIPT-CARDS-1 — Card Mapping
+
+日期: 2026-10-27
+
+============================================================
+Block → Card Mapping
+============================================================
+
+TranscriptModel.Block.User
+  → UserCard
+  Label: "You"
+  Body: block.text
+  Actions: Copy, Retry, More (Copy / Edit & Resend)
+  Selection: textIsSelectable = true
+
+TranscriptModel.Block.Thinking (phase=THINKING)
+  → ThoughtCard (running)
+  Label: "Thinking..."
+  Body: block.text (live reasoning)
+  Actions: Copy
+  Selection: textIsSelectable = true
+
+TranscriptModel.Block.Thinking (phase=THOUGHT)
+  → ThoughtCard (completed)
+  Label: "Thought"
+  Body: block.text
+  Actions: Copy
+  Collapse: >200 chars → truncate + "Show more" / "Show less"
+  Selection: textIsSelectable = true
+  注意: THINKING → THOUGHT 是同一个 Card (phase flip)，不新建 block。
+
+TranscriptModel.Block.Assistant
+  → AssistantCard
+  Label: "Assistant" (final=true) / "Assistant..." (streaming)
+  Body: block.text
+  Actions: Copy, Retry (origin User text)
+  Selection: textIsSelectable = true
+  注意: 中间 Assistant formal output 保留 (不只显示 final)。
+
+TranscriptModel.Block.Shell
+  → ToolExecutionCard (command part)
+  Label: "Shell"
+  Body: "$ " + block.command
+  Actions: Copy (copies command only)
+  Selection: textIsSelectable = true
+
+TranscriptModel.Block.Result
+  → ToolExecutionCard (result part)
+  Label: "Result"
+  Body: block.text
+  Actions: Copy
+  Collapse: >300 chars → truncate + "Show more" / "Show less"
+  Selection: textIsSelectable = true
+  注意: Shell + Result 视觉合并为 ToolExecutionCard，
+  但底层 Block 仍保持两个。
+
+TranscriptModel.Block.Failure
+  → FailureCard
+  Label: "Failed"
+  Body: block.text (具体安全错误原因)
+  Actions: Copy, Retry (origin User text)
+  Selection: textIsSelectable = true
+  注意: Run/Provider Failure 单独 Card。
+  Tool failure 优先留在 ToolExecutionCard Result。
+
+TranscriptModel.Block.Interrupted
+  → InterruptedCard
+  Label: "Stopped"
+  Body: block.text
+  Actions: Copy, Retry (origin User text)
+  Selection: textIsSelectable = true
+  注意: 不能渲染为 "Failed"。
+
+============================================================
+Visual Grouping (Presentation Only)
+============================================================
+
+User Turn
+│
+├─ User (UserCard)
+├─ Thought (ThoughtCard)
+├─ Assistant (AssistantCard)
+├─ Tool (ToolExecutionCard: Shell + Result)
+├─ Result (ToolExecutionCard)
+├─ Thought (ThoughtCard)
+└─ Assistant (AssistantCard)
+
+这是 presentation grouping only。
+不新建 durable Turn entity。

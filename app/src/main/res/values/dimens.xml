@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AG.UI-SHELL-1 — VNext workspace dimensions.
+  Visual alignment: header tightened, composer unified surface,
+  send button compact.
+-->
+<resources>
+    <!-- Spacing -->
+    <dimen name="ws_spacing_xs">4dp</dimen>
+    <dimen name="ws_spacing_sm">8dp</dimen>
+    <dimen name="ws_spacing_md">12dp</dimen>
+    <dimen name="ws_spacing_lg">16dp</dimen>
+    <dimen name="ws_spacing_xl">24dp</dimen>
+
+    <!-- Header / composer / sidebar -->
+    <dimen name="ws_header_height">44dp</dimen>
+    <dimen name="ws_sidebar_width">304dp</dimen>
+    <dimen name="ws_touch">48dp</dimen>
+
+    <!-- Text hierarchy -->
+    <dimen name="ws_text_title">14sp</dimen>
+    <dimen name="ws_text_body">15sp</dimen>
+    <dimen name="ws_text_caption">12sp</dimen>
+    <dimen name="ws_text_label">11sp</dimen>
+
+    <!-- Generic surface (reserved for cards) -->
+    <dimen name="ws_surface_radius">10dp</dimen>
+    <dimen name="ws_surface_border">1dp</dimen>
+
+    <!-- Composer surface -->
+    <dimen name="ws_composer_corner">12dp</dimen>
+    <dimen name="ws_composer_padding">10dp</dimen>
+</resources>

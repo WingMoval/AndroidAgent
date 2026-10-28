@@ -1,0 +1,18 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — Gate I: Provider Switch
+
+Command: {"type":"provider_switch","node":"OpenRouter"}
+Response: {"type":"provider_switch_result","success":false,"node":"OpenRouter",
+           "reason":"OpenRouter config not provisioned"}
+
+Only EMG is provisioned (provider.local.json exists, provider.openrouter.json missing).
+The switch was honestly rejected — active provider unchanged (still EMG).
+
+Post-switch ping: PASS (bridge survives rejected switch)
+
+GATE_I_PROVIDER_SWITCH = DEFERRED_WITH_REASON (only 1 provider provisioned)
+  - Valid provider -> Applied: verified at startup (EMG Applied)
+  - Invalid provider -> honest Rejected: verified above
+  - Active provider not incorrectly changed: verified (still EMG after rejected switch)
+  - Cross-provider (A->B, B->A): NOT TESTABLE (only 1 provider)
+
+DEBUG_SURVIVES_PROVIDER_SWITCH = YES (ping works after switch attempt)

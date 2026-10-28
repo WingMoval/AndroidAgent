@@ -1,0 +1,31 @@
+AG.UI-BASELINE-AUDIT-1 — Git Baseline
+
+BRANCH = main
+START_HEAD = b7dbc0491eb1bcb0fb07f0daf7f8a4919a9e67bd
+FINAL_HEAD = b7dbc0491eb1bcb0fb07f0daf7f8a4919a9e67bd (unchanged; COMMIT = NO this round)
+
+FREEZE_NAME = AG.POST-I-CORE-FREEZE-V1
+FREEZE_TAG = AG.POST-I-CORE-FREEZE-V1
+FREEZE_TAG_TARGET = f640ed07f655856888c11f3fb3575e6f84106f7c
+FREEZE_MATCH = YES (verified via `git rev-parse AG.POST-I-CORE-FREEZE-V1^{}` = expected)
+FREEZE_TAG_MOVED = NO
+
+REMOTE = NONE (no remote configured; PUSH = N/A)
+
+WORKTREE_BEFORE = 1 untracked line:
+  ?? docs/design/AndroidAgent_V2_VNext_UI_设计基线.md   (USER_OWNED_DESIGN_SSOT)
+WORKTREE_AFTER = 1 untracked (design SSOT) + this round's audit docs + evidence
+  (audit docs + evidence are TASK_OWNED additions; the design SSOT is untouched)
+
+WORKTREE_CLASSIFICATION:
+  USER_OWNED_DESIGN_SSOT = docs/design/AndroidAgent_V2_VNext_UI_设计基线.md (NOT modified)
+  TASK_OWNED (new)       = docs/audit/AG.UI-BASELINE-AUDIT-1.md + docs/evidence/ag_ui_baseline_audit_1/*
+  PRE_EXISTING / UNKNOWN = NONE (no other dirty changes)
+
+Git log (top 3):
+  b7dbc04 docs: normalize post-freeze live SSOT
+  f640ed0 freeze: establish post-I pre-UI AG core baseline   <- FREEZE
+  a6eea61 AG.AT-FULL-SUBSYSTEM-INTEGRATION-0 ...
+
+HEAD is AFTER the freeze (b7dbc04 > f640ed0) — EXPECTED post-freeze state.
+The freeze tag remains the authoritative immutable Pre-UI core baseline.

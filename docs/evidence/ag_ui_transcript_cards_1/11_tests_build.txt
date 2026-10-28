@@ -1,0 +1,110 @@
+AG.UI-TRANSCRIPT-CARDS-1 — Implementation + Build Evidence
+
+日期: 2026-10-27
+仓库: D:\codebank\AndCode\AndroidAgent-V2
+设备: 未连接 (实现完成, 真机验证待设备重新连接)
+
+============================================================
+Track A: Transcript Cards
+============================================================
+
+TRANSCRIPT_RENDERER_BEFORE = single TextView (TranscriptModel.render() → one string)
+TRANSCRIPT_RENDERER_AFTER = RecyclerView + TranscriptCardAdapter (per-block cards)
+
+依赖新增:
+  androidx.recyclerview:recyclerview:1.3.2
+  WHY_REQUIRED: single TextView cannot support per-block Copy/Retry/collapse
+  DEPENDENCY: androidx.recyclerview 1.3.2 (stable)
+
+Card Types:
+  UserCard         = "You" label + text + Copy + Retry + More (Copy/Edit&Resend)
+  ThoughtCard      = "Thought"/"Thinking..." label + text + Copy + collapse (>200 chars)
+  AssistantCard    = "Assistant" label + text + Copy + Retry (origin User)
+  ToolExecutionCard= "Shell" + "Result" (two blocks, visually grouped)
+  FailureCard      = "Failed" label + text + Copy + Retry
+  InterruptedCard  = "Stopped" label + text + Copy + Retry
+
+Per-block Copy:
+  ClipboardManager.setPrimaryClip(ClipData.newPlainText("Transcript", blockText))
+  只复制当前 block 正文, 不复制整个 transcript
+
+Retry 语义:
+  UI 按钮 "↻" → 找 originating User text (backward scan) → HostActions.send(text)
+  作为新 User Turn 发送, 旧历史不删除不修改
+  RETRY_CREATES_NEW_TURN = YES
+  RETRY_MUTATES_HISTORY = NO
+  Active Run 时: Retry 按钮 GONE (isBusy 检查)
+
+Edit & Resend:
+  UserCard More → "Edit & Resend" → input.setText(oldText) → 用户编辑 → Send
+  不修改旧 durable Message
+
+Thought collapse:
+  >200 chars: 显示前 200 + "Show more" / "Show less"
+  Thinking→Thought: 同一 Card (phase flip, 不新建 block)
+
+Result collapse:
+  >300 chars: 显示前 300 + "Show more" / "Show less"
+  上游 truncation 不伪造 "展开完整"
+
+NATIVE_SELECTION:
+  card_body.setTextIsSelectable(true) 所有内容 Card
+
+============================================================
+Track B: Session Browser
+============================================================
+
+SESSION_LIST = PASS (HostActions.listSessions → TopicSessionStore.listSessions)
+SESSION_LIST_ORDER = last_used_at DESC
+SESSION_CURRENT_HIGHLIGHT = "● " prefix in switcher dialog
+SESSION_SWITCH = HostActions.switchSession → AgentRuntime.switchSession
+
+AgentRuntime.switchSession (ADDITIVE):
+  - 检查 isBusy (reject if active Run)
+  - 检查 store.loadSession(targetId) (reject if not found)
+  - 复用 restoreExistingSession (load + repair + hydrate Core)
+  - sessionId = targetId
+  - 旧 session 保留 (不删除不修改)
+
+HostActions.switchSession (SHARED ENTRY):
+  UI sidebar click ─┐
+                    ├→ HostActions.switchSession → AgentRuntime.switchSession
+  Debug (future) ──┘
+
+DB_SCHEMA_CHANGE = NO
+TOPIC_SESSION_STORE_CHANGE = ADDITIVE_LIST_ONLY (listSessions)
+AG_RUNTIME_CHANGE = ADDITIVE_SESSION_SWITCH_ONLY (switchSession)
+SECOND_TRANSCRIPT_PIPELINE = NO
+
+UI 路径:
+  ChatActivity.showSessionSwitcher()
+    → HostActions.listSessions()
+    → AlertDialog (single choice, current highlighted)
+    → HostActions.switchSession(id)
+    → projectCurrentHistory() → renderTranscript()
+
+============================================================
+Build
+============================================================
+.\gradlew :app:test → 410 tests, 0 failures
+.\gradlew :app:assembleDebug → BUILD SUCCESSFUL
+
+============================================================
+Architecture Boundary
+============================================================
+AG_CORE_CHANGE_REQUIRED = NO
+AG_RUNTIME_CHANGE = ADDITIVE_SESSION_SWITCH_ONLY
+TOPIC_SESSION_STORE_CHANGE = ADDITIVE_LIST_ONLY
+DB_SCHEMA_CHANGE = NO
+TOOL_CHANGE = NO
+PROVIDER_CHANGE = NO
+AT_CHANGE = NO
+CALLBACK_DEBUG_REGRESSION = NONE
+
+============================================================
+真机验证 (待设备连接)
+============================================================
+C1-C9: 待执行 (Card device gate)
+S1-S10: 待执行 (Session device gate)
+
+实现代码已部署, 等待设备连接后执行真机验证。

@@ -49,6 +49,14 @@ interface TopicSessionDao {
     /** Test/schema-level only: raw SQL access for integrity verification. */
     @Query("SELECT 1")
     suspend fun probe(): Int?
+
+    /**
+     * AG.UI-TRANSCRIPT-CARDS-1: list all sessions for the Session Browser.
+     * ADDITIVE query only — no schema change, no migration, no new column.
+     * Ordered by last_used_at DESC (most recently used first).
+     */
+    @Query("SELECT * FROM topic_sessions ORDER BY last_used_at DESC, created_at DESC, id")
+    suspend fun listAll(): List<TopicSessionEntity>
 }
 
 /**

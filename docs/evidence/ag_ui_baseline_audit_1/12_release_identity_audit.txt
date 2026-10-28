@@ -1,0 +1,34 @@
+AG.UI-BASELINE-AUDIT-1 — Release / Product Identity Audit
+
+Purpose: capture the product-identity gap list for AG.UI-RELEASE-FREEZE-1 (NOT changed this round).
+
+  applicationId  = com.androidagent.app
+  versionCode    = 1
+  versionName    = "0.1.0"
+  app label      = "AndroidAgent"  (strings.xml app_name)
+  launcher icon  = @android:drawable/sym_def_app_icon   (DEFAULT system icon — must be replaced)
+  theme          = Theme.AppCompat.DayNight.DarkActionBar  (NOT the VNext light workspace theme)
+  status bar     = default (DarkActionBar)
+  navigation bar = default
+  minSdk         = 26
+  targetSdk      = 34
+  compileSdk     = 34
+  permissions    = INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE, CHANGE_WIFI_STATE,
+                   WRITE_SECURE_SETTINGS (signature|privileged), ACCESS_COARSE_LOCATION (maxSdk 35),
+                   ACCESS_FINE_LOCATION (maxSdk 35)
+  allowBackup    = false
+  supportsRtl    = true
+  single APK     = arm64-v8a only (AT Engine handoff bundle v0 is arm64-only)
+
+GAP LIST (for AG.UI-RELEASE-FREEZE-1):
+  1. Launcher icon = DEFAULT system icon. Replace with a real product icon (mipmap-*).
+  2. versionCode 1 / versionName 0.1.0 = dev baseline. Bump at release freeze.
+  3. Theme = DayNight.DarkActionBar. Replace/augment with the VNext LIGHT workspace theme
+     (V1 = Light first; Dark/System later).
+  4. Status/nav bar styling to match the light workspace (light status bar, etc.).
+  5. Final app label review (current "AndroidAgent" is acceptable; confirm).
+  6. arm64-only ABI (inherited from AT handoff v0) — confirm acceptable for release target.
+  7. WRITE_SECURE_SETTINGS is a product capability declaration (not granted on fresh install;
+     self-granted via pm grant after verified ADB shell). Confirm the release posture.
+
+This round CHANGES NONE of the above (RESOURCE_CHANGED = NO). The list is for the release step.

@@ -1,0 +1,6 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — Gate A: Ping
+
+Command: {"type":"ping"}
+Response: {"type":"pong"}
+
+GATE_A_PING = PASS

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AG.UI-SHELL-1 — generic white surface with subtle border + rounded corners.
+     Reserved for the card step; used for the sidebar surface here. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/ws_surface" />
+    <corners android:radius="@dimen/ws_surface_radius" />
+    <stroke android:width="@dimen/ws_surface_border" android:color="@color/ws_border" />
+</shape>

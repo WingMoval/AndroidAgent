@@ -1,0 +1,74 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — Provider Switch Shared Entry (AFTER)
+
+整改后 Provider Switch 路径:
+
+UI Provider Switch:
+  ChatActivity.switchNode(node)
+    → lifecycleScope.launch {
+        result = HostActions.switchProvider(node)   # 共享入口 (suspend)
+        when (result) {
+            is ProviderSwitchResult.Applied -> {
+                activeNode = result.node
+                root = SessionHolder.root           # mirror 同步
+                runtime = SessionHolder.runtime     # mirror 同步
+                activeModel = SessionHolder.activeModel
+                endpointLabel.text = SessionHolder.endpointLabel
+                modelLabel.text = workspaceModelLabel(activeModel)
+                ensureDebugBridge()
+                updateAdbIndicator()
+                renderStatus()
+            }
+            is ProviderSwitchResult.Rejected -> {
+                revertSpinner()
+                updateRunStatus(result.reason)
+                renderStatus()
+            }
+        }
+      }
+
+Debug Provider Switch:
+  DebugBridge.handleProviderSwitch(node, writer)
+    → 解析 ProviderNode (displayName 或 name, ignoreCase)
+    → result = HostActions.switchProvider(pNode)   # 共享入口 (suspend)
+    → providerSwitchResult(success, node, endpoint/reason)
+
+HostActions.switchProvider (唯一 canonical apply):
+  1. ctx = SessionHolder.appContext ?: Rejected("host context unavailable")
+  2. outcome = resolveProviderSwitch(node, DeviceLocalProviderNodeLoader.load(ctx, node))
+  3. when (outcome) {
+       Applied -> {
+         applyConfigCanonical(outcome.config, outcome.node)
+         return ProviderSwitchResult.Applied(node, safeEndpoint)
+       }
+       Rejected -> return ProviderSwitchResult.Rejected(node, reason)
+     }
+
+HostActions.applyConfigCanonical (唯一 canonical applyConfig):
+  1. SessionHolder.createRoot(cfg, ctx, node, onRunEvent, onDebugEvent, streamObserver)
+  2. SessionHolder.setProviderStatus(providerLine)
+  3. SessionHolder.setEndpoint(safeEndpoint)
+  4. SessionHolder.setAtStatus(null)
+  5. SessionHolder.setRunStatus(null)
+  6. SessionHolder.setActiveModel(cfg.model)
+  7. SessionHolder.notifyUiUpdate()
+  8. adbReconnect()                           # 共享 ADB connect
+  9. SessionHolder.initialize()               # suspend, 无 runBlocking
+
+整改前:
+  ChatActivity.applyConfig() = 第一套 applyConfig 核心逻辑
+  HostActions.applyConfigShared() = 第二套 applyConfig 核心逻辑
+  CANONICAL_APPLY_CONFIG_IMPLEMENTATION_COUNT = 2
+  - Activity.root/runtime 在 debug providerSwitch 后不更新
+  - ensureDebugBridge 只在 UI 路径调用
+
+整改后:
+  ChatActivity.applyConfig() = 已删除 (dead code)
+  HostActions.applyConfigCanonical() = 唯一 applyConfig 核心逻辑
+  CANONICAL_APPLY_CONFIG_IMPLEMENTATION_COUNT = 1
+  - Activity.root/runtime 从 SessionHolder 同步 (mirror, 非 authority)
+  - ensureDebugBridge 在 UI switchNode Applied 分支调用
+  - DebugBridge provider lambdas 全部动态读 SessionHolder:
+      runtimeProvider = { sharedRuntime }                    # -> SessionHolder.runtime
+      toolRegistryProvider = { SessionHolder.root?.toolRegistryView }
+      adapterProvider = { SessionHolder.root?.shell?.adapter }
+  - onUiUpdate 回调同步 root/runtime 从 SessionHolder

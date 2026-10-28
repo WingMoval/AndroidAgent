@@ -1,0 +1,48 @@
+AG.UI-TRANSCRIPT-CARDS-1 — Git Baseline
+
+日期: 2026-10-27
+仓库: D:\codebank\AndCode\AndroidAgent-V2
+
+============================================================
+PREVIOUS_UI = AG.UI-SHELL-1
+============================================================
+
+AG.UI-SHELL-1 状态:
+  - callback debug 静态整改: PASS (406/0)
+  - visual alignment: PASS (V1-V9)
+  - product controls alignment: PASS (LLM selector / Provider Dialog / + 按钮)
+  - functional controls closure: PASS (SAF picker E2E / Add API / New Session E2E)
+  - 部分网络相关 device gates DEFERRED (外部测试环境限制)
+
+============================================================
+本轮修改文件
+============================================================
+
+Production:
+  app/build.gradle.kts                          (RecyclerView 依赖)
+  app/src/main/res/layout/activity_chat.xml     (RecyclerView 替换 TextView)
+  app/src/main/res/layout/item_transcript_card.xml (NEW)
+  app/src/main/java/com/androidagent/app/TranscriptCardAdapter.kt (NEW)
+  app/src/main/java/com/androidagent/app/ChatActivity.kt
+  app/src/main/java/com/androidagent/app/HostActions.kt
+  app/src/main/java/com/androidagent/app/SessionHolder.kt
+  app/src/main/java/com/androidagent/app/persistence/Daos.kt
+  app/src/main/java/com/androidagent/app/persistence/RoomTopicSessionStore.kt
+  ag-runtime/src/main/kotlin/com/androidagent/runtime/persistence/TopicSessionStore.kt
+  ag-runtime/src/main/kotlin/com/androidagent/runtime/AgentRuntime.kt
+
+Tests (updated):
+  app/src/test/java/com/androidagent/app/HostStopStateTest.kt
+  app/src/test/java/com/androidagent/app/persistence/StoreMessageDurabilityTest.kt
+
+Docs:
+  docs/implementation/AG.UI-TRANSCRIPT-CARDS-1.md (NEW)
+  docs/evidence/ag_ui_transcript_cards_1/ (NEW directory)
+
+============================================================
+COMMIT = NO
+TAG = NO
+PUSH = NO
+============================================================
+
+所有修改在 working tree，未提交。

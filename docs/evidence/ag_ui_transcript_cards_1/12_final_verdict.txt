@@ -1,0 +1,87 @@
+AG.UI-TRANSCRIPT-CARDS-1 — Final Verdict (UPDATED)
+
+日期: 2026-10-28
+设备: HONOR ALI-AN00 (APLMUT4312005935)
+Fixture: openai_compatible_fixture.py (127.0.0.1:18080)
+
+============================================================
+VERDICT
+============================================================
+
+PASS — TRANSCRIPT_CARDS_AND_TOPIC_SESSION_BROWSER_COMPLETE
+
+Track A (Transcript Cards):
+  C1-C9: 9/9 PASS (全部真机验证)
+  RecyclerView 替换单 TextView: PASS
+  Per-block Copy: PASS (C2 + C6 真机验证, logcat clipboard 确认)
+  Retry: PASS (C3 真机验证, 新 Run 产生, 旧历史不变)
+  Edit & Resend: PASS (C4 真机验证, Composer 恢复)
+  Thought: PASS (C5 OpenRouter 真机验证, reasoning 文本正确显示)
+  Tool Execution: PASS (C7 OpenRouter 真机验证, Shell+Result 视觉分组)
+  Interrupted ≠ Failed: PASS (C8 真机验证)
+  Text Selection: PASS (C9 真机验证, 选择手柄 + 系统菜单)
+
+Track B (Session Browser):
+  SESSION_LIST = PASS (14 sessions from durable DB)
+  SESSION_CURRENT_HIGHLIGHT = PASS (● 高亮)
+  SESSION_SWITCH = PASS (3 次成功切换)
+  SESSION_SWITCH_E2E = PASS
+
+============================================================
+PASS GATES
+============================================================
+
+TRANSCRIPT_SINGLE_TEXTVIEW_REPLACED = YES
+USER_CARD = PASS (C1)
+THOUGHT_CARD = PASS (C5: OpenRouter reasoning 真机验证)
+ASSISTANT_CARD = PASS (C6: streaming + copy)
+TOOL_EXECUTION_CARD = PASS (C7: OpenRouter Shell+Result 真机验证)
+FAILURE_CARD = PASS
+INTERRUPTED_CARD = PASS (C8)
+
+PER_BLOCK_COPY = PASS (C2+C6: logcat clipboard 确认)
+NATIVE_SELECTION = PASS (C9: 选择手柄 + 系统菜单)
+RETRY = PASS (C3: 新 Run, 旧历史不变)
+EDIT_RESEND = PASS (C4: Composer 恢复)
+THOUGHT_COLLAPSE = PASS (C5: 真机验证)
+RESULT_COLLAPSE = PASS (C7: 真机验证)
+
+RETRY_CREATES_NEW_TURN = YES
+RETRY_MUTATES_HISTORY = NO
+
+SESSION_LIST = PASS
+SESSION_LIST_ORDER = last_used_at DESC
+SESSION_SWITCH = PASS
+SESSION_CURRENT_HIGHLIGHT = PASS
+
+SESSION_A = session-51b512b8 (1 User block)
+SESSION_B = session-0a7a463a (0 blocks)
+SESSION_SWITCH_A_TO_B = PASS
+SESSION_SWITCH_B_TO_A = PASS
+
+TOPIC_SESSION_STORE_CHANGE = ADDITIVE_LIST_ONLY
+AG_RUNTIME_CHANGE = ADDITIVE_SESSION_SWITCH_ONLY
+DB_SCHEMA_CHANGE = NO
+
+CALLBACK_DEBUG_REGRESSION = NONE
+
+TESTS = 410 / 0
+ASSEMBLE_DEBUG = PASS
+DEVICE_VALIDATION = PASS (C1-C9 全部真机验证, OpenRouter deepseek-v4-flash-0731)
+
+============================================================
+COMMIT = NO
+TAG = NO
+PUSH = NO
+============================================================
+
+============================================================
+Deferred Items
+============================================================
+
+1. Debug topic_session_list/switch commands: 留待未来。
+2. Session rename/delete/fork: AG.UI-CONTROLS-1 (未来 step)。
+
+3. Debug topic_session_list/switch commands: 留待未来。
+
+4. Session rename/delete/fork: AG.UI-CONTROLS-1 (未来 step)。

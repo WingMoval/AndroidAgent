@@ -87,6 +87,11 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    // AG.UI-TRANSCRIPT-CARDS-1: RecyclerView for semantic transcript card rendering.
+    // WHY_REQUIRED: the single-TextView renderer cannot support per-block Copy,
+    // Retry, Edit & Resend, collapse/expand, or native text selection per card.
+    // DEPENDENCY: androidx.recyclerview 1.3.2 (stable, no transitive surprises).
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
 
     // AG.DEBUG-0: debug bridge JSONL wire format (same lib the provider uses).
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")

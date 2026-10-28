@@ -1,0 +1,92 @@
+AG.UI-TRANSCRIPT-CARDS-1 — Session Browser UI
+
+日期: 2026-10-27
+
+============================================================
+Sidebar 布局
+============================================================
+
+当前 v1:
+  Sidebar 底部 "Current Session" 标签 (sidebar_current_session)
+  点击 → 打开 session switcher dialog
+
+不内嵌列表 view (v1 简化)。
+未来: 可考虑 Sidebar 内嵌 RecyclerView 列表。
+
+============================================================
+Session Switcher Dialog
+============================================================
+
+触发:
+  currentSessionLabel.setOnClickListener { showSessionSwitcher() }
+
+内容:
+  AlertDialog.Builder
+    .setTitle("Sessions")
+    .setSingleChoiceItems(labels, currentIdx) { dialog, which -> ... }
+    .setNegativeButton("Cancel", null)
+
+Labels 格式:
+  "● Session · HH:mm" (current)
+  "  Session · HH:mm" (other)
+
+  - "● " 前缀: current session 高亮
+  - "  " (两空格): 非 current
+  - "Session": title 为 null 时的默认显示
+  - "HH:mm": lastUsedAt 格式化 (SimpleDateFormat)
+
+排序:
+  last_used_at DESC (最近使用在前)
+  由 TopicSessionStore.listSessions() 保证。
+
+Current highlight:
+  sessions.indexOfFirst { it.id == currentId }
+  切换后高亮立即移动 (重新打开 dialog 时)。
+
+Click handler:
+  1. dialog.dismiss()
+  2. if (selected.id != currentId):
+     - HostActions.switchSession(selected.id)
+     - Ok → projectCurrentHistory + renderTranscript
+     - Rejected → updateRunStatus(reason)
+
+============================================================
+New Session
+============================================================
+
+继续复用: HostActions.newSession()
+创建后:
+  - session list refresh (refreshSessionList())
+  - current highlight = new session
+  - transcript = new session
+
+Sidebar "+ New Session" 按钮不变。
+
+============================================================
+Session Label
+============================================================
+
+当前 title: nullable
+如果有 title: 显示 title
+如果没有:
+  "Session · HH:mm" (presentation derive)
+
+不新增 DB column。
+
+============================================================
+UI 路径
+============================================================
+
+ChatActivity
+  → showSessionSwitcher()
+    → HostActions.listSessions()
+    → AlertDialog (single choice)
+    → HostActions.switchSession(id)
+    → AgentRuntime.switchSession(id)
+    → restoreExistingSession
+    → projectCurrentHistory()
+    → renderTranscript() (RecyclerView update)
+
+不直接 DAO。
+不直接 DB。
+SSOT 保持。

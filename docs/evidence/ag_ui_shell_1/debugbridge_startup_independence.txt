@@ -1,0 +1,46 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — DebugBridge Startup Independence
+
+## 整改
+ensureDebugBridge() 从 "provider Applied 之后" 移到 "onCreate 最前面"。
+
+BEFORE:
+  onCreate
+    -> tryDeviceLocalConfig
+      -> switchNode
+        -> HostActions.switchProvider
+          -> Applied -> applyConfigCanonical -> ... -> ensureDebugBridge()
+          -> Rejected -> (no ensureDebugBridge)
+
+AFTER:
+  onCreate
+    -> ensureDebugBridge()          # 始终启动 (debug build)
+    -> tryDeviceLocalConfig
+      -> switchNode
+        -> HostActions.switchProvider
+          -> Applied -> applyConfigCanonical -> ...
+          -> Rejected -> (bridge 已启动, 命令诚实返回 not ready)
+
+## 验证
+logcat 序列:
+  15:34:07.420 onCreate: restoreState=false
+  15:34:07.421 ensureDebugBridge called; DEBUG=true
+  15:34:07.448 ensureDebugBridge: bridge.start()=true
+  15:34:07.448 debug bridge listening on 0.0.0.0:45678
+  15:34:07.490 tryDeviceLocalConfig loadResults={OPENROUTER=Missing, EMG=Loaded}
+  15:34:07.805 switchNode(EMG) -> Applied
+  15:34:07.807 ensureDebugBridge: already running
+
+## Release 边界
+BuildConfig.DEBUG == false -> ensureDebugBridge 直接 return, 无 listener, 无 :45678。
+RELEASE_DEBUG_BOUNDARY = PASS (代码逻辑验证, release build 未单独测试但逻辑不变)
+
+## Provider 未 Ready 时 Debug 仍可用
+DEBUG_AVAILABLE_BEFORE_PROVIDER_READY = YES
+- bridge 在 provider switch 之前启动
+- runtime/root 为 null 时:
+  - ping -> 仍可工作 (不依赖 runtime)
+  - snapshot -> runtimeReady=false, 诚实返回
+  - send -> HostActions.send 返回 Rejected("runtime not ready")
+  - stop -> HostActions.stop 返回 NoActiveRun
+  - new_session -> HostActions.newSession 返回 false
+  - provider_switch -> HostActions.switchProvider 可尝试建立 composition

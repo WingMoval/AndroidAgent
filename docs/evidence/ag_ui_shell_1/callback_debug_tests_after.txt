@@ -1,0 +1,40 @@
+﻿AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION 鈥?Tests After Remediation
+
+Test suite results (from app/build/test-results XML):
+
+  AgentPreflightTest : tests=11 failures=0 errors=0
+  debug.DebugProtocolTest : tests=26 failures=0 errors=0
+  DeviceLocalProviderConfigTest : tests=13 failures=0 errors=0
+  HostActionsTest : tests=8 failures=0 errors=0
+  HostStatusModelTest : tests=24 failures=0 errors=0
+  HostStopStateTest : tests=10 failures=0 errors=0
+  persistence.PhaseGRoomIntegrationTest : tests=10 failures=0 errors=0
+  persistence.RoomTopicSessionStoreTest : tests=21 failures=0 errors=0
+  persistence.StoreMessageDurabilityTest : tests=17 failures=0 errors=0
+  PhaseITranscriptProjectionTest : tests=3 failures=0 errors=0
+  provider.AndroidTransportCancelTest : tests=6 failures=0 errors=0
+  ProviderNodeTest : tests=6 failures=0 errors=0
+  TranscriptModelTest : tests=36 failures=0 errors=0
+  WorkspaceShellStateTest : tests=12 failures=0 errors=0
+  AgentPreflightTest : tests=11 failures=0 errors=0
+  debug.DebugProtocolTest : tests=26 failures=0 errors=0
+  DeviceLocalProviderConfigTest : tests=13 failures=0 errors=0
+  HostActionsTest : tests=8 failures=0 errors=0
+  HostStatusModelTest : tests=24 failures=0 errors=0
+  HostStopStateTest : tests=10 failures=0 errors=0
+  persistence.PhaseGRoomIntegrationTest : tests=10 failures=0 errors=0
+  persistence.RoomTopicSessionStoreTest : tests=21 failures=0 errors=0
+  persistence.StoreMessageDurabilityTest : tests=17 failures=0 errors=0
+  PhaseITranscriptProjectionTest : tests=3 failures=0 errors=0
+  provider.AndroidTransportCancelTest : tests=6 failures=0 errors=0
+  ProviderNodeTest : tests=6 failures=0 errors=0
+  TranscriptModelTest : tests=36 failures=0 errors=0
+  WorkspaceShellStateTest : tests=12 failures=0 errors=0
+
+APP_TESTS_TOTAL = 406
+APP_TESTS_FAILURES+ERRORS = 0
+
+Baseline (before remediation) : 406 tests / 0 failures
+After remediation             : 406 tests / 0 failures
+
+All tests PASS. No regressions.

@@ -1,0 +1,70 @@
+AG.UI-BASELINE-AUDIT-1 — DebugBridge Map
+
+DESIGN TARGET (VNext §24): PRESERVE / REUSE / DO NOT REBUILD the existing DebugBridge.
+  UI callback -> Host Action -> AgentRuntime ; Debug command -> SAME path.
+  Correct structure:
+    AgentRuntime -> AG Core -> Provider/Tool -> Event Stream -> { UI Transcript ; DebugBridge }
+  Forbidden: second Debug AgentRuntime / second history / second execution semantics.
+
+CURRENT DebugBridge (app/src/main/java/com/androidagent/app/debug/DebugBridge.kt):
+  - TCP JSONL server, protocol "ag-debug-0", DEFAULT_PORT = 45678.
+  - Binds 0.0.0.0 in DEBUG builds (so a LAN PC can reach it without ADB reverse);
+    release builds NEVER create a DebugBridge (ensureDebugBridge() returns early when
+    !BuildConfig.DEBUG).
+  - runtimeProvider = { sharedRuntime } = { SessionHolder.runtime } — the SAME
+    AgentRuntime the UI uses. NOT a second runtime.
+  - toolRegistryProvider = { root?.toolRegistryView } — the SAME production ToolRegistry.
+  - userInputSink + onRunStateChanged hooks mirror the UI send path (User block + busy).
+  - adapterProvider = { root?.shell?.adapter } — the SAME AtExecutionAdapter.
+  - eventSink (AgentEventSink) is wired into the Host CompositeSink, so EVERY AgentEvent
+    (UI-originated OR debug-originated) is broadcast to connected debug clients.
+  - streamSink (ModelStreamObserver) broadcasts reasoning/content deltas.
+
+DEBUG_SEND_PATH:
+  ClientMessage.Send -> handleSend(text):
+    blank? reject ; runtime null? reject ; runtime.isBusy? -> "busy"
+    accepted -> userInputSink(text) [UI User block] -> onRunStateChanged(true) [busy]
+    -> runtime.send(text)   [SAME AgentRuntime.send as the UI]
+    -> onRunStateChanged(false) in finally
+  VERDICT: DEBUG_SEND = SHARED with UI send path (both call AgentRuntime.send). ALREADY_SHARED.
+
+DEBUG_OBSERVE_PATH (event/output):
+  eventSink.emit(event) -> broadcast(eventToJson(event)) to all clients (single-threaded
+    send executor, strictly ordered, off the main thread).
+  streamSink (reasoning/content deltas) -> emitStream -> broadcast.
+  This is a PASSIVE side channel on the SAME event stream that feeds the UI transcript.
+  NOT a second transcript SSOT. ALREADY the correct structure (Event Stream -> {UI ; Debug}).
+
+DEBUG_STOP_PATH:
+  NOT IMPLEMENTED. The ClientMessage set has NO stop/interrupt command:
+    ping / send / tool_invoke / session_open / session_write / session_read /
+    session_resize / session_close / session_state / bootstrap_state /
+    bootstrap_discover / bootstrap_pair
+  There is no way for a PC debug client to stop an active Run. The UI Stop
+  (interruptActiveRun) is UI-only today.
+  VERDICT: DEBUG_STOP = DEBUG_ONLY-GAP (UI has Stop; Debug has none). Adding a
+  "stop" client command that calls the SAME AgentRuntime.interruptActiveRun() would be
+  a small additive protocol extension (protocol-compatible; older clients ignore it).
+  This is a PRESENTATION/PROTOCOL addition, NOT a second runtime. Flag in gap matrix.
+
+DEBUG TOOL INVOKE (direct, no LLM):
+  ClientMessage.ToolInvoke -> registry.dispatch(call, AllowAll) -> tool_result_direct.
+  Shares the production ToolRegistry; never model-visible. (Existing; preserve.)
+
+DEBUG SESSION (AT persistent, debug-only):
+  session_open/write/read/resize/close/state -> AtExecutionAdapter. Debug-only
+  validation surface. (Existing; preserve.)
+
+RELEASE DEBUG BOUNDARY:
+  - ensureDebugBridge() is the single gate: `if (!BuildConfig.DEBUG) return`.
+  - Release APK: NO listener, NO debug port, NO external debug ingress, NO debug logs
+    from the bridge. (Verified: the bridge is process-scoped and only constructed in
+    debug builds.)
+  - Debug logs (AgentTrace) are redacted via TraceFormatter before any Log.i.
+
+DEBUG_BRIDGE = PRESERVE / REUSE (correct structure already; no rebuild needed)
+DEBUG_SEND_PATH = SHARED (AgentRuntime.send)
+DEBUG_OBSERVE_PATH = SHARED event stream (side channel)
+DEBUG_STOP_PATH = NOT IMPLEMENTED (gap; small additive protocol extension if wanted)
+SECOND_AGENT_RUNTIME = NO
+SECOND_UI_DB_PIPELINE = NO

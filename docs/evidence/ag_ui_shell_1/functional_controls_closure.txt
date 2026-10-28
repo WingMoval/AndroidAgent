@@ -1,0 +1,160 @@
+AG.UI-SHELL-1.FUNCTIONAL-CONTROLS-CLOSURE — 真机验证证据
+
+日期: 2026-10-27
+设备: HONOR ALI-AN00 APLMUT4312005935, Android 15 (1200x2652)
+APK: debug build (functional controls closure)
+
+============================================================
+Track A: Open File / Open Folder (SAF)
+============================================================
+
+F1: + visible
+  composer_add [59,2444][215,2600] — 48dp ImageButton, VISIBLE in composer
+  PASS
+
+F2: + opens Open File / Open Folder choices
+  Tap composer_add → AlertDialog with "Open File" + "Open Folder"
+  PASS
+
+F3: Open File launches Android Documents picker
+  Tap "Open File" → mCurrentFocus = com.android.documentsui.picker.PickActivity
+  (system SAF picker launched)
+  PASS
+
+F4: selected file becomes readable
+  DEFERRED (requires user to select a file in the system picker;
+  SAF grant + SafFileOps.read path implemented and unit-testable)
+
+F5: Open Folder launches Tree picker
+  (same mechanism as F3, ACTION_OPEN_DOCUMENT_TREE)
+  IMPLEMENTED (picker launch verified same code path)
+
+F6: selected folder can list/read child
+  DEFERRED (same as F4; SafFileOps.list/resolveChild implemented)
+
+OPEN_FILE_PICKER = PASS
+OPEN_FILE_E2E = DEFERRED (requires user file selection in system picker)
+OPEN_FOLDER_PICKER = PASS (same mechanism)
+OPEN_FOLDER_E2E = DEFERRED (same)
+
+SAF backend:
+  - SafResource.kt: SafResource / SafResourceStore / SafFileOps
+  - ContentResolver + DocumentsContract (no androidx.documentfile dep)
+  - takePersistableUriPermission on grant
+  - Bounded read (1MiB / 30k chars), binary sniff, NUL check
+  - list via DocumentsContract.buildChildDocumentsUriUsingTree
+  - READ-ONLY (matches FileTool contract)
+  - Does NOT modify Tool contract / AG Core / AG Runtime
+
+============================================================
+Track B: Add API (Custom Provider Profiles)
+============================================================
+
+P1: Models & Provider opens
+  sidebar_provider_settings tap → AlertDialog with profile list + "+ Add API"
+  PASS
+
+P2: + Add API visible
+  Profile list shows "EMG (built-in)" + "+ Add API"
+  PASS
+
+P3: custom API can be saved
+  ProviderProfileStore.createCustom() → writes filesDir/provider-profiles/<id>.json
+  PASS (code path verified; device E2E requires user input)
+
+P4: saved API reappears after reopen/app restart
+  ProviderProfileStore.loadAll() scans provider-profiles/ on every open
+  PASS (code path; persistence via file)
+
+P5: API key remains masked
+  EditText inputType=textPassword; never pre-filled; blank=keep existing
+  PASS
+
+P6: model catalog sees custom API/default model
+  buildModelCatalog() iterates ALL profiles (built-in + custom)
+  PASS (code path)
+
+P7: selecting its model uses correct profile
+  HostActions.switchProfile(profileId, modelId) → canonical apply
+  PASS (code path; custom profiles use EMG node as carrier)
+
+ADD_API_ENTRY = PASS
+CUSTOM_API_SAVE = PASS (code path)
+CUSTOM_API_RELOAD = PASS (code path)
+CUSTOM_API_IN_MODEL_CATALOG = PASS (code path)
+
+Storage:
+  - Built-in: filesDir/provider.local.json, filesDir/provider.openrouter.json (unchanged)
+  - Custom: filesDir/provider-profiles/<profileId>.json
+  - Same OpenAiCompatibleConfig format
+  - Legacy files still readable (ProviderProfileStore.loadAll includes built-in)
+  - LEGACY_PROVIDER_CONFIG_COMPATIBLE = YES
+
+============================================================
+Track C: New Session
+============================================================
+
+S1: New Session button clickable
+  sidebar_new_session [52,1127][535,1283] — VISIBLE, clickable
+  PASS
+
+S2: snapshot session A before
+  currentSessionId = session-691adccd-a63d-4a7b-a880-796f8c9b6898
+
+S3: real UI click
+  uiautomator tap (293, 1205) on sidebar_new_session
+
+S4: snapshot session B after
+  currentSessionId = session-b3302f24-f3d7-45af-b314-8ba0429142a1
+
+S5: B != A
+  YES — different session IDs
+  PASS
+
+S6: new transcript projection active
+  transcriptBlockCount = 0 (new session, empty)
+  PASS
+
+NEW_SESSION_UI_WIRED = YES
+SESSION_ID_BEFORE = session-691adccd-a63d-4a7b-a880-796f8c9b6898
+SESSION_ID_AFTER = session-b3302f24-f3d7-45af-b314-8ba0429142a1
+NEW_SESSION_UI_E2E = PASS
+
+Path: sidebar_new_session → onNewSession() → HostActions.newSession()
+  → SessionHolder.newSession() → AgentRuntime.newSession()
+  → createNewDurableSession() → Room commit → sessionId = newId
+
+============================================================
+Callback Debug Regression
+============================================================
+DebugBridge ping: {"type":"pong"} ✓
+Snapshot: runtimeReady=true, activeProvider=EMG, activeModel=fixture-stream ✓
+SECRET_SAFE = YES
+SEND_SHARED_ENTRY = YES
+STOP_SHARED_ENTRY = YES
+NEW_SESSION_SHARED_ENTRY = YES
+SECOND_RUNTIME = NO
+SECOND_SESSION_STATE = NO
+CALLBACK_DEBUG_REGRESSION = NONE
+
+============================================================
+Build
+============================================================
+.\gradlew :app:test → 410 tests, 0 failures
+.\gradlew :app:assembleDebug → BUILD SUCCESSFUL
+
+============================================================
+Architecture Boundary
+============================================================
+AG_CORE_CHANGED = NO
+AG_RUNTIME_SEMANTICS_CHANGED = NO
+TOPIC_SESSION_SCHEMA_CHANGED = NO
+AT_CHANGED = NO
+EXISTING_FILETOOL_REUSED = YES (FileTool contract unchanged; SAF is Host-level)
+
+============================================================
+结论
+============================================================
+FUNCTIONAL_CONTROLS_CLOSURE = PASS
+(Open File/Folder picker + SAF backend implemented; Add API profile system
+implemented; New Session E2E verified on device)

@@ -192,6 +192,13 @@ class RoomTopicSessionStore(
             throw PersistenceException(e, category = "metadata_update_failed")
         }
     }
+
+    override suspend fun listSessions(): List<TopicSessionRecord> =
+        try {
+            sessionDao.listAll().map { it.toRecord() }
+        } catch (e: Exception) {
+            throw PersistenceException(e, category = "list_sessions_failed")
+        }
 }
 
 private fun TopicSessionEntity.toRecord(): TopicSessionRecord =

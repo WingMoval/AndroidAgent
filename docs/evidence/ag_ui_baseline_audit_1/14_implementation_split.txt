@@ -1,0 +1,171 @@
+AG.UI-BASELINE-AUDIT-1 — Implementation Split
+
+Based on the REAL code state (not a mechanical copy of the design's suggested phases).
+Principle: the existing real Agent path (AgentRuntime.send / interruptActiveRun / newSession /
+persistence / DebugBridge) is NEVER rewritten. VNext UI is a thin Presentation over it.
+
+The design suggests AUDIT -> SHELL -> TRANSCRIPT-CARDS -> CONTROLS -> DEVICE -> RELEASE.
+The audit CONFIRMS this ordering is sound, with two refinements:
+  (a) The Session Browser (G22) needs a small ADDITIVE store-contract extension
+      (listSessions) + a switch seam — this is a HOST/STORE seam, so it is placed in CONTROLS
+      (not SHELL), and flagged as the one frozen-contract additive item.
+  (b) Attachment->model-context (G16) needs a contract DECISION before UX; the SAF picker UX
+      is in CONTROLS but the context-injection mechanism may be a small scoped Core/Run-options
+      addition — called out explicitly so it is not accidentally invented in the UI.
+
+========================================================================
+STEP 1 — AG.UI-SHELL-1
+========================================================================
+GOAL:
+  Light workspace frame: Header (☰ AndroidAgent + ADB●) / fixed Conversation Viewport /
+  fixed bottom Composer / collapsible Sidebar frame. Replace the whole-page ScrollView with a
+  fixed 3-zone layout. Light theme + card styling foundation. NO cards yet (viewport shows the
+  existing transcript projection during transition).
+
+ALLOWED CHANGES:
+  - res/values/themes.xml (+ new colors/dimens/values) — light theme
+  - res/layout/activity_chat.xml (restructure to 3-zone frame) + new sidebar/composer layouts
+  - ChatActivity (layout wiring; header ADB dot; sidebar open/close)
+  - NEW presentation resource files (layouts/drawables/values)
+FORBIDDEN CHANGES:
+  - No AG Core / Runtime / Tool / Provider / AT change
+  - No persistence schema / Room entity / DAO change
+  - No AgentRuntime / SessionHolder SEMANTIC change (re-wiring layout refs only)
+  - No new AgentEvent / no streaming protocol change
+  - No Compose migration (stay XML/View)
+  - No product identity (icon/version) change
+TESTS:
+  - Existing :app tests remain green (assembleDebug + :app:test)
+  - New: layout inflation smoke (no crash on create), theme applies
+DEVICE GATE:
+  - Visual: light theme renders; 3-zone frame fixed (content scroll only inside viewport);
+    sidebar collapses/expands; header ADB dot reflects AT status; composer fixed bottom.
+EXPECTED RESULT:
+  The VNext workspace SKELETON is on device; the transcript still renders via the existing
+  projection (single TextView or a placeholder list) — no card logic yet.
+
+========================================================================
+STEP 2 — AG.UI-TRANSCRIPT-CARDS-1
+========================================================================
+GOAL:
+  Card-based transcript: replace the single transcript TextView with a card list
+  (RecyclerView or custom container) rendering UserCard / ThoughtCard / AssistantCard /
+  ToolExecutionCard / FailureCard / InterruptedCard + section dividers + per-card Copy +
+  native text selection + Thought/Result collapse. Streaming projection drives incremental
+  card updates.
+
+ALLOWED CHANGES:
+  - NEW card layout files + a transcript list adapter in :app
+  - TranscriptModel: keep Block model; optionally expose a stable per-block view-key for the
+    adapter (PRESENTATION only; no Block semantics change)
+  - ChatActivity / SessionHolder: bind the card list to transcriptModel.snapshot() instead of
+    render(); keep onUiUpdate notification
+  - Copy helper (ClipboardManager)
+FORBIDDEN CHANGES:
+  - No Block type removal / rename that changes semantics (Shell->generic is a PRESENTATION
+    label; the Block can stay or be presentation-renamed without domain impact)
+  - No AG Core / Runtime / Tool / Provider / AT / persistence change
+  - No change to how blocks are CREATED (onReasoning*/onContent*/onToolCall*/onAnswerProduced/
+    onRunFailed/onInterrupted stay as-is)
+TESTS:
+  - :app tests green; existing TranscriptModel tests (block creation/render) unchanged
+  - New: adapter maps each Block type to the right card; streaming delta updates the current
+    card in place; divider appears before User/Thought/Assistant; copy puts block body on
+    clipboard; Thought collapses/expands; Result preview/expand.
+DEVICE GATE:
+  - A real run shows: User card, Thought (collapsible), Assistant (streams), ToolExecution
+    (action+result, expand/collapse/copy), Failure/Interrupted where applicable; dividers
+    correct; per-card copy works; selection works; long transcript scrolls INSIDE the viewport
+    without moving header/composer.
+EXPECTED RESULT:
+  Interactive Transcript Cards live. The existing Agent path is unchanged (cards are a thin
+  projection of TranscriptModel).
+
+========================================================================
+STEP 3 — AG.UI-CONTROLS-1
+========================================================================
+GOAL:
+  Card interactions + composer controls + sidebar content: Retry (re-send latest Turn),
+  Edit & Resend, Session Browser (New/Switch/Current highlight/Rename/Today-Yesterday),
+  ADB sidebar block (status + Reconnect), Provider/API Key Settings page, Model·Effort label,
+  ＋ Context/File (SAF) attachment.
+
+ALLOWED CHANGES:
+  - ChatActivity / Host: Retry (re-send composition), Edit & Resend (restore-to-composer + re-send)
+  - Session Browser: sidebar list UI + an ADDITIVE TopicSessionStore.listSessions() + DAO query
+    + a Host/Runtime switchToSession(id) seam (load that session's history + make current)
+  - Rename: updateTitle store/DAO path OR a presentation-derived label (decision in this step)
+  - Settings page (Provider/Endpoint/Key) re-placed; Test Connection + Save (Save = additive
+    host write to the device-local config; REUSE the existing loader)
+  - Model·Effort label (read active model from config; effort wiring scoped if required)
+  - SAF file/folder picker + attachment chips + the attachment->model-context mechanism
+  - Optional: DebugBridge "stop" client command (calls the SAME interruptActiveRun)
+FORBIDDEN CHANGES:
+  - No DB SCHEMA change (title/created_at/last_used_at/model/provider columns already exist;
+    only ADDITIVE queries/methods)
+  - No Core/Tool/Provider/AT REWRITE. The ONLY contract touches are ADDITIVE:
+      * TopicSessionStore.listSessions() (additive method)
+      * optional updateTitle (additive)
+      * attachment->context mechanism (small scoped decision; if it requires a Core/RunOptions
+        addition, it is a minimal additive change, NOT a rewrite — document it)
+  - No second AgentRuntime / second transcript / second DB pipeline
+  - Do NOT fake an effort a provider does not support
+TESTS:
+  - :app tests green; new tests for: listSessions ordering, switchToSession loads correct
+    history, retry re-sends (host composition), edit&resend restores text + re-sends (new
+    message, old durable UserMessage UNCHANGED), settings save writes config, SAF attachment
+    adds a chip, model label reflects active config.
+  - Verify old durable UserMessage is NOT modified by Edit & Resend.
+DEVICE GATE:
+  - Session browser: create/switch/highlight/rename; Today/Yesterday grouping correct.
+  - Retry on latest completed turn re-runs; hidden while running.
+  - Edit & Resend restores the user text, user edits, re-sends as a new message.
+  - ADB sidebar shows Connected/Connecting/Disconnected + Reconnect works.
+  - Settings: switch provider, test connection, save; main surface no longer shows provider/endpoint.
+  - ＋ file/folder adds a chip; attachment reaches the model context per the chosen mechanism.
+EXPECTED RESULT:
+  All V1 interactive controls + sidebar + settings are functional on the frozen Agent path.
+
+========================================================================
+STEP 4 — AG.UI-DEVICE-ACCEPTANCE-1
+========================================================================
+GOAL:
+  Full real-device acceptance of the VNext UI end-to-end (the device baseline that was
+  DEFERRED in the audit is captured here).
+
+ALLOWED CHANGES:
+  - Defect fixes discovered on device (presentation/host only; no Core/Runtime/Tool/Provider/AT
+    /persistence-semantic changes unless a real defect requires it — and then a separate step)
+FORBIDDEN CHANGES:
+  - No architecture change; no frozen-boundary change
+TESTS:
+  - Full regression (all modules) green
+DEVICE GATE:
+  - Launch, light workspace, sidebar, cards (all types), streaming, copy/selection, retry,
+    edit&resend, session browser, ADB, settings, model label, attachment, Stop/Interrupted,
+    debug bridge still works (UI + debug share paths), release build has NO debug listener.
+EXPECTED RESULT:
+  VNext UI accepted on a real device.
+
+========================================================================
+STEP 5 — AG.UI-RELEASE-FREEZE-1
+========================================================================
+GOAL:
+  Product identity + release freeze: real launcher icon, versionCode/versionName bump, final
+  label/light theme, status/nav bar styling, ABI confirmation, final product UI freeze.
+
+ALLOWED CHANGES:
+  - AndroidManifest.xml (icon), mipmap icons, build.gradle.kts (version), theme finalization
+FORBIDDEN CHANGES:
+  - No Agent behavior change
+TESTS:
+  - Full regression + release build (assembleRelease) green; release has no debug listener.
+DEVICE GATE:
+  - Final product look on device; release APK verified.
+EXPECTED RESULT:
+  A releasable VNext product UI freeze.
+
+ORDER DEPENDENCIES:
+  SHELL -> TRANSCRIPT-CARDS -> CONTROLS -> DEVICE-ACCEPTANCE -> RELEASE-FREEZE.
+  (CONTROLS depends on the card list existing; DEVICE-ACCEPTANCE needs all UI in place;
+   RELEASE-FREEZE is last.)

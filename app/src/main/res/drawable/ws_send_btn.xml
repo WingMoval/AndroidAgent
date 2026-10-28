@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AG.UI-SHELL-1 — compact Send button: small rounded square, restrained blue. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/ws_primary" />
+    <corners android:radius="8dp" />
+</shape>

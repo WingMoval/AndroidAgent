@@ -1,0 +1,21 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — Gate C: Debug Send -> UI
+
+Command: {"type":"send","text":"AUTOMATION_DEBUG_SEND_<ts>"}
+Response: {"type":"accepted"}
+Events observed:
+  run_start -> model_turn_start -> run_failed (provider_failure: Network) -> run_finished
+
+Root cause of failure:
+  Device on mobile data (10.5.64.95), NOT on Wi-Fi (192.168.5.x).
+  adb reverse tcp:18080 tcp:18080 configured but device cannot reach PC fixture.
+  curl from device to 127.0.0.1:18080 and 192.168.5.1:18080 both fail.
+
+The send path IS correct:
+  DebugBridge.handleSend -> HostActions.send -> AgentRuntime.send
+  User block inserted (transcriptBlockCount increased)
+  Run started (run_start event)
+  Run failed due to NETWORK (not product bug)
+
+GATE_C_DEBUG_TO_UI = DEFERRED_WITH_REASON (network: adb reverse not functional on this device)
+USER_BLOCK_COUNT_FOR_REQUEST = 1 (verified via snapshot transcriptBlockCount)
+RUN_COUNT_FOR_REQUEST = 1 (verified via single run_start event)

@@ -1,0 +1,37 @@
+AG.UI-BASELINE-AUDIT-1 — ADB UI Map
+
+DESIGN TARGET (VNext §22):
+  Header: ADB ● (total state only)
+  Sidebar: Connected / Connecting / Disconnected + Reconnect + short failure reason.
+  ADB = Workspace environment state (NOT in Transcript).
+
+CURRENT STATE:
+  - NO header ADB indicator. ADB/AT status is a text line in the main status area:
+    "AT: Connected" / "AT: Not connected" / "AT: Pairing required" / etc.
+  - "Reconnect" Button exists on the main surface (connectShell()).
+  - ADB "Pair" (6-digit code) exists on the main surface (first-use bootstrap).
+  - ADB state is NOT in the transcript (correct; it is a status line).
+
+DATA SOURCE (verified — UI does NOT bypass integration-at):
+  ChatActivity.connectShell() -> root.shell.connect()
+    ShellConnection (Host) wraps AtExecutionAdapter (:integration-at)
+  Status: ShellConnection.connect() returns ready + message
+    -> HostStatusModel.safeAtMessage(message) collapses to a short secret-free line
+  ADB semantic state is available via CompositionAdbSemantic (Host bridge to ATAndroidAdbControl):
+    readinessState() -> AtAdbReadiness {READY, DISCONNECTED, CONNECTING, UNKNOWN}
+    bootstrapState() -> AtAdbBootstrap {PAIRING_REQUIRED, CONNECT_FAILED, READY}
+    ensureReady(onStatusLine) -> Boolean
+    hasIdentity() / discoverPairing() / pairDiscovered(code) / pair(host,port,code)
+  The adapter (AtExecutionAdapter) is the SINGLE AT consumption point; AG Core/Runtime
+  have NO direct AT dependency (frozen boundary holds).
+
+ADB_STATUS_READY = YES (readinessState + safeAtMessage give Connected/Connecting/Disconnected
+  + short failure reason; just needs a header dot + sidebar placement)
+ADB_RECONNECT_READY = YES (connectShell()/onReconnect() already re-runs the connect flow;
+  just needs relocation to the sidebar)
+
+BOUNDARY CHECK:
+  - UI does NOT bypass integration-at: status + reconnect + pair all go through
+    ShellConnection -> AtExecutionAdapter -> AT. AG Core/Runtime do not depend on AT.
+  - The header dot + sidebar Reconnect are pure PRESENTATION re-placement of existing
+    capability. NO domain/AT change required.

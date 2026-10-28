@@ -1,0 +1,62 @@
+AG.UI-BASELINE-AUDIT-1 — State Ownership Map
+
+RUN PATH (app launch -> render):
+  App launch
+    ↓  ChatActivity (LAUNCHER/MAIN) onCreate
+  Host initialization
+    ↓  DeviceLocalProviderNodeLoader.load(context, node)  [reads filesDir/<node>.json]
+    ↓  resolveProviderSwitch(...) -> Applied | Rejected
+    ↓  applyConfig(cfg, node):
+    ↓     SessionHolder.createRoot(cfg, ctx, node, onRunEvent, onDebugEvent, streamObserver)
+    ↓         builds ChatCompositionRoot (process-scoped, via SessionHolder.root)
+    ↓     ensureDebugBridge()  [no-op unless BuildConfig.DEBUG]
+    ↓     connectShell()       [AT Engine auto-connect; updates AT status]
+    ↓     lifecycleScope.launch { SessionHolder.initialize() }
+  Runtime restore/create
+    ↓  AgentRuntime.initialize()  [create-or-restore durable TopicSession + controlled recovery]
+    ↓  on success -> projectCurrentHistory():
+    ↓     runtime.currentHistory() -> transcriptModel.reproject(history)
+  Transcript projection
+    ↓  SessionHolder.transcriptModel (process-scoped) holds List<Block>
+    ↓  events: onRunEvent(AgentEvent) + onStreamEvent(kind, text) mutate blocks
+  UI render
+    ↓  SessionHolder.onUiUpdate -> ChatActivity.renderTranscript()
+    ↓     transcript.text = transcriptModel.render()  [single TextView]
+
+STATE OWNERSHIP:
+  AgentRuntime (process-scoped, in ChatCompositionRoot)
+    - owns: active Run Job, interrupt, current session id, currentHistory()
+    - AgentCore + Provider + ToolRegistry + messageDurability + topicSessionStore
+  SessionHolder (process-scoped object)
+    - owns: root (ChatCompositionRoot), transcriptModel, providerNode,
+            providerStatusText / atStatusText / runStatusText / endpointLabel / isBusy
+    - owns: the process-scoped persistence chain (RoomTopicSessionStore +
+            StoreMessageDurability) built once
+    - onRunEvent / onStreamEvent operate on SessionHolder.transcriptModel (NOT on Activity)
+  TranscriptModel (process-scoped, pure, Android-free)
+    - owns: List<Block> (the presentation projection)
+    - render() -> String for the single TextView
+  ChatActivity (Activity-scoped, thin)
+    - owns: view references, busy button state, transient UI fields
+    - rebinds to SessionHolder on onCreate/onResume via onUiUpdate
+    - does NOT own the Run or the transcript authority (the holder is authoritative)
+
+KEY FACTS:
+  - Runtime ownership is in ChatCompositionRoot (constructed by SessionHolder.createRoot),
+    process-scoped; survives Activity recreation.
+  - Session is held by SessionHolder (process scope) + AgentRuntime (durable id).
+  - The Activity is a THIN consumer; it re-renders from SessionHolder.
+  - TranscriptModel.render() -> a single TextView (the whole transcript is one selectable
+    text block; no per-block views, no cards).
+  - fromRendered() is a LOSSY reconstruction used only for Activity-recreation rebind when
+    the holder's model is empty; the live holder model is authoritative.
+
+ACTIVITY OVERLOAD:
+  ChatActivity is 594 lines and does: provider node switch, config apply, debug bridge
+  wiring, AT connect/reconnect, ADB pair, run status, transcript render, Send/Stop/NewSession.
+  It is NOT over-owned of state (state lives in SessionHolder/Runtime), but it IS a
+  single monolithic controller for many concerns. VNext should split the controller
+  responsibilities (sidebar / composer / transcript / settings) into focused components,
+  but the STATE ownership (SessionHolder + Runtime) already matches the VNext guard
+  (DB -> Runtime/Core -> Presentation projection -> UI Cards). No state-ownership change
+  is required for the cards; only the presentation layer changes.

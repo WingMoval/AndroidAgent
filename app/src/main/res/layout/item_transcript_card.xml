@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AG.UI-TRANSCRIPT-CARDS-1 — Transcript card item layout.
+  A single card view that adapts its content based on block type.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <!-- Card header: label + action buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/card_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/ws_text_secondary"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Copy button -->
+        <ImageButton
+            android:id="@+id/card_copy"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Copy"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_menu_save"
+            android:alpha="0.6" />
+
+        <!-- Retry button -->
+        <ImageButton
+            android:id="@+id/card_retry"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Retry"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_menu_rotate"
+            android:alpha="0.6"
+            android:visibility="gone" />
+
+        <!-- More button -->
+        <ImageButton
+            android:id="@+id/card_more"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="More"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_menu_more"
+            android:alpha="0.6"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Card body: the actual content -->
+    <TextView
+        android:id="@+id/card_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textColor="@color/ws_text_primary"
+        android:textIsSelectable="true"
+        android:textSize="15sp" />
+
+    <!-- Collapse toggle (for Thought / large Tool Results) -->
+    <TextView
+        android:id="@+id/card_collapse"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:padding="4dp"
+        android:textColor="@color/ws_primary"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+</LinearLayout>

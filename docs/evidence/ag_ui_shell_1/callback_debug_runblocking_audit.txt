@@ -1,0 +1,20 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — runBlocking Static Audit (AFTER)
+
+整改后全 app/src/main 搜索 runBlocking:
+
+HostActions.kt:
+  0 hits (import 已删, 4 处 runBlocking 调用全部移除)
+
+SessionHolder.kt:
+  Line 15: import kotlinx.coroutines.runBlocking  (历史遗留, 未使用, 不在本轮范围)
+
+CALLBACK_DEBUG_RUNBLOCKING = 0  (HostActions 内)
+LEGACY_RUNBLOCKING = 1  (SessionHolder.kt import, 未使用, 不改)
+
+整改前 -> 整改后:
+  HostActions.send:       runBlocking { r.send(text) }              -> r.send(text)  (suspend)
+  HostActions.newSession: runBlocking { SessionHolder.newSession() } -> SessionHolder.newSession() (suspend)
+  HostActions.adbReconnect: runBlocking { shell.connect() }         -> shell.connect() (suspend)
+  HostActions.applyConfigShared: runBlocking { SessionHolder.initialize() }
+                                        -> SessionHolder.initialize() (suspend, in applyConfigCanonical)
+  import kotlinx.coroutines.runBlocking -> 已删

@@ -1,0 +1,62 @@
+AG.UI-BASELINE-AUDIT-1 — Provider / Model-UI Map
+
+DESIGN TARGET (VNext §18/§23):
+  Main surface shows only "Model · Effort" (e.g. "GPT-5.6 · High").
+  Provider / endpoint / API key move to a Settings page (NOT on the main surface).
+  No Test Connection / Save on the main surface.
+
+CURRENT STATE:
+  - Provider selection = a Spinner (provider_node) on the MAIN surface with two nodes:
+    ProviderNode.OPENROUTER ("OpenRouter", provider.openrouter.json) and
+    ProviderNode.EMG ("EMG", provider.local.json).
+  - Below it: provider_endpoint TextView (the ACTIVE safe endpoint), Reconnect,
+    pairing code + Pair, status line. All on the main surface.
+  - NO model selector. NO effort/reasoning selector. NO settings page.
+  - API key: read from the device-local config file (filesDir/<node>.json) via
+    DeviceLocalProviderNodeLoader -> OpenAiCompatibleConfigLoader.parse. The app is
+    READ-ONLY to that file (never writes it). There is NO in-app API-key entry UI in
+    the current code (the AGA.DEV-CONFIG-0 "manual Apply" flow referenced in AGENTS.md
+    is a prior manual-setup path; the current UI is the node Spinner + endpoint label).
+
+CONFIG DATA MODEL (OpenAiCompatibleConfig):
+  baseUrl : String
+  apiKey  : String (default "")
+  model   : String
+  (NO reasoning effort / thinking / temperature field exists in the config today)
+
+MODEL SELECTOR:
+  model selector = NOT EXISTENT. The model comes from the config file's "model" field.
+  VNext "Model · Effort" selector = GAP. The config has a model id but no in-app picker
+  and NO effort field.
+
+EFFORT:
+  effort is NOT CONFIGURABLE today. OpenAiCompatibleConfig has no reasoning-effort /
+  thinking field. The provider does not currently send a reasoning-effort parameter.
+  - Design §18 wants "Model · Effort". Adding a configurable effort requires:
+      (a) a new field in OpenAiCompatibleConfig + the wire request (reasoning effort),
+      (b) the provider to emit it.
+    This is a PROVIDER-CONFIG/PROVIDER change. NOT all providers support effort, so the
+    UI must NOT fake an effort a provider doesn't support (design §24). 
+  - Verdict: MODEL_SELECTOR = GAP (presentation + config); EFFORT = GAP that may require
+    a provider config/wire addition (flag in gap matrix). For V1, the selector can
+    surface the ACTIVE model (read from config) without faking effort; effort wiring is
+    a scoped provider change if required.
+
+PROVIDER/API KEY SETTINGS:
+  - Storage exists (device-local file, read-only, secret-safe loader). REUSE it; do NOT
+    build a second config system (design §25).
+  - Moving Provider/Endpoint/Key to a Settings page is a PRESENTATION re-placement.
+  - "Test Connection" + "Save" (write) are NOT in the current code. Save = writing the
+    device-local config file (currently read-only). This is a new Host capability (write
+    path) if the design's Save is required — flag as a scoped Host addition (not Core).
+
+SECRET HANDLING (audit rule):
+  - API keys are NEVER logged/echoed. DeviceLocalProviderConfigLoader maps failures to
+    safe categories (REASON_MISSING/REASON_INVALID) and never exposes raw JSON.
+    safeChatCompletionsEndpoint is the only endpoint identity shown.
+  - This round's evidence contains NO API key / Authorization / secret (only safe
+    endpoint identities + file names).
+
+PROVIDER_SETTINGS = partial (node spinner + endpoint on main surface; move to Settings = presentation)
+MODEL_SELECTOR = GAP (no picker; model from config)
+EFFORT = GAP (not configurable; provider config/wire may be needed; do not fake)

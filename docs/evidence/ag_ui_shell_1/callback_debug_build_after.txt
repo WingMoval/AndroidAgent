@@ -1,0 +1,10 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — Build After Remediation
+
+.\gradlew :app:assembleDebug
+Result: BUILD SUCCESSFUL
+
+.\gradlew :app:test
+Result: BUILD SUCCESSFUL (406 tests, 0 failures)
+
+ASSEMBLE_DEBUG = PASS
+TESTS = PASS (406 / 0)

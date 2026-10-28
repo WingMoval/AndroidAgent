@@ -1,0 +1,92 @@
+AG.UI-BASELINE-AUDIT-1 — Final Verdict
+
+VERDICT = PASS — VNEXT_UI_BASELINE_AUDIT_COMPLETE_AND_IMPLEMENTATION_READY
+
+ARCHITECTURE VERDICT (expected vs actual):
+  AG_CORE_CHANGE_REQUIRED            = NO
+  AG_RUNTIME_REDESIGN_REQUIRED       = NO
+  TOPIC_SESSION_SCHEMA_CHANGE        = NO
+  TOOL_CONTRACT_CHANGE_REQUIRED      = NO
+  PROVIDER_ARCH_CHANGE_REQUIRED      = NO   (effort = optional additive config/wire, not arch)
+  AT_CONSUMER_CHANGE_REQUIRED        = NO
+
+  UI_PRESENTATION_REWRITE_REQUIRED   = YES
+  HOST_ACTION_NORMALIZATION_NEEDED   = POSSIBLE (recommended; host-only, low risk)
+  DEBUG_BRIDGE_REWRITE_REQUIRED      = NO (PRESERVE / REUSE)
+
+  ANDROIDAGENT_V3_REQUIRED           = NO
+  FREEZE_REOPEN_REQUIRED             = NO
+
+  (One ADDITIVE store-contract extension — TopicSessionStore.listSessions() — is required
+   for the Session Browser. It is ADDITIVE (no schema change; table + last_used_at index
+   already exist; no frozen semantic broken: D1/D2/D3, sequence ownership, ordering intact).
+   This is a scoped contract ADDITION, NOT a freeze reopen.)
+
+PASS GATE CHECK (all required = met):
+  FREEZE_TAG_UNCHANGED = YES (f640ed07... verified; tag not moved)
+  VNEXT_DESIGN_SSOT_LOCATED = YES (docs/design/AndroidAgent_V2_VNext_UI_设计基线.md)
+  VNEXT_DESIGN_SSOT_MODIFIED = NO
+  UI_TECH_STACK_IDENTIFIED = YES (XML/View based)
+  UI_SURFACE_INVENTORY_COMPLETE = YES
+  TRANSCRIPT_CURRENT_MODEL_IDENTIFIED = YES (7 Block types; single TextView render)
+  THINKING_TO_THOUGHT_PATH_IDENTIFIED = YES (same block, phase flip; SUPPORTED)
+  ASSISTANT_STREAM_PATH_IDENTIFIED = YES (content deltas; SUPPORTED)
+  TOOL_RESULT_PATH_IDENTIFIED = YES (generic command + rendered result; shell-payload-aware)
+  CARD_MAPPING_COMPLETE = YES (all 6 target cards map to existing Block types)
+  COPY_SELECTION_GAP_IDENTIFIED = YES (whole-TextView selectable; no per-block copy)
+  RETRY_PATH_IDENTIFIED = YES (no rewind API; re-send composition = host-only)
+  EDIT_RESEND_PATH_IDENTIFIED = YES (host composition; no domain change)
+  STOP_INTERRUPT_PATH_IDENTIFIED = YES (interruptActiveRun -> Interrupted; working)
+  SESSION_UI_PATH_IDENTIFIED = YES (New Session only; list/switch/rename = additive gaps)
+  ADB_UI_PATH_IDENTIFIED = YES (status + reconnect + readinessState; re-place)
+  PROVIDER_UI_PATH_IDENTIFIED = YES (node spinner + endpoint; move to settings; model/effort gaps)
+  DEBUG_BRIDGE_PATH_IDENTIFIED = YES (send/observe shared; stop = gap)
+  UI_DEBUG_ACTION_REUSE_MATRIX = COMPLETE
+  SECOND_UI_DB_PIPELINE = NO
+  SECOND_AGENT_RUNTIME = NO
+  RELEASE_DEBUG_BOUNDARY_AUDITED = YES (BuildConfig.DEBUG gate; release has no listener)
+  VNEXT_GAP_MATRIX = COMPLETE (24 gaps)
+  IMPLEMENTATION_SPLIT = COMPLETE (5 steps)
+  PRODUCTION_CODE_CHANGED = NO
+  TEST_CODE_CHANGED = NO
+  GRADLE_CHANGED = NO
+  RESOURCES_CHANGED = NO
+  CREATE_ANDROIDAGENT_V3 = NO
+
+BUILD:
+  APP_ASSEMBLE_DEBUG = PASS (BUILD SUCCESSFUL; :app:assembleDebug)
+  REGRESSION: HEAD (b7dbc04) is docs-only after the freeze (f640ed0). No production change
+    since the freeze, so the frozen 557-test / 0-failure baseline stands; a full re-run is not
+    required for a docs/audit-only round. assembleDebug re-verified green this round.
+
+DEVICE:
+  DEVICE_BASELINE = DEFERRED_WITH_REASON (no device connected; captured in DEVICE-ACCEPTANCE-1)
+
+GAP COUNTS (V1-relevant, excluding DEFERRED):
+  BLOCKER_COUNT  = 0
+  MAJOR_COUNT    = 14
+  MINOR_COUNT    = 8
+  POLISH_COUNT   = 1
+  DEFERRED_COUNT = (G23 release identity + all design §28 deferred items)
+
+KEY CONCLUSIONS:
+  1. The current AndroidAgent ALREADY OWNS the real capabilities VNext needs:
+     - block-based TranscriptModel (User/Thinking-Thought/Assistant/Shell-Result/Failure/
+       Interrupted) with streaming + final de-dup + restore re-projection
+     - AgentRuntime.send / interruptActiveRun / newSession / currentHistory (durable)
+     - DebugBridge sharing the SAME send path + event stream (correct structure)
+     - ADB status + reconnect + readiness via integration-at (boundary correct)
+     - provider config (read-only, secret-safe) + node switch
+  2. The VNext UI is a THIN PRESENTATION rewrite over these: fixed viewport + cards +
+     dividers + copy/selection + retry/edit (host composition) + session browser (additive
+     store query + switch seam) + composer + sidebar + settings. NO Agent rewrite.
+  3. The only frozen-surface touch is ADDITIVE: TopicSessionStore.listSessions() (+ optional
+     updateTitle) for the Session Browser. No schema change. No freeze reopen.
+  4. Retry = re-send composition (host-only); strict Redo/Unrevert = DEFERRED (design §28).
+     Edit & Resend = restore-to-composer + re-send (host-only; old durable message unchanged).
+  5. Attachment->model-context is the one OPEN CONTRACT decision (SAF picker = presentation;
+     context-injection mechanism = scoped step; do NOT invent a temp UI protocol).
+  6. DebugBridge is PRESERVED/REUSED; an optional "stop" command (calls the SAME
+     interruptActiveRun) is a small additive protocol extension (not required for V1).
+
+NEXT = AG.UI-SHELL-1

@@ -1,0 +1,68 @@
+AG.UI-BASELINE-AUDIT-1 — Callback / Action Map (current call flows)
+
+All UI actions are wired as direct onClick / onItemSelected callbacks in ChatActivity.
+The business semantics (busy guard, interrupt, session switch) are mostly delegated to
+AgentRuntime / SessionHolder, but the WIRING lives in the Activity callbacks.
+
+SEND  (Button send -> onSend())
+  input.text -> trim -> blank check
+  runtime null? -> status "No provider configured"
+  runtime.isBusy? -> status "run already in progress"
+  transcriptModel.onUser(text); renderTranscript(); input.clear; setBusy(true)
+  lifecycleScope.launch { outcome = runtime.send(text); logTrace();
+                          if Interrupted -> status "Stopped."; setBusy(false) }
+
+STOP  (Button stop -> onStopRun())
+  runtime null / !isBusy -> return
+  runtime.interruptActiveRun():
+     Requested -> status "Stopping...", stop disabled (INTERRUPTING, Host-transient)
+     AlreadyInterrupting -> no-op
+     NoActiveRun -> setBusy(false)
+  (terminal RunFinished(Interrupted) arrives via SessionHolder.onRunEvent -> transcript
+   onInterrupted() + isBusy=false; re-enables buttons)
+
+NEW SESSION  (Button new_session -> onNewSession())
+  lifecycleScope.launch { SessionHolder.newSession()
+     -> runtime.newSession() (durable create + make current)
+     -> on success: projectCurrentHistory() (clears old projection), status "New session started."
+     -> on failure: status "Cannot start a new session while a run is in progress." }
+
+PROVIDER SWITCH  (Spinner provider_node onItemSelected)
+  activeNode -> DeviceLocalProviderNodeLoader.load(context, node)
+  resolveProviderSwitch(attempted, load):
+     Loaded  -> applyConfig(cfg, node)  [rebuilds root + re-init + reconnect AT]
+     Missing/Invalid -> status "rejected", spinner reverts to last valid node
+  (failed switch is honest: the active provider never changes on failure)
+
+ADB RECONNECT  (Button reconnect -> onReconnect())
+  reconnecting guard; connectShell():
+     shellConnection.connect() -> status Connected / Not connected / safeAtMessage(...)
+
+ADB PAIR  (Button pair -> onPair())
+  6-digit code -> adapter.pairDiscovered(code) -> on success: clear code + connectShell()
+  (code never persisted / logged)
+
+BUSY STATE  (setBusy(busy))
+  send.isEnabled = !busy; newSession.isEnabled = !busy; stop.isEnabled = busy
+  (SessionHolder.setBusy mirrors it process-wide)
+
+OBSERVATION (process-scoped, not Activity callbacks):
+  SessionHolder.onRunEvent(AgentEvent) -> transcriptModel block mutation + notifyUiUpdate
+  SessionHolder.onStreamEvent(kind,text) -> transcriptModel streaming mutation + notifyUiUpdate
+  ChatActivity.sessionStreamObserver -> bridgeStream (DebugBridge) + SessionHolder.onStreamEvent
+
+DEBUG ORIGINATED RUNS (DebugBridge.handleSend):
+  runtime.isBusy? -> busy
+  userInputSink(text) -> runOnUiThread { SessionHolder.transcriptModel.onUser(text) }
+  onRunStateChanged(true) -> runOnUiThread { setBusy(true) }
+  runtime.send(text)  [SAME send path as UI]
+  onRunStateChanged(false) in finally
+
+DEBT NOTE (for VNext):
+  The action SEMANTICS are mostly in Runtime/SessionHolder (good), but the
+  ACTIVITY CALLBACKS still own: busy-button juggling, status-string formatting,
+  the send pre-checks (null/busy), and the debug-bridge wiring. VNext "Host Action
+  normalization" would extract a thin Host Action layer so UI callbacks AND Debug
+  commands share one entry per action (Send/Stop/NewSession/...). This is a
+  PRESENTATION/HOST change, NOT a Core/Runtime change. It is HOST_ACTION_NORMALIZATION_NEEDED
+  = POSSIBLE (see verdict). No frozen boundary is crossed by doing it.

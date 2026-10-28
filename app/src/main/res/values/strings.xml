@@ -1,4 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AndroidAgent</string>
+
+    <!-- AG.UI-SHELL-1 — workspace a11y + labels -->
+    <string name="ws_open_sidebar">Open sidebar</string>
+    <string name="ws_close_sidebar">Close sidebar</string>
+    <string name="ws_send">Send message</string>
+    <string name="ws_stop">Stop run</string>
+    <string name="ws_input_hint">Message…</string>
+    <string name="ws_model_placeholder">Model</string>
+    <string name="ws_new_session">New Session</string>
+    <string name="ws_section_adb">ADB</string>
+    <string name="ws_reconnect">Reconnect</string>
+    <string name="ws_pair">Pair</string>
+    <string name="ws_pair_hint">6-digit code</string>
+    <string name="ws_adb_short">ADB</string>
+    <string name="ws_adb_connected">ADB connected</string>
+    <string name="ws_adb_connecting">ADB connecting</string>
+    <string name="ws_adb_disconnected">ADB disconnected</string>
+    <string name="ws_status">Run status</string>
+
+    <!-- AG.UI-SHELL-1.PRODUCT-CONTROLS-ALIGNMENT -->
+    <string name="ws_add_context">Add context</string>
+    <string name="ws_add_context_unavailable">Attachment context is not yet available.</string>
+    <string name="ws_section_models_provider">Models &amp; Provider</string>
+    <string name="ws_section_session">Session</string>
+    <string name="ws_current_session">Current Session</string>
+    <string name="ws_new_session_compact">+ New Session</string>
+    <string name="ws_provider_configured">Configured</string>
+    <string name="ws_provider_not_configured">Not configured</string>
+
+    <!-- Provider Settings Dialog -->
+    <string name="ws_provider_settings_title">Provider Settings</string>
+    <string name="ws_provider_label">Provider</string>
+    <string name="ws_endpoint_label">Endpoint</string>
+    <string name="ws_endpoint_hint">https://api.example.com/v1</string>
+    <string name="ws_api_key_label">API Key</string>
+    <string name="ws_api_key_hint">Leave blank to keep existing</string>
+    <string name="ws_key_toggle">Show/hide API key</string>
+    <string name="ws_model_label_settings">Model</string>
+    <string name="ws_model_hint">Model identifier</string>
+    <string name="ws_cancel">Cancel</string>
+    <string name="ws_save">Save</string>
+    <string name="ws_saved">Saved</string>
 </resources>

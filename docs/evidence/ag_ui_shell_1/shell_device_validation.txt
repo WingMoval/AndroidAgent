@@ -1,0 +1,83 @@
+AG.UI-SHELL-1 — Shell Device Validation (uiautomator)
+
+Device: HONOR ALI-AN00 APLMUT4312005935, Android 15
+APK: debug build (post-remediation)
+
+## D1: Launch
+App launches successfully. ChatActivity in foreground.
+PASS
+
+## D2: Light theme
+Light theme applied (workspace_header, composer, sidebar all light colors).
+PASS (visual, verified via screenshot + uiautomator)
+
+## D3: Header fixed
+workspace_header [0,130][1200,312] — fixed at top, height=182px.
+Contains: btn_open_sidebar, adb_dot, adb_label.
+PASS
+
+## D4: Conversation viewport fixed / internal scroll
+transcript_scroll [0,315][1200,2365] — fixed bounds, internal ScrollView.
+PASS
+
+## D5: Composer fixed
+composer [0,2444][1200,2652] — fixed at bottom, height=208px.
+Contains: input, model_label, send button.
+PASS
+
+## D6: Sidebar open / close / Back
+btn_open_sidebar [26,130][182,286] — visible in header.
+Tap (104,208) → sidebar opens: sidebar [0,130][988,2652], scrim visible.
+  Contains: NEW SESSION button, ADB section (adb_status + reconnect),
+  Provider section (spinner EMG + endpoint label), close button.
+Tap close (884,208) → sidebar closes: scrim + sidebar removed from tree.
+PASS (2026-10-27, post-visual-alignment)
+
+## D7: ADB header state
+adb_label = "ADB disconnected" (ADB not connected, expected).
+adb_dot visible.
+PASS
+
+## D8: Reconnect
+Not tested (ADB not connected).
+DEFERRED
+
+## D9: Pair UI reachable
+Not tested (requires ADB connection).
+DEFERRED
+
+## D10: Provider switch
+model_label = "fixture-stream" (EMG active).
+Provider switch tested via Debug (Gate I) — only 1 provider provisioned.
+DEFERRED (cross-provider)
+
+## D11: New Session
+Status text = "New session started." (from Gate G debug new_session).
+UI reflects the session change.
+PASS
+
+## D12: Send
+Not tested (provider network unreachable — see Gate C).
+DEFERRED (network)
+
+## D13: Running -> Stop
+Not tested (requires a running run — see Gate F).
+DEFERRED (network)
+
+## D14: Debug callback + observe
+Debug ping, snapshot, new_session all work (Gates A, B, G PASS).
+Debug send path correct but network-blocked (Gate C DEFERRED).
+PARTIAL
+
+## D15: Activity recreation / rotation
+settings put system user_rotation 1 → Activity recreated.
+Post-rotation dump: workspace_header, composer, model_label="fixture-stream",
+btn_open_sidebar all present. No stale reference, no crash.
+HOST_ACTIONS_STALE_ACTIVITY_REFERENCE = NO
+settings put system user_rotation 0 → restored.
+PASS (2026-10-27, post-visual-alignment)
+
+## Summary
+D1-D5, D6, D7, D11, D15: PASS
+D8, D9, D10, D12, D13: DEFERRED (network / ADB not connected / 1 provider)
+D14: PARTIAL (Gates A/B/G PASS; C/D/E/F network-blocked)

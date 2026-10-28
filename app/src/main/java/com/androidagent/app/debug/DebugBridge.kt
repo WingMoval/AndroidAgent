@@ -228,6 +228,30 @@ class DebugBridge(
                             bridgeScope.launch { handleBootstrapPair(msg.code, writer) }
                         }
 
+                        // ---- AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION (additive)
+                        // These handlers are PURE PROXIES: parse -> HostActions ->
+                        // serialize safe result. The bridge owns no run/session/
+                        // provider/ADB semantics of its own.
+                        is DebugProtocol.ClientMessage.Stop -> {
+                            handleStop(writer)
+                        }
+
+                        is DebugProtocol.ClientMessage.NewSession -> {
+                            bridgeScope.launch { handleNewSession(writer) }
+                        }
+
+                        is DebugProtocol.ClientMessage.AdbReconnect -> {
+                            bridgeScope.launch { handleAdbReconnect(writer) }
+                        }
+
+                        is DebugProtocol.ClientMessage.ProviderSwitch -> {
+                            bridgeScope.launch { handleProviderSwitch(msg.node, writer) }
+                        }
+
+                        is DebugProtocol.ClientMessage.Snapshot -> {
+                            handleSnapshot(writer)
+                        }
+
                         null -> writer.send(DebugProtocol.error("unrecognized message"))
                     }
                 }
@@ -266,36 +290,41 @@ class DebugBridge(
         Log.i(TAG, "direct tool invoke finished: $name success=${result.success}")
     }
 
+    /**
+     * AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION: delegate to the shared
+     * [com.androidagent.app.HostActions.send] — the SAME entry the UI onSend
+     * uses. The bridge only parses, delegates, and serializes the wire
+     * response. It does NOT own run semantics, User block insertion, or busy
+     * state — those are owned by [HostActions.send].
+     *
+     * Wire behavior is preserved:
+     *   blank  -> error("blank send rejected")
+     *   no RT  -> error("runtime not ready")
+     *   busy   -> busy()
+     *   ok     -> accepted(), then the run proceeds via the shared entry
+     */
     private suspend fun handleSend(text: String, writer: ClientWriter) {
         if (text.isBlank()) {
             writer.send(DebugProtocol.error("blank send rejected"))
             return
         }
-        val runtime = runtimeProvider()
-        if (runtime == null) {
+        if (com.androidagent.app.SessionHolder.runtime == null) {
             writer.send(DebugProtocol.error("runtime not ready"))
             return
         }
-        if (runtime.isBusy) {
+        if (com.androidagent.app.SessionHolder.runtime!!.isBusy) {
             writer.send(DebugProtocol.busy())
             return
         }
         writer.send(DebugProtocol.accepted())
-        // AGA.OBSERVABILITY-1: mirror the UI send path so a debug-originated Run
-        // also records its User block in the transcript (the Host decides how to
-        // render it; the bridge only reports that a user input was accepted).
-        userInputSink?.invoke(text)
-        // HOST-005: mirror the UI busy state so the Stop button is enabled during
-        // a bridge-originated Run, exactly as the UI onSend() path does.
-        onRunStateChanged?.invoke(true)
-        val outcome = try {
-            runtime.send(text)
-        } catch (e: Exception) {
-            writer.send(DebugProtocol.error(e::class.java.simpleName ?: "unknown"))
-        } finally {
-            onRunStateChanged?.invoke(false)
-        }
-        Log.i(TAG, "debug run finished: $outcome")
+        // Delegate to the shared Host entry. This performs:
+        //   - User block insertion (exactly once)
+        //   - busy=true -> busy=false
+        //   - exactly one AgentRuntime.send
+        //   - Interrupted terminal handling
+        // The bridge does NOT duplicate any of these.
+        val result = com.androidagent.app.HostActions.send(text)
+        Log.i(TAG, "debug run finished: $result")
     }
 
     private fun broadcast(event: AgentEvent) {
@@ -509,6 +538,59 @@ class DebugBridge(
         // DO NOT log the pairing code plaintext.
         writer.send(DebugProtocol.bootstrapPairResult(r.success, r.outcome.name, r.error ?: ""))
         Log.i(TAG, "bootstrap pair: success=${r.success} outcome=${r.outcome.name}")
+    }
+
+    // --------------------------- AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION handlers
+    // Pure proxies to the shared HostActions. No run/session/provider/ADB
+    // semantics owned here — the bridge only parses, delegates, and serializes.
+
+    private fun handleStop(writer: ClientWriter) {
+        val result = com.androidagent.app.HostActions.stop()
+        val wire = when (result) {
+            is com.androidagent.app.StopResult.Requested -> "requested"
+            is com.androidagent.app.StopResult.AlreadyInterrupting -> "already_interrupting"
+            is com.androidagent.app.StopResult.NoActiveRun -> "no_active_run"
+        }
+        writer.send(DebugProtocol.stopResult(wire))
+        Log.i(TAG, "debug stop: $wire")
+    }
+
+    private suspend fun handleNewSession(writer: ClientWriter) {
+        val ok = com.androidagent.app.HostActions.newSession()
+        writer.send(DebugProtocol.newSessionResult(ok))
+        Log.i(TAG, "debug new_session: success=$ok")
+    }
+
+    private suspend fun handleAdbReconnect(writer: ClientWriter) {
+        val ready = com.androidagent.app.HostActions.adbReconnect()
+        val state = com.androidagent.app.SessionHolder.root?.shell?.readiness()?.code ?: ""
+        writer.send(DebugProtocol.adbReconnectResult(ready, state))
+        Log.i(TAG, "debug adb_reconnect: ready=$ready state=$state")
+    }
+
+    private suspend fun handleProviderSwitch(node: String, writer: ClientWriter) {
+        // Only an existing, valid ProviderNode identity is accepted. No raw
+        // config / apiKey / Authorization injection.
+        val pNode = com.androidagent.app.ProviderNode.entries.firstOrNull {
+            it.displayName.equals(node, ignoreCase = true) || it.name.equals(node, ignoreCase = true)
+        }
+        if (pNode == null) {
+            writer.send(DebugProtocol.error("unknown provider node: $node"))
+            return
+        }
+        val result = com.androidagent.app.HostActions.switchProvider(pNode)
+        when (result) {
+            is com.androidagent.app.ProviderSwitchResult.Applied ->
+                writer.send(DebugProtocol.providerSwitchResult(true, result.node.displayName, result.endpoint))
+            is com.androidagent.app.ProviderSwitchResult.Rejected ->
+                writer.send(DebugProtocol.providerSwitchResult(false, result.node.displayName, reason = result.reason))
+        }
+        Log.i(TAG, "debug provider_switch: node=$node success=${result is com.androidagent.app.ProviderSwitchResult.Applied}")
+    }
+
+    private fun handleSnapshot(writer: ClientWriter) {
+        val snap = com.androidagent.app.HostActions.snapshot()
+        writer.send(DebugProtocol.encode(com.androidagent.app.hostSnapshotToJson(snap)))
     }
 
     /** One connected debug client (writer only; read handled by the caller). */

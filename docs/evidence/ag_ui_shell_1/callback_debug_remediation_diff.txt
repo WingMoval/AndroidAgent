@@ -1,0 +1,1073 @@
+﻿git : warning: in the working copy of 'app/src/main/java/com/androidagent/app/SessionHolder.kt', LF will be replaced by
+ CRLF the next time Git touches it
+所在位置 行:1 字符: 49
++ ... V2; $diff = git diff -- app/src/main/java/com/androidagent/app/ChatAc ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+diff --git a/app/src/main/java/com/androidagent/app/ChatActivity.kt b/app/src/main/java/com/androidagent/app/ChatActivity.kt
+index 6696f08..9a823e1 100644
+--- a/app/src/main/java/com/androidagent/app/ChatActivity.kt
++++ b/app/src/main/java/com/androidagent/app/ChatActivity.kt
+@@ -1,15 +1,18 @@
+-package com.androidagent.app
++锘縫ackage com.androidagent.app
+ 
+ import android.os.Bundle
+ import android.util.Log
+ import android.view.View
+ import android.widget.AdapterView
+ import android.widget.ArrayAdapter
+-import android.widget.Button
+ import android.widget.EditText
++import android.widget.ImageButton
++import android.widget.ScrollView
+ import android.widget.Spinner
+ import android.widget.TextView
+ import androidx.appcompat.app.AppCompatActivity
++import androidx.core.view.ViewCompat
++import androidx.core.view.WindowInsetsCompat
+ import androidx.lifecycle.lifecycleScope
+ import com.androidagent.app.debug.DebugBridge
+ import com.androidagent.app.debug.DebugProtocol
+@@ -17,44 +20,90 @@ import com.androidagent.app.trace.AgentTrace
+ import com.androidagent.app.trace.TraceFormatter
+ import com.androidagent.core.AgentEvent
+ import com.androidagent.core.ModelStreamObserver
++import com.androidagent.integration.at.AtAdbBootstrap
+ import com.androidagent.provider.openai.OpenAiCompatibleConfig
+ import com.androidagent.runtime.AgentRuntime
+ import kotlinx.coroutines.launch
++// ---------------------------------------------------------------------------
++// AG.UI-SHELL-1 閳?pure workspace presentation mappings (JVM-testable).
++// Extracted from ChatActivity so the "no lying about state" rules are unit
++// tested without an Activity / Robolectric.
++// ---------------------------------------------------------------------------
++
++/** Send/Stop single-slot visibility: exactly one is shown, driven by real busy. */
++data class WorkspaceActionSlot(val sendVisible: Boolean, val stopVisible: Boolean) {
++    init { check(sendVisible != stopVisible) { "Send and Stop must occupy the slot exclusively" } }
++}
++
++fun workspaceActionSlot(busy: Boolean): WorkspaceActionSlot =
++    if (busy) WorkspaceActionSlot(sendVisible = false, stopVisible = true)
++    else WorkspaceActionSlot(sendVisible = true, stopVisible = false)
++
++/** Header ADB indicator: semantic color bucket + accessible text + pair offer. */
++data class WorkspaceAdbIndicator(val colorRes: Int, val textRes: Int, val pairOffered: Boolean)
++
++fun workspaceAdbIndicator(atStatusText: String?, bootstrapCode: String?): WorkspaceAdbIndicator = when {
++    bootstrapCode == null ->
++        WorkspaceAdbIndicator(R.color.ws_adb_disconnected, R.string.ws_adb_disconnected, pairOffered = false)
++    atStatusText == "Connecting..." ->
++        WorkspaceAdbIndicator(R.color.ws_adb_connecting, R.string.ws_adb_connecting, pairOffered = false)
++    bootstrapCode == AtAdbBootstrap.READY.name ->
++        WorkspaceAdbIndicator(R.color.ws_adb_ready, R.string.ws_adb_connected, pairOffered = false)
++    else ->
++        WorkspaceAdbIndicator(R.color.ws_adb_disconnected, R.string.ws_adb_disconnected, pairOffered = true)
++}
++
++/** Composer model label: the REAL active model id only (no fake effort). */
++fun workspaceModelLabel(activeModel: String?): String =
++    activeModel?.takeIf { it.isNotBlank() } ?: "Model"
++
+ 
+ /**
+- * Minimal AGA chat host.
++ * VNext light Agent Workspace host (AG.UI-SHELL-1).
++ *
++ * Presentation-only shell over the FROZEN Agent path. The runtime, transcript
++ * model, send/stop/new-session/provider/ADB callbacks and the debug bridge are
++ * all PRESERVED and REUSED 閳?only the layout (fixed Header / internal-scroll
++ * Conversation Viewport / fixed Composer / collapsible Sidebar) and the light
++ * theme change.
+  *
+- * Deliberately plain Android Views: this step verifies that a real Android host
+- * can consume the frozen pure-JVM runtime, not that a UI framework is ergonomic.
+- * No Compose, no Navigation, no DI, no Room, no third-party HTTP client.
++ * The transcript is STILL the single selectable TextView fed by
++ * [TranscriptModel.render]; the Card list is AG.UI-TRANSCRIPT-CARDS-1.
+  *
+  * Credential policy: the API key is held in process memory only. It is never
+  * written to disk, SharedPreferences, DataStore, resources or BuildConfig, and
+  * never echoed back into the view hierarchy.
+- *
+- * AGA.OBSERVABILITY-0 鈥?provider truth: the Provider node selector is
+- * switch-is-active (no Apply button), the endpoint label always shows the
+- * ACTIVE provider's safe endpoint (scheme + host + path), and a failed switch
+- * reverts the selector to the still-active node instead of lying about it.
+- * The transcript renders the live run: real provider reasoning deltas become a
+- * Thinking block that becomes a Thought block, Assistant content streams
+- * incrementally, dispatched tool calls and their results are shown, and
+- * failures are visible with their reason.
+  */
+ class ChatActivity : AppCompatActivity() {
+ 
++    // ---- Conversation viewport
+     private lateinit var transcript: TextView
++    private lateinit var transcriptScroll: ScrollView
++
++    // ---- Composer
+     private lateinit var status: TextView
+-    private lateinit var endpointLabel: TextView
+     private lateinit var input: EditText
+-    private lateinit var send: Button
+-    private lateinit var stop: Button
+-    private lateinit var newSession: Button
+-    private lateinit var reconnect: Button
+-    private lateinit var nodeSpinner: Spinner
+-    // AG.V2-2: minimal ADB pairing UI.
++    private lateinit var send: ImageButton
++    private lateinit var stop: ImageButton
++    private lateinit var modelLabel: TextView
++
++    // ---- Header
++    private lateinit var btnOpenSidebar: ImageButton
++    private lateinit var adbDot: View
++    private lateinit var adbLabel: TextView
++
++    // ---- Sidebar
++    private lateinit var sidebar: View
++    private lateinit var sidebarScrim: View
++    private lateinit var btnCloseSidebar: ImageButton
++    private lateinit var newSession: android.widget.Button
++    private lateinit var reconnect: android.widget.Button
++    private lateinit var adbStatus: TextView
++    private lateinit var pairRow: View
+     private lateinit var pairingCode: EditText
+-    private lateinit var pairButton: Button
++    private lateinit var pairButton: android.widget.Button
++    private lateinit var nodeSpinner: Spinner
++    private lateinit var endpointLabel: TextView
+ 
+     private var root: ChatCompositionRoot? = null
+     private var runtime: AgentRuntime? = null
+@@ -63,7 +112,10 @@ class ChatActivity : AppCompatActivity() {
+     private var activeNode: ProviderNode = ProviderNode.OPENROUTER
+     private var applyingNode: Boolean = false
+ 
+-    /** Pure transcript model; recreated per session. */
++    /** The REAL active model id from the applied provider config (no fake effort). */
++    private var activeModel: String? = null
++
++    /** Pure transcript model; rebound from the process-scoped holder. */
+     private var transcriptModel: TranscriptModel = TranscriptModel()
+ 
+     /** Persistent: the active Provider node (EMG / OpenRouter). */
+@@ -78,22 +130,39 @@ class ChatActivity : AppCompatActivity() {
+     /** Whether a manual reconnect attempt is in flight (button disabled then). */
+     private var reconnecting: Boolean = false
+ 
++    /** Sidebar open state (drives Back-first-close + scrim). */
++    private var sidebarOpen: Boolean = false
++
++    /** Auto-follow bottom: true while the user is at the bottom of the transcript. */
++    private var autoFollow: Boolean = true
++
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+         setContentView(R.layout.activity_chat)
+ 
+         transcript = findViewById(R.id.transcript)
++        transcriptScroll = findViewById(R.id.transcript_scroll)
+         status = findViewById(R.id.status)
+-        endpointLabel = findViewById(R.id.provider_endpoint)
+         input = findViewById(R.id.input)
+         send = findViewById(R.id.send)
+         stop = findViewById(R.id.stop)
++        modelLabel = findViewById(R.id.model_label)
++        btnOpenSidebar = findViewById(R.id.btn_open_sidebar)
++        adbDot = findViewById(R.id.adb_dot)
++        adbLabel = findViewById(R.id.adb_label)
++        sidebar = findViewById(R.id.sidebar)
++        sidebarScrim = findViewById(R.id.sidebar_scrim)
++        btnCloseSidebar = findViewById(R.id.btn_close_sidebar)
+         newSession = findViewById(R.id.new_session)
+         reconnect = findViewById(R.id.reconnect)
+-        nodeSpinner = findViewById(R.id.provider_node)
++        adbStatus = findViewById(R.id.adb_status)
++        pairRow = findViewById(R.id.pair_row)
+         pairingCode = findViewById(R.id.pairing_code)
+         pairButton = findViewById(R.id.pair)
++        nodeSpinner = findViewById(R.id.provider_node)
++        endpointLabel = findViewById(R.id.provider_endpoint)
+ 
++        // ---- Composer actions (reused semantics)
+         send.setOnClickListener { onSend() }
+         stop.setOnClickListener { onStopRun() }
+         newSession.setOnClickListener { onNewSession() }
+@@ -101,9 +170,33 @@ class ChatActivity : AppCompatActivity() {
+         pairButton.setOnClickListener { onPair() }
+         setupNodeSpinner()
+ 
+-        // AG.HOST-SESSION-CONTINUITY-0: rebind to the process-scoped Session
+-        // if one already exists (Activity recreation after rotation/config change).
+-        if (SessionHolder.restoreState(savedInstanceState)) {
++        // ---- Sidebar open/close (frame only)
++        btnOpenSidebar.setOnClickListener { openSidebar() }
++        btnCloseSidebar.setOnClickListener { closeSidebar() }
++        sidebarScrim.setOnClickListener { closeSidebar() }
++
++        // ---- Conversation scroll behaviour: follow bottom unless the user scrolled up
++        ViewCompat.setOnApplyWindowInsetsListener(transcriptScroll) { v, insets ->
++            val bottom = insets.getSystemWindowInsets().bottom
++            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, bottom)
++            insets
++        }
++        // Follow-bottom tracking via viewTreeObserver (minSdk 26: ScrollView has no
++        // addOnScrollChangeListener). If the user is at the bottom, new content keeps
++        // following; if they scrolled up, we do NOT force them back.
++        transcriptScroll.viewTreeObserver.addOnScrollChangedListener(object : android.view.ViewTreeObserver.OnScrollChangedListener {
++            override fun onScrollChanged() {
++                val atBottom = transcriptScroll.height + transcriptScroll.paddingBottom >=
++                    transcript.height - 80
++                autoFollow = atBottom
++                if (atBottom) scrollToBottom()
++            }
++        })
++
++        // ---- Rebind to the process-scoped Session (Activity recreation)
++        val restored = SessionHolder.restoreState(savedInstanceState)
++        Log.i("AG.UI", "onCreate: restoreState=" + restored)
++        if (restored) {
+             root = SessionHolder.root
+             runtime = SessionHolder.runtime
+             transcriptModel = SessionHolder.transcriptModel
+@@ -115,17 +208,28 @@ class ChatActivity : AppCompatActivity() {
+             setBusy(SessionHolder.isBusy)
+             renderStatus()
+             renderTranscript()
++            updateModelLabel()
++            updateAdbIndicator()
+             ensureDebugBridge()
+         } else {
+             // First launch (or process death): initialize normally.
+-            tryDeviceLocalConfig()
++            Log.i("AG.UI", "onCreate: first launch -> tryDeviceLocalConfig")
++            try {
++                tryDeviceLocalConfig()
++                Log.i("AG.UI", "onCreate: tryDeviceLocalConfig returned OK")
++            } catch (t: Throwable) {
++                Log.e("AG.UI", "onCreate: tryDeviceLocalConfig THREW " + t, t)
++                throw t
++            }
+         }
+ 
+-        // Register this Activity as the UI update target. When the process-scoped
+-        // SessionHolder receives events (from a Run in progress), it calls back
+-        // here to re-render the transcript on this Activity's UI thread.
++        // Register this Activity as the UI update target.
+         SessionHolder.onUiUpdate = {
+             runOnUiThread {
++                // Rebind mirror fields from the authoritative SessionHolder.
++                // These are caches, not a second source of truth.
++                root = SessionHolder.root
++                runtime = SessionHolder.runtime
+                 transcriptModel = SessionHolder.transcriptModel
+                 runStatusText = SessionHolder.runStatusText
+                 atStatusText = SessionHolder.atStatusText
+@@ -136,11 +240,53 @@ class ChatActivity : AppCompatActivity() {
+         }
+     }
+ 
++    override fun onResume() {
++        super.onResume()
++        renderTranscript()
++        renderStatus()
++        updateModelLabel()
++        updateAdbIndicator()
++        val r = runtime
++        setBusy(r?.isBusy == true)
++    }
++
+     override fun onSaveInstanceState(outState: Bundle) {
+         super.onSaveInstanceState(outState)
+         SessionHolder.saveState(outState)
+     }
+ 
++    override fun onDestroy() {
++        // The debug bridge is process-scoped on purpose: it must survive Activity
++        // recreation. Release builds never create one.
++        super.onDestroy()
++    }
++
++    // Back closes the sidebar first, then exits.
++    @Deprecated("Back closes the sidebar first, then exits.")
++    @Suppress("DEPRECATION")
++    override fun onBackPressed() {
++        if (sidebarOpen) {
++            closeSidebar()
++        } else {
++            @Suppress("DEPRECATION")
++            super.onBackPressed()
++        }
++    }
++
++    // ------------------------------------------------------------- Sidebar (frame)
++
++    private fun openSidebar() {
++        sidebar.visibility = View.VISIBLE
++        sidebarScrim.visibility = View.VISIBLE
++        sidebarOpen = true
++    }
++
++    private fun closeSidebar() {
++        sidebar.visibility = View.INVISIBLE
++        sidebarScrim.visibility = View.INVISIBLE
++        sidebarOpen = false
++    }
++
+     // ------------------------------------------------------------- Provider node
+ 
+     private fun setupNodeSpinner() {
+@@ -163,20 +309,34 @@ class ChatActivity : AppCompatActivity() {
+     /**
+      * Switch-is-active: selecting a node immediately tries to apply it. On a
+      * failed switch the selector is reverted to the still-active node and the
+-     * reason is shown 鈥?the UI never claims a provider that is not active.
++     * reason is shown 閳?the UI never claims a provider that is not active.
+      */
+     private fun switchNode(node: ProviderNode) {
+-        val outcome = resolveProviderSwitch(node, DeviceLocalProviderNodeLoader.load(applicationContext, node))
+-        when (outcome) {
+-            is ProviderSwitchOutcome.Applied -> {
+-                activeNode = outcome.node
+-                applyConfig(outcome.config, node = outcome.node)
+-            }
++        // Delegates the real switch to the shared [HostActions.switchProvider]
++        // (the SINGLE canonical apply path the Debug channel also uses).
++        // The Host applies the spinner-revert side effect on rejection.
++        lifecycleScope.launch {
++            val result = HostActions.switchProvider(node)
++            Log.i("AG.UI", "switchNode($node) -> ${result::class.java.simpleName}")
++            when (result) {
++                is ProviderSwitchResult.Applied -> {
++                    activeNode = result.node
++                    // Rebind mirror fields from the authoritative SessionHolder.
++                    root = SessionHolder.root
++                    runtime = SessionHolder.runtime
++                    activeModel = SessionHolder.activeModel
++                    endpointLabel.text = SessionHolder.endpointLabel
++                    modelLabel.text = workspaceModelLabel(activeModel)
++                    ensureDebugBridge()
++                    updateAdbIndicator()
++                    renderStatus()
++                }
+ 
+-            is ProviderSwitchOutcome.Rejected -> {
+-                revertSpinner()
+-                updateRunStatus(outcome.reason)
+-                renderStatus()
++                is ProviderSwitchResult.Rejected -> {
++                    revertSpinner()
++                    updateRunStatus(result.reason)
++                    renderStatus()
++                }
+             }
+         }
+     }
+@@ -188,57 +348,33 @@ class ChatActivity : AppCompatActivity() {
+     }
+ 
+     private fun tryDeviceLocalConfig() {
++        // Capture the app context before the (synchronous) switchNode so the
++        // shared HostActions.providerSwitch can resolve the loader context.
++        SessionHolder.ensureAppContext(applicationContext)
++        val loadResults = ProviderNode.entries.associateWith {
++            when (val r = DeviceLocalProviderNodeLoader.load(applicationContext, it)) {
++                is DeviceLocalProviderConfig.Loaded -> "Loaded"
++                is DeviceLocalProviderConfig.Missing -> "Missing"
++                is DeviceLocalProviderConfig.Invalid -> "Invalid"
++            }
++        }
++        Log.i("AG.UI", "tryDeviceLocalConfig loadResults=$loadResults")
+         val defaultNode = ProviderNode.entries.firstOrNull {
+             DeviceLocalProviderNodeLoader.load(applicationContext, it) is DeviceLocalProviderConfig.Loaded
+         } ?: ProviderNode.OPENROUTER
++        Log.i("AG.UI", "tryDeviceLocalConfig defaultNode=$defaultNode")
+         activeNode = defaultNode
+         applyingNode = true
+         nodeSpinner.setSelection(ProviderNode.entries.indexOf(defaultNode))
+         applyingNode = false
++        Log.i("AG.UI", "tryDeviceLocalConfig before switchNode")
+         switchNode(defaultNode)
++        Log.i("AG.UI", "tryDeviceLocalConfig after switchNode")
+     }
+ 
+     /**
+-     * Applies a config for a node. AT startup auto-connect is unconditional in
+-     * this consolidated Host: the single AGA APK always wires AT.
+-     */
+-    private fun applyConfig(cfg: OpenAiCompatibleConfig, node: ProviderNode) {
+-        SessionHolder.createRoot(
+-            cfg,
+-            applicationContext,
+-            node,
+-            // Process-scoped event handler: operates on SessionHolder.transcriptModel,
+-            // NOT on this Activity instance. Survives Activity recreation.
+-            onRunEvent = { SessionHolder.onRunEvent(it) },
+-            onDebugEvent = { e -> sharedDebugBridge?.eventSink?.emit(e) },
+-            streamObserver = sessionStreamObserver,
+-        )
+-        root = SessionHolder.root
+-        runtime = SessionHolder.runtime
+-        // Start/reuse the process-wide debug bridge AFTER the runtime exists, but
+-        // BEFORE any Run can happen (applyConfig is the only entry point).
+-        ensureDebugBridge()
+-        providerStatusText = HostStatusModel.providerLine(node.displayName)
+-        SessionHolder.setProviderStatus(providerStatusText)
+-        endpointLabel.text = cfg.safeChatCompletionsEndpoint
+-        SessionHolder.setEndpoint(cfg.safeChatCompletionsEndpoint)
+-        atStatusText = null
+-        SessionHolder.setAtStatus(null)
+-        runStatusText = null
+-        SessionHolder.setRunStatus(null)
+-        renderStatus()
+-        connectShell()
+-        // AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0F.NORMALIZE-1: durably
+-        // create the initial TopicSession (Runtime-owned lifecycle). Must happen
+-        // before the first Run so SESSION_ROW_EXISTS_BEFORE_D1 = YES.
+-        lifecycleScope.launch {
+-            SessionHolder.initialize()
+-        }
+-    }
+-
+-    /**
+-     * AG.HOST-SESSION-CONTINUITY-0: process-scoped stream observer.
+-     * Operates on SessionHolder.transcriptModel, NOT on Activity fields.
++     * Process-scoped stream observer. Operates on SessionHolder.transcriptModel,
++     * NOT on Activity fields.
+      */
+     private val sessionStreamObserver = object : ModelStreamObserver {
+         override fun onReasoningStarted() {
+@@ -268,37 +404,21 @@ class ChatActivity : AppCompatActivity() {
+     }
+ 
+     /**
+-     * AG.DEBUG-0: start the PC debug bridge in debug builds.
+-     *
+-     * The bridge is PROCESS-scoped, not Activity-scoped: Activity recreation (for
+-     * example under instrumentation's ActivityScenario) must not create a second
+-     * bind on the same port or leave the event sink pointing at a dead instance.
+-     * It reads the current runtime through [sharedRuntime], so Provider node
+-     * switches stay correct without restarting the listener.
+-     *
+-     * No-op in release (BuildConfig.DEBUG == false): there is no listener and no
+-     * external debug ingress in a release build.
++     * AG.DEBUG-0: start the PC debug bridge in debug builds. No-op in release
++     * (BuildConfig.DEBUG == false): no listener, no external debug ingress.
+      */
+     private fun ensureDebugBridge() {
++        Log.i("AG.UI", "ensureDebugBridge called; DEBUG=${BuildConfig.DEBUG}")
+         if (!BuildConfig.DEBUG) return
+         val existing = sharedDebugBridge
+-        if (existing != null && existing.isRunning) return
+-        // AG.NETWORK-0 L2: wire the same ToolRegistry so a debug client can directly
+-        // invoke a production tool (no LLM). Debug-only; no-op in release.
+-        // AGA.OBSERVABILITY-1: wire the User-block hook so a debug-originated Run
+-        // records its User input in the transcript exactly like a UI send.
++        if (existing != null && existing.isRunning) {
++            Log.i("AG.UI", "ensureDebugBridge: already running")
++            return
++        }
+         val bridge = DebugBridge(
+             runtimeProvider = { sharedRuntime },
+-            toolRegistryProvider = { root?.toolRegistryView },
++            toolRegistryProvider = { SessionHolder.root?.toolRegistryView },
+             userInputSink = { text ->
+-                // AGA.OBSERVABILITY-1 FIX: operate on the process-scoped
+-                // SessionHolder.transcriptModel (the authoritative model),
+-                // NOT the Activity's local copy. The Activity's local copy
+-                // is rebound from SessionHolder on every onUiUpdate, so
+-                // writing to it here would be immediately overwritten.
+-                // Must run on the UI thread: TranscriptModel.blocks is a
+-                // plain ArrayList (not thread-safe); renderTranscript() runs
+-                // on the UI thread and would race with a concurrent onUser().
+                 runOnUiThread {
+                     SessionHolder.transcriptModel.onUser(text)
+                     SessionHolder.notifyUiUpdate()
+@@ -309,55 +429,36 @@ class ChatActivity : AppCompatActivity() {
+                     setBusy(busy)
+                 }
+             },
+-            // AG.V2-2B: wire the AT Execution Adapter for persistent session
+-            // validation. Debug-only; the adapter is owned by ShellConnection.
+-            adapterProvider = { root?.shell?.adapter },
++            adapterProvider = { SessionHolder.root?.shell?.adapter },
+         )
+-        // Only publish the instance once it is actually listening; a failed bind
+-        // must never replace a working bridge or become the event destination.
+-        if (bridge.start()) {
++        val started = bridge.start()
++        Log.i("AG.UI", "ensureDebugBridge: bridge.start()=$started")
++        if (started) {
+             sharedDebugBridge = bridge
++            DebugBridgeHolder.set(bridge)
+         }
+     }
+ 
+-    override fun onResume() {
+-        super.onResume()
+-        // AG.HOST-SESSION-CONTINUITY-0: re-render the transcript and status when
+-        // the Activity becomes visible again (e.g. returning from freeform/small
+-        // window to fullscreen, or from another app). The SessionHolder data is
+-        // process-scoped and survives; we just need to push it to the UI.
+-        renderTranscript()
+-        renderStatus()
+-        // Re-sync busy state (a Run may have started/finished while not visible).
+-        val r = runtime
+-        setBusy(r?.isBusy == true)
+-    }
+-
+-    override fun onDestroy() {
+-        // The debug bridge is process-scoped on purpose: it must survive Activity
+-        // recreation so a passive PC monitor keeps its connection. It dies with
+-        // the process. Release builds never create one.
+-        super.onDestroy()
+-    }
+-
+     // ----------------------------------------------------------------- AT Engine
+ 
+-    /** Startup / switch / manual-reconnect entry: connect the AT Engine. */
++    /**
++     * Startup / switch / manual-reconnect entry: connect the AT Engine.
++     *
++     * Delegates the real connect to the shared [HostActions.adbReconnect]
++     * (the SAME ShellConnection.connect the Debug channel uses). The Host then
++     * applies its own pair-row visibility (a pure-UI side effect the Debug
++     * channel does not own).
++     */
+     private fun connectShell() {
+-        val shellConnection = root?.shell
+         updateAtStatus("Connecting...")
++        updateAdbIndicator()
+         renderStatus()
+         lifecycleScope.launch {
+-            val status = shellConnection?.connect()
+-            updateAtStatus(
+-                if (status == null) {
+-                    "Not connected"
+-                } else if (status.ready) {
+-                    "Connected"
+-                } else {
+-                    HostStatusModel.safeAtMessage(status.message)
+-                }
+-            )
++            HostActions.adbReconnect()
++            val result = SessionHolder.root?.shell?.readiness()
++            pairRow.visibility =
++                if (result != null && result.pairingOffered) View.VISIBLE else View.GONE
++            updateAdbIndicator()
+             renderStatus()
+         }
+     }
+@@ -368,8 +469,6 @@ class ChatActivity : AppCompatActivity() {
+         reconnecting = true
+         reconnect.isEnabled = false
+         connectShell()
+-        // The connect coroutine finishes asynchronously; re-enable is handled in
+-        // the same coroutine by rendering after the status lands.
+         lifecycleScope.launch {
+             reconnecting = false
+             reconnect.isEnabled = true
+@@ -379,10 +478,7 @@ class ChatActivity : AppCompatActivity() {
+     // ----------------------------------------------------------------- ADB pairing
+ 
+     /**
+-     * AG.V2-2: Minimal ADB pairing handler.
+-     *
+-     * Reads the 6-digit code from the input, calls AdbConsumerBootstrap via
+-     * the adapter, and shows the result. The pairing code is NOT persisted,
++     * AG.V2-2: Minimal ADB pairing handler. The pairing code is NOT persisted,
+      * NOT logged, and NOT stored after the call.
+      */
+     private fun onPair() {
+@@ -408,20 +504,40 @@ class ChatActivity : AppCompatActivity() {
+             pairingCode.text.clear()
+             if (result.success) {
+                 updateAtStatus("Paired. Reconnecting...")
+-                // Auto-reconnect after successful pairing.
+                 connectShell()
+             } else {
+                 updateAtStatus("Pairing failed: ${result.outcome.name}")
+             }
+             renderStatus()
++            updateAdbIndicator()
+             pairButton.isEnabled = true
+         }
+     }
+ 
+-    // ----------------------------------------------------------------- Run status
++    // ---------------------------------------------------- Header ADB indicator
+ 
+-    // NOTE: onRunEvent and streamObserver are now process-scoped in SessionHolder
+-    // (AG.HOST-SESSION-CONTINUITY-0). The Activity re-renders via onUiUpdate callback.
++    /**
++     * Maps the real AT bootstrap state to the header indicator. Color is NOT the
++     * only expression: adbLabel carries the accessible text state.
++     *
++     * [ShellConnection.readiness()].code is an [AtAdbBootstrap] name:
++     *   READY            -> connected (green)
++     *   CONNECT_FAILED   -> disconnected (neutral)
++     *   PAIRING_REQUIRED -> disconnected (neutral; pair UI shown)
++     * "Connecting..." is a transient state set by connectShell() before the
++     * bootstrap result lands.
++     */
++    private fun updateAdbIndicator() {
++        val shell = root?.shell
++        val ind = workspaceAdbIndicator(atStatusText, shell?.readiness()?.code)
++        adbDot.background.setTint(
++            androidx.core.content.ContextCompat.getColor(this, ind.colorRes),
++        )
++        adbLabel.setText(ind.textRes)
++        adbStatus.text = getString(ind.textRes)
++    }
++
++    // ----------------------------------------------------------------- Run status
+ 
+     private fun bridgeStream(kind: String, text: String?) {
+         sharedDebugBridge?.streamSink?.let { sink ->
+@@ -436,22 +552,15 @@ class ChatActivity : AppCompatActivity() {
+         }
+     }
+ 
+-    // ----------------------------------------------------------------- UI
+-
+-    /** Renders persistent Provider + AT lines and the transient run phase. */
++    /** Compact status line: run phase only (ADB -> header/sidebar; Provider -> sidebar). */
+     private fun renderStatus() {
+-        val parts = listOfNotNull(
+-            providerStatusText,
+-            atStatusText?.let { "AT: $it" },
+-            runStatusText,
+-        )
+-        setStatus(parts.joinToString("\n"))
++        setStatus(runStatusText ?: "")
+     }
+ 
+-    /** Sync a status change to both the UI field and the process holder. */
+     private fun updateAtStatus(text: String?) {
+         atStatusText = text
+         SessionHolder.setAtStatus(text)
++        updateAdbIndicator()
+     }
+ 
+     private fun updateRunStatus(text: String?) {
+@@ -461,106 +570,125 @@ class ChatActivity : AppCompatActivity() {
+ 
+     private fun renderTranscript() {
+         transcript.text = transcriptModel.render()
++        if (autoFollow) scrollToBottom()
++    }
++
++    private fun scrollToBottom() {
++        transcriptScroll.post {
++            transcriptScroll.fullScroll(View.FOCUS_DOWN)
++        }
++    }
++
++    /**
++     * Composer model label: the REAL active model id (set in [switchNode] from the
++     * applied provider config). No fake effort.
++     */
++    private fun updateModelLabel() {
++        modelLabel.text = workspaceModelLabel(activeModel)
+     }
+ 
+     private fun onNewSession() {
+         lifecycleScope.launch {
+-            val switched = SessionHolder.newSession()
++            // Delegates to the shared [HostActions.newSession] (the SAME
++            // SessionHolder.newSession the Debug channel uses).
++            val switched = HostActions.newSession()
+             if (switched) {
+                 transcriptModel = SessionHolder.transcriptModel
++                autoFollow = true
+                 transcript.text = ""
+                 runStatusText = SessionHolder.runStatusText
+                 renderStatus()
+             } else {
+-                runStatusText = "Cannot start a new session while a run is in progress."
+-                SessionHolder.setRunStatus(runStatusText)
++                runStatusText = SessionHolder.runStatusText
+                 renderStatus()
+             }
+         }
+     }
+ 
++    /**
++     * UI Send. Delegates the core Agent send to the shared [HostActions.send]
++     * (the SAME entry the DebugBridge uses). This method only keeps the
++     * pure-UI side effects:
++     *
++     *   - read + clear the input
++     *   - auto-follow
++     *   - render the transcript / status
++     *   - log the trace
++     *
++     * The common semantics (blank / busy check, User block insertion,
++     * busy=true鈫抐alse, exactly one AgentRuntime.send, Interrupted terminal)
++     * are owned by [HostActions.send] and must NOT be duplicated here.
++     */
+     private fun onSend() {
+         val text = input.text.toString().trim()
+         if (text.isEmpty()) return
+ 
+-        val r = runtime
+-        if (r == null) {
+-            updateRunStatus("No provider configured. Select a node first.")
+-            renderStatus()
+-            return
+-        }
+-        if (r.isBusy) {
+-            updateRunStatus("A run is already in progress for this session.")
+-            renderStatus()
+-            return
+-        }
+-
+-        transcriptModel.onUser(text)
+-        renderTranscript()
++        // Pure-UI: clear the input + enable auto-follow.
+         input.setText("")
+-        setBusy(true)
+-        runStatusText = "Running..."
+-        SessionHolder.setRunStatus(runStatusText)
+-        renderStatus()
++        autoFollow = true
+ 
+         lifecycleScope.launch {
+-            val outcome = r.send(text)
+-            // AGENT-0.PREFLIGHT: the composition-root collector has reconstructed
+-            // this Run from the AgentEvent stream. Render the redacted trace so the
+-            // run's tool calls, arguments, results and outcome can be replayed.
+-            // Transcript blocks (assistant/failure) are fed by onRunEvent, which
+-            // also serves debug-bridge-originated runs.
+-            logTrace()
+-            // HOST-005: on a user Stop the structured outcome is Interrupted; the
+-            // terminal RunFinished(Interrupted) event (via onRunEvent) renders the
+-            // transcript, and the status shows the interrupted phase.
+-            if (outcome is com.androidagent.core.RunOutcome.Interrupted) {
+-                updateRunStatus("Stopped.")
+-                renderStatus()
++            val result = HostActions.send(text)
++            when (result) {
++                is SendResult.Rejected -> {
++                    // Map the shared rejection reason back to the familiar
++                    // UI status text (behavior preserved from BEFORE).
++                    val msg = when (result.reason) {
++                        "runtime not ready" ->
++                            "No provider configured. Select a node first."
++                        "busy" ->
++                            "A run is already in progress for this session."
++                        else -> result.reason
++                    }
++                    updateRunStatus(msg)
++                    renderStatus()
++                }
++                is SendResult.Sent -> {
++                    logTrace()
++                    if (result.outcome is com.androidagent.core.RunOutcome.Interrupted) {
++                        updateRunStatus("Stopped.")
++                        renderStatus()
++                    }
++                }
+             }
+-            setBusy(false)
++            renderTranscript()
+         }
+     }
+ 
+     /**
+-     * HOST-005 Stop: direct Stop, no confirmation. Requests interruption of the
+-     * active Run through the Runtime's [AgentRuntime.interruptActiveRun]. The
+-     * button is disabled immediately (the INTERRUPTING phase is Host-transient);
+-     * it re-enables when the Run reaches terminal. A second Stop while already
+-     * interrupting is a structured no-op (AlreadyInterrupting).
++     * HOST-005 Stop: direct Stop, no confirmation. Delegates to the shared
++     * [HostActions.stop] (the SAME AgentRuntime.interruptActiveRun the Debug
++     * channel uses). The Host applies the presentation side effect.
+      */
+     private fun onStopRun() {
+-        val r = runtime ?: return
+-        if (!r.isBusy) return
+-        when (r.interruptActiveRun()) {
+-            AgentRuntime.InterruptResult.Requested -> {
++        when (HostActions.stop()) {
++            StopResult.Requested -> {
+                 updateRunStatus("Stopping...")
+                 stop.isEnabled = false
+                 renderStatus()
+             }
+-            AgentRuntime.InterruptResult.AlreadyInterrupting -> {
+-                // Already interrupting; no-op.
++            StopResult.AlreadyInterrupting -> {
+                 renderStatus()
+             }
+-            AgentRuntime.InterruptResult.NoActiveRun -> {
+-                // The Run already completed between the busy check and the tap.
++            StopResult.NoActiveRun -> {
+                 setBusy(false)
+             }
+         }
+     }
+ 
++    /**
++     * Send vs Stop in the SAME action slot, driven by the REAL busy state.
++     * Running -> Stop visible / Send hidden. Idle -> Send visible / Stop hidden.
++     */
+     private fun setBusy(busy: Boolean) {
+         SessionHolder.setBusy(busy)
+-        send.isEnabled = !busy
++        val slot = workspaceActionSlot(busy)
++        send.visibility = if (slot.sendVisible) View.VISIBLE else View.GONE
++        stop.visibility = if (slot.stopVisible) View.VISIBLE else View.GONE
++        stop.isEnabled = slot.stopVisible
+         newSession.isEnabled = !busy
+-        stop.isEnabled = busy
+     }
+ 
+-    /**
+-     * Logs the redacted trace of the most recent Run. The content is the
+-     * [AgentTrace] rendered by [TraceFormatter], which redacts any secret-bearing
+-     * value before it reaches the log. A rejected (busy) Run produced no trace.
+-     */
+     private fun logTrace() {
+         val collector = root?.traceCollector ?: return
+         val trace: AgentTrace = collector.trace ?: return
+@@ -583,12 +711,7 @@ class ChatActivity : AppCompatActivity() {
+         var sharedDebugBridge: DebugBridge? = null
+             private set
+ 
+-        /**
+-         * AG.HOST-SESSION-CONTINUITY-0: process-scoped runtime reference.
+-         * Delegates to SessionHolder.runtime so the DebugBridge's
+-         * runtimeProvider lambda always reads the current Session.
+-         */
+         val sharedRuntime: AgentRuntime?
+             get() = SessionHolder.runtime
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/app/src/main/java/com/androidagent/app/SessionHolder.kt b/app/src/main/java/com/androidagent/app/SessionHolder.kt
+index ea31c08..a760fbb 100644
+--- a/app/src/main/java/com/androidagent/app/SessionHolder.kt
++++ b/app/src/main/java/com/androidagent/app/SessionHolder.kt
+@@ -56,6 +56,40 @@ object SessionHolder {
+     var isBusy: Boolean = false
+         private set
+ 
++    /**
++     * AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION: the REAL active model id from the
++     * applied provider config. Set by [setActiveModel]; read by the snapshot.
++     * No fake effort 鈥?only the real model id is stored.
++     */
++    @Volatile
++    var activeModel: String? = null
++        private set
++
++    fun setActiveModel(model: String?) {
++        activeModel = model
++    }
++
++    /**
++     * AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION: the process-scoped application
++     * context (the existing [rootAppContext], captured on first
++     * [persistenceChain]), exposed so HostActions can resolve the provider node
++     * loader context without an Activity.
++     */
++    val appContext: Context?
++        get() = rootAppContext
++
++    /**
++     * AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION: capture the application context
++     * synchronously (idempotent) so [HostActions] can resolve the provider node
++     * loader context even before the async initialize()/createRoot path runs.
++     */
++    fun ensureAppContext(context: Context) {
++        val appCtx = context.applicationContext
++        if (rootAppContext == null) {
++            rootAppContext = appCtx
++        }
++    }
++
+     /**
+      * AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0F: the process-scoped durable
+      * persistence chain. One app-process Room database -> one RoomTopicSessionStore
+@@ -71,8 +105,6 @@ object SessionHolder {
+     @Volatile
+     private var messageDurability: MessageDurability? = null
+ 
+-    private val appContext: Context? get() = rootAppContext
+-
+     @Volatile
+     private var rootAppContext: Context? = null
+ 
+@@ -112,6 +144,11 @@ object SessionHolder {
+         onDebugEvent: (AgentEvent) -> Unit,
+         streamObserver: ModelStreamObserver,
+     ) {
++        // Capture the application context up front (synchronously) so HostActions
++        // can resolve the provider node loader context even before the async
++        // initialize() runs. (persistenceChain also captures it, but createRoot is
++        // the synchronous entry point on the provider-switch / startup path.)
++        rootAppContext = context.applicationContext
+         // Production durability chain (Phase F): REAL Room-backed persistence,
+         // NOT MessageDurability.Noop. Process-scoped (built once, reused).
+         val (store, durability) = persistenceChain(context)
+diff --git a/app/src/main/java/com/androidagent/app/debug/DebugBridge.kt b/app/src/main/java/com/androidagent/app/debug/DebugBridge.kt
+index 5c2940d..2bedbe2 100644
+--- a/app/src/main/java/com/androidagent/app/debug/DebugBridge.kt
++++ b/app/src/main/java/com/androidagent/app/debug/DebugBridge.kt
+@@ -228,6 +228,30 @@ class DebugBridge(
+                             bridgeScope.launch { handleBootstrapPair(msg.code, writer) }
+                         }
+ 
++                        // ---- AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION (additive)
++                        // These handlers are PURE PROXIES: parse -> HostActions ->
++                        // serialize safe result. The bridge owns no run/session/
++                        // provider/ADB semantics of its own.
++                        is DebugProtocol.ClientMessage.Stop -> {
++                            handleStop(writer)
++                        }
++
++                        is DebugProtocol.ClientMessage.NewSession -> {
++                            bridgeScope.launch { handleNewSession(writer) }
++                        }
++
++                        is DebugProtocol.ClientMessage.AdbReconnect -> {
++                            bridgeScope.launch { handleAdbReconnect(writer) }
++                        }
++
++                        is DebugProtocol.ClientMessage.ProviderSwitch -> {
++                            bridgeScope.launch { handleProviderSwitch(msg.node, writer) }
++                        }
++
++                        is DebugProtocol.ClientMessage.Snapshot -> {
++                            handleSnapshot(writer)
++                        }
++
+                         null -> writer.send(DebugProtocol.error("unrecognized message"))
+                     }
+                 }
+@@ -266,36 +290,41 @@ class DebugBridge(
+         Log.i(TAG, "direct tool invoke finished: $name success=${result.success}")
+     }
+ 
++    /**
++     * AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION: delegate to the shared
++     * [com.androidagent.app.HostActions.send] 鈥?the SAME entry the UI onSend
++     * uses. The bridge only parses, delegates, and serializes the wire
++     * response. It does NOT own run semantics, User block insertion, or busy
++     * state 鈥?those are owned by [HostActions.send].
++     *
++     * Wire behavior is preserved:
++     *   blank  -> error("blank send rejected")
++     *   no RT  -> error("runtime not ready")
++     *   busy   -> busy()
++     *   ok     -> accepted(), then the run proceeds via the shared entry
++     */
+     private suspend fun handleSend(text: String, writer: ClientWriter) {
+         if (text.isBlank()) {
+             writer.send(DebugProtocol.error("blank send rejected"))
+             return
+         }
+-        val runtime = runtimeProvider()
+-        if (runtime == null) {
++        if (com.androidagent.app.SessionHolder.runtime == null) {
+             writer.send(DebugProtocol.error("runtime not ready"))
+             return
+         }
+-        if (runtime.isBusy) {
++        if (com.androidagent.app.SessionHolder.runtime!!.isBusy) {
+             writer.send(DebugProtocol.busy())
+             return
+         }
+         writer.send(DebugProtocol.accepted())
+-        // AGA.OBSERVABILITY-1: mirror the UI send path so a debug-originated Run
+-        // also records its User block in the transcript (the Host decides how to
+-        // render it; the bridge only reports that a user input was accepted).
+-        userInputSink?.invoke(text)
+-        // HOST-005: mirror the UI busy state so the Stop button is enabled during
+-        // a bridge-originated Run, exactly as the UI onSend() path does.
+-        onRunStateChanged?.invoke(true)
+-        val outcome = try {
+-            runtime.send(text)
+-        } catch (e: Exception) {
+-            writer.send(DebugProtocol.error(e::class.java.simpleName ?: "unknown"))
+-        } finally {
+-            onRunStateChanged?.invoke(false)
+-        }
+-        Log.i(TAG, "debug run finished: $outcome")
++        // Delegate to the shared Host entry. This performs:
++        //   - User block insertion (exactly once)
++        //   - busy=true -> busy=false
++        //   - exactly one AgentRuntime.send
++        //   - Interrupted terminal handling
++        // The bridge does NOT duplicate any of these.
++        val result = com.androidagent.app.HostActions.send(text)
++        Log.i(TAG, "debug run finished: $result")
+     }
+ 
+     private fun broadcast(event: AgentEvent) {
+@@ -511,6 +540,59 @@ class DebugBridge(
+         Log.i(TAG, "bootstrap pair: success=${r.success} outcome=${r.outcome.name}")
+     }
+ 
++    // --------------------------- AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION handlers
++    // Pure proxies to the shared HostActions. No run/session/provider/ADB
++    // semantics owned here 鈥?the bridge only parses, delegates, and serializes.
++
++    private fun handleStop(writer: ClientWriter) {
++        val result = com.androidagent.app.HostActions.stop()
++        val wire = when (result) {
++            is com.androidagent.app.StopResult.Requested -> "requested"
++            is com.androidagent.app.StopResult.AlreadyInterrupting -> "already_interrupting"
++            is com.androidagent.app.StopResult.NoActiveRun -> "no_active_run"
++        }
++        writer.send(DebugProtocol.stopResult(wire))
++        Log.i(TAG, "debug stop: $wire")
++    }
++
++    private suspend fun handleNewSession(writer: ClientWriter) {
++        val ok = com.androidagent.app.HostActions.newSession()
++        writer.send(DebugProtocol.newSessionResult(ok))
++        Log.i(TAG, "debug new_session: success=$ok")
++    }
++
++    private suspend fun handleAdbReconnect(writer: ClientWriter) {
++        val ready = com.androidagent.app.HostActions.adbReconnect()
++        val state = com.androidagent.app.SessionHolder.root?.shell?.readiness()?.code ?: ""
++        writer.send(DebugProtocol.adbReconnectResult(ready, state))
++        Log.i(TAG, "debug adb_reconnect: ready=$ready state=$state")
++    }
++
++    private suspend fun handleProviderSwitch(node: String, writer: ClientWriter) {
++        // Only an existing, valid ProviderNode identity is accepted. No raw
++        // config / apiKey / Authorization injection.
++        val pNode = com.androidagent.app.ProviderNode.entries.firstOrNull {
++            it.displayName.equals(node, ignoreCase = true) || it.name.equals(node, ignoreCase = true)
++        }
++        if (pNode == null) {
++            writer.send(DebugProtocol.error("unknown provider node: $node"))
++            return
++        }
++        val result = com.androidagent.app.HostActions.switchProvider(pNode)
++        when (result) {
++            is com.androidagent.app.ProviderSwitchResult.Applied ->
++                writer.send(DebugProtocol.providerSwitchResult(true, result.node.displayName, result.endpoint))
++            is com.androidagent.app.ProviderSwitchResult.Rejected ->
++                writer.send(DebugProtocol.providerSwitchResult(false, result.node.displayName, reason = result.reason))
++        }
++        Log.i(TAG, "debug provider_switch: node=$node success=${result is com.androidagent.app.ProviderSwitchResult.Applied}")
++    }
++
++    private fun handleSnapshot(writer: ClientWriter) {
++        val snap = com.androidagent.app.HostActions.snapshot()
++        writer.send(DebugProtocol.encode(com.androidagent.app.hostSnapshotToJson(snap)))
++    }
++
+     /** One connected debug client (writer only; read handled by the caller). */
+     private class ClientWriter(private val socket: Socket) {
+         private val out: BufferedWriter = BufferedWriter(

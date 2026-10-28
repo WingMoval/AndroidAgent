@@ -1,0 +1,252 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — 静态审计整改前现状记录
+
+本文件记录整改前的真实代码状态,用于整改后逐项比较,
+确保 SEND_BEHAVIOR_BEFORE == SEND_BEHAVIOR_AFTER。
+
+============================================================
+整改前 runBlocking 分布 (app/src/main)
+============================================================
+
+HostActions.kt:
+  Line 5:   import kotlinx.coroutines.runBlocking
+  Line 55:  runBlocking { r.send(text) }              # send()
+  Line 106: runBlocking { SessionHolder.newSession() } # newSession()
+  Line 127: runBlocking { shell.connect() }           # adbReconnect()
+  Line 223: runBlocking { SessionHolder.initialize() } # applyConfigShared()
+
+SessionHolder.kt:
+  Line 15:  import kotlinx.coroutines.runBlocking    # 历史遗留, 未使用(不在本轮范围)
+
+整改前 CALLBACK_DEBUG_RUNBLOCKING (HostActions 内) = 4 处调用 + 1 import
+整改目标 = 0
+
+============================================================
+整改前 Send 路径 (BEFORE)
+============================================================
+
+UI Send (ChatActivity.onSend):
+  1. text = input.text.toString().trim(); if empty return
+  2. runtime == null -> updateRunStatus("No provider configured..."); return
+  3. runtime.isBusy -> updateRunStatus("A run is already in progress..."); return
+  4. autoFollow = true
+  5. transcriptModel.onUser(text)              # User block 注入
+  6. renderTranscript()
+  7. input.setText("")                          # 清空输入框
+  8. setBusy(true)                              # 驱动 Send/Stop slot + SessionHolder.isBusy
+  9. runStatusText = "Running..."; SessionHolder.setRunStatus
+  10. renderStatus()
+  11. lifecycleScope.launch {
+         outcome = r.send(text)                 # 真实 AgentRuntime.send
+         logTrace()
+         if Interrupted -> updateRunStatus("Stopped.")
+         setBusy(false)
+      }
+
+Debug Send (DebugBridge.handleSend):
+  1. text.isBlank() -> error("blank send rejected")
+  2. runtimeProvider() == null -> error("runtime not ready")
+  3. runtime.isBusy -> busy()
+  4. accepted()
+  5. userInputSink?.invoke(text)                # 镜像 UI: User block 注入
+                                                #    (ChatActivity 里 -> SessionHolder.transcriptModel.onUser)
+  6. onRunStateChanged?.invoke(true)            # 镜像 UI: busy state
+                                                #    (ChatActivity 里 -> setBusy(true))
+  7. outcome = try { runtime.send(text) } finally { onRunStateChanged?.invoke(false) }
+  8. Log.i "debug run finished: $outcome"
+
+HostActions.send (整改前, 未成为共同入口):
+  1. text.isBlank() -> Rejected("blank send rejected")
+  2. SessionHolder.runtime == null -> Rejected("runtime not ready")
+  3. r.isBusy -> Rejected("busy")
+  4. SessionHolder.transcriptModel.onUser(text)
+  5. SessionHolder.setBusy(true)
+  6. SessionHolder.setRunStatus("Running...")
+  7. SessionHolder.notifyUiUpdate()
+  8. outcome = runBlocking { r.send(text) } finally { SessionHolder.setBusy(false) }
+  9. if Interrupted -> SessionHolder.setRunStatus("Stopped.")
+  10. SessionHolder.notifyUiUpdate()
+  11. return SendResult.Sent(outcome)
+
+整改前 SEND_SHARED_ENTRY = NO (UI/Debug/HostActions 三条独立路径, 碰巧都调 runtime.send)
+
+============================================================
+整改前 Stop 路径 (BEFORE)
+============================================================
+
+UI Stop (ChatActivity.onStopRun):
+  -> HostActions.stop()  [已委托]
+  -> 根据 StopResult 更新 UI (Stopping... / renderStatus / setBusy(false))
+
+Debug Stop (DebugBridge.handleStop):
+  -> HostActions.stop()  [已委托]
+  -> 根据 result 映射 wire (requested/already_interrupting/no_active_run)
+
+HostActions.stop:
+  -> SessionHolder.runtime.interruptActiveRun()  [同步 API]
+  -> 映射 StopResult + SessionHolder.setRunStatus/notifyUiUpdate
+
+整改前 STOP_SHARED_ENTRY = YES (已共享)
+
+============================================================
+整改前 NewSession 路径 (BEFORE)
+============================================================
+
+UI NewSession (ChatActivity.onNewSession):
+  -> lifecycleScope.launch { HostActions.newSession() }  [已委托]
+  -> 成功: 更新 transcriptModel/autoFollow/transcript.text/runStatusText
+
+Debug NewSession (DebugBridge.handleNewSession):
+  -> HostActions.newSession()  [已委托]
+  -> newSessionResult(ok)
+
+HostActions.newSession:
+  -> runBlocking { SessionHolder.newSession() }  [需改 suspend]
+  -> 成功: notifyUiUpdate; 失败: setRunStatus + notifyUiUpdate
+
+整改前 NEW_SESSION_SHARED_ENTRY = YES (已共享, 但内部 runBlocking 需修)
+
+============================================================
+整改前 ADB Reconnect 路径 (BEFORE)
+============================================================
+
+UI Reconnect (ChatActivity.onReconnect -> connectShell):
+  -> lifecycleScope.launch { HostActions.adbReconnect() }  [已委托]
+  -> 读 readiness 更新 pairRow visibility (纯 UI 副作用)
+
+Debug AdbReconnect (DebugBridge.handleAdbReconnect):
+  -> HostActions.adbReconnect()  [已委托]
+  -> adbReconnectResult(ready, state)
+
+HostActions.adbReconnect:
+  -> runBlocking { shell.connect() }  [需改 suspend]
+  -> setAtStatus + notifyUiUpdate
+
+整改前 ADB_RECONNECT_SHARED_ENTRY = YES (已共享, 但内部 runBlocking 需修)
+
+============================================================
+整改前 Provider Switch 路径 (BEFORE)
+============================================================
+
+UI Provider Switch (ChatActivity.switchNode):
+  -> HostActions.providerSwitch(node)  [已委托]
+  -> Applied: 更新 Activity 字段 (activeNode/activeModel/endpointLabel/modelLabel)
+  -> Rejected: revertSpinner + updateRunStatus
+
+Debug ProviderSwitch (DebugBridge.handleProviderSwitch):
+  -> 解析 ProviderNode
+  -> HostActions.providerSwitch(pNode)  [已委托]
+  -> providerSwitchResult(success, node, endpoint/reason)
+
+HostActions.providerSwitch:
+  -> resolveProviderSwitch(node, DeviceLocalProviderNodeLoader.load(ctx, node))
+  -> Applied: applyConfigShared(config, node)
+  -> Rejected: ProviderSwitchResult.Rejected
+
+HostActions.applyConfigShared (第二套 applyConfig 核心逻辑!):
+  -> SessionHolder.createRoot(cfg, ctx, node, onRunEvent, onDebugEvent, streamObserver)
+  -> SessionHolder.setProviderStatus/setEndpoint/setAtStatus(null)/setRunStatus(null)/setActiveModel
+  -> notifyUiUpdate
+  -> adbReconnect()
+  -> runBlocking { SessionHolder.initialize() }
+
+ChatActivity.applyConfig (第一套 applyConfig 核心逻辑!):
+  -> SessionHolder.createRoot(cfg, applicationContext, node, onRunEvent, onDebugEvent, streamObserver)
+  -> root = SessionHolder.root; runtime = SessionHolder.runtime   [Activity 字段更新]
+  -> ensureDebugBridge()
+  -> providerStatusText = ...; SessionHolder.setProviderStatus
+  -> endpointLabel.text = ...; SessionHolder.setEndpoint
+  -> atStatusText = null; runStatusText = null; SessionHolder.setAtStatus/setRunStatus(null)
+  -> activeModel = cfg.model; SessionHolder.setActiveModel; modelLabel.text = ...
+  -> renderStatus()
+  -> connectShell()
+  -> lifecycleScope.launch { SessionHolder.initialize() }
+
+整改前 PROVIDER_APPLY_CANONICAL_PATH = TWO (两套独立核心逻辑, 状态不一致风险)
+  - Activity.root/runtime 在 debug providerSwitch 后不更新
+  - ensureDebugBridge 只在 UI 路径调用
+  - connectShell vs adbReconnect 重复
+
+============================================================
+整改前 DebugBridge bridge 引用
+============================================================
+
+ChatActivity.sharedDebugBridge (companion, @Volatile)
+DebugBridgeHolder.bridge (HostActions.kt, @Volatile)
+ensureDebugBridge 同时设两者
+
+整改前 = 双引用 (本轮 DO NOT REFACTOR, 记录技术债 DEFER)
+
+============================================================
+整改前 Send 行为基线 (用于 AFTER 比较)
+============================================================
+
+blank:
+  UI: empty text -> return (无状态变化)
+  Debug: blank -> error("blank send rejected")
+  整改后必须保持
+
+busy:
+  UI: isBusy -> updateRunStatus("A run is already in progress...")
+  Debug: isBusy -> busy()
+  整改后必须保持
+
+User block:
+  UI: transcriptModel.onUser(text)  [1 次]
+  Debug: userInputSink -> SessionHolder.transcriptModel.onUser  [1 次]
+  整改后: HostActions.send 内 onUser 必须只执行 1 次 (不重复)
+
+streaming:
+  通过 ModelStreamObserver (sessionStreamObserver / sessionStreamObserverShared)
+  -> SessionHolder.onStreamEvent -> transcriptModel
+  整改后必须保持
+
+final answer:
+  通过 AgentEvent.AnswerProduced -> SessionHolder.onRunEvent -> transcriptModel.onAnswerProduced
+  整改后必须保持
+
+failure:
+  通过 AgentEvent.RunFailed -> SessionHolder.onRunEvent -> transcriptModel.onRunFailed
+  整改后必须保持
+
+Interrupted:
+  通过 AgentEvent.RunFinished(Interrupted) -> SessionHolder.onRunEvent -> transcriptModel.onInterrupted + isBusy=false
+  UI: outcome is Interrupted -> updateRunStatus("Stopped.")
+  Debug: (通过 event stream 观察 RunFinished)
+  整改后必须保持
+
+busy reset:
+  UI: setBusy(false) 在 send 完成后
+  Debug: onRunStateChanged?.invoke(false) 在 finally
+  整改后: HostActions.send 内 setBusy(false) 必须执行 1 次
+
+Run count:
+  每次 send 必须只创建 exactly 1 个 Run (r.send 只调 1 次)
+  整改后必须保持
+
+============================================================
+整改目标 (AFTER)
+============================================================
+
+HostActions API:
+  suspend fun send(text: String): SendResult
+  fun stop(): StopResult                          (interruptActiveRun 是同步)
+  suspend fun newSession(): Boolean
+  suspend fun reconnectAdb(): Boolean
+  suspend fun switchProvider(node: ProviderNode): ProviderSwitchResult
+  fun snapshot(): HostSnapshot
+
+HostActions.kt 内 runBlocking = 0
+
+UI onSend:
+  -> lifecycleScope.launch { HostActions.send(text) }  (保留 UI 副作用: 清空 input/autoFollow/render)
+  -> 不直接调 runtime.send
+
+Debug handleSend:
+  -> HostActions.send(text)  (不直接调 runtime.send/userInputSink/onRunStateChanged)
+  -> 序列化结果
+
+Provider apply:
+  CANONICAL_APPLY_CONFIG_IMPLEMENTATION_COUNT = 1
+  UI + Debug 都调同一 HostActions.switchProvider
+  Activity.root/runtime 从 SessionHolder 同步 (mirror, 非 authority)
+  ensureDebugBridge 在 canonical apply 后仍正确 (bridge 持有动态 lambda)

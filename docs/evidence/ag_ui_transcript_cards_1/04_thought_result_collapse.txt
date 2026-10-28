@@ -1,0 +1,69 @@
+AG.UI-TRANSCRIPT-CARDS-1 — Thought / Result Collapse
+
+日期: 2026-10-27
+
+============================================================
+Thought Collapse
+============================================================
+
+Running (THINKING):
+  Label: "Thinking..."
+  Body: live reasoning text
+  无 collapse (streaming 中不折叠)
+
+Completed (THOUGHT):
+  Label: "Thought"
+  Body: 完整 text
+  如果 >200 chars:
+    - 默认显示前 200 chars + "..."
+    - "Show more" 按钮可见
+    - 点击 → 展开完整 text
+    - 按钮变为 "Show less"
+    - 点击 → 折叠回 200 chars
+
+如果 <=200 chars:
+  - 显示完整 text
+  - 无 collapse 按钮
+
+Duration:
+  如果当前没有可靠 duration:
+    - 不伪造时间
+    - 显示 "Thought" 即可 (无时间后缀)
+
+THINKING → THOUGHT:
+  同一个 Card (phase flip)
+  禁止: Thinking Card + 第二张 Thought Card
+
+============================================================
+Tool Result Collapse
+============================================================
+
+短 output (<=300 chars):
+  - 显示完整 text
+  - 无 collapse 按钮
+
+大 output (>300 chars):
+  - 默认显示前 300 chars + "..."
+  - "Show more" 按钮可见
+  - 点击 → 展开完整 text
+  - 按钮变为 "Show less"
+  - 点击 → 折叠回 300 chars
+
+用户可: Expand / Collapse / Copy / Select
+
+上游 Truncation:
+  如果 Tool 已经截断 (output 本身不完整):
+    UI 不得显示 "展开完整内容" 这种假能力。
+    只显示实际收到的 text。
+
+============================================================
+Card State (UI-Only)
+============================================================
+
+允许:
+  expanded
+  collapsed
+  streaming
+
+不得写入 DB。
+Collapse 状态是 ViewHolder 级别 (bind 时重置)。

@@ -1,0 +1,633 @@
+# AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — 完整证据文档
+
+本文件合并了所有 callback_debug_* 系列证据文件, 作为 SSOT。
+原始分文件保留在 `docs/evidence/ag_ui_shell_1/` 下, 本文件是它们的合并视图。
+
+日期: 2026-10-27
+设备: HONOR ALI-AN00 APLMUT4312005935, Android 15
+APK: debug build (post-remediation)
+
+---
+
+## 1. 整改前基线 (callback_baseline_before.txt)
+
+### UI 路径 (ChatActivity)
+
+**UI Send (BEFORE):**
+```
+ChatActivity.onSend()
+  → text = input.text.toString().trim(); if blank return
+  → runtime ?: "No provider configured"; if busy "A run is already in progress"
+  → autoFollow = true
+  → transcriptModel.onUser(text)        # User block 注入
+  → renderTranscript()
+  → input.setText("")
+  → setBusy(true)
+  → runStatusText = "Running..."; SessionHolder.setRunStatus
+  → renderStatus()
+  → lifecycleScope.launch {
+      outcome = runtime.send(text)       # 真实 AgentRuntime.send
+      logTrace()
+      if Interrupted → runStatusText = "Stopped."
+      setBusy(false)
+    }
+```
+
+**UI Stop (BEFORE):**
+```
+ChatActivity.onStopRun()
+  → runtime ?: return; if !isBusy return
+  → when (runtime.interruptActiveRun()) {
+      Requested          → runStatusText = "Stopping..."; stop.isEnabled = false
+      AlreadyInterrupting→ (no-op, renderStatus)
+      NoActiveRun        → setBusy(false)
+    }
+```
+
+**UI New Session (BEFORE):**
+```
+ChatActivity.onNewSession()
+  → lifecycleScope.launch {
+      switched = SessionHolder.newSession()
+      if switched → transcriptModel = holder.transcriptModel; autoFollow = true
+                    transcript.text = ""; runStatusText = holder.runStatusText
+                    renderStatus()
+      else → runStatusText = "Cannot start a new session while a run is in progress."
+    }
+```
+
+**UI ADB Reconnect (BEFORE):**
+```
+ChatActivity.onReconnect()
+  → if reconnecting return; reconnecting = true; reconnect.isEnabled = false
+  → connectShell()
+    → shellConnection = root?.shell
+    → updateAtStatus("Connecting..."); updateAdbIndicator(); renderStatus()
+    → lifecycleScope.launch {
+        statusResult = shellConnection?.connect()
+        updateAtStatus(ready ? "Connected" : safeAtMessage)
+        pairRow.visibility = pairingOffered ? VISIBLE : GONE
+        renderStatus(); updateAdbIndicator()
+      }
+  → lifecycleScope.launch { reconnecting = false; reconnect.isEnabled = true }
+```
+
+**UI Provider Switch (BEFORE):**
+```
+ChatActivity.switchNode(node)
+  → outcome = resolveProviderSwitch(node, DeviceLocalProviderNodeLoader.load(app, node))
+  → Applied  → activeNode = outcome.node; applyConfig(outcome.config, node)
+  → Rejected → revertSpinner(); updateRunStatus(reason); renderStatus()
+
+ChatActivity.applyConfig(cfg, node)
+  → SessionHolder.createRoot(cfg, app, node, onRunEvent, onDebugEvent, streamObserver)
+  → root = SessionHolder.root; runtime = SessionHolder.runtime
+  → ensureDebugBridge()
+  → providerStatusText / SessionHolder.setProviderStatus
+  → endpointLabel.text / SessionHolder.setEndpoint
+  → atStatusText = null; runStatusText = null
+  → activeModel = cfg.model; modelLabel.text
+  → renderStatus(); connectShell()
+  → lifecycleScope.launch { SessionHolder.initialize() }
+```
+
+### Debug 路径 (DebugBridge)
+
+**Debug Ping:** `handleClient → Ping → writer.send(pong())`
+
+**Debug Send (BEFORE):**
+```
+handleSend(text, writer)
+  → if blank → error("blank send rejected")
+  → runtime = runtimeProvider(); if null → error("runtime not ready")
+  → if runtime.isBusy → busy()
+  → accepted()
+  → userInputSink?.invoke(text)        # 镜像 UI: User block
+  → onRunStateChanged?.invoke(true)    # 镜像 UI: busy
+  → outcome = try { runtime.send(text) } finally { onRunStateChanged?.invoke(false) }
+  → Log.i "debug run finished: $outcome"
+```
+
+**Debug Observe:** `eventSink` / `streamSink` 通过 Host CompositeSink 观察 UI-originated Run。
+
+### 共享状态源
+
+- SessionHolder (process-scoped): root, runtime, transcriptModel, providerNode, isBusy, endpointLabel
+- AgentRuntime (frozen): currentSessionId, isBusy, interruptActiveRun(), newSession(), send(), initialize()
+- ProviderNode: OPENROUTER("provider.openrouter.json"), EMG("provider.local.json")
+- resolveProviderSwitch: Applied / Rejected
+- DeviceLocalProviderNodeLoader.load: Loaded / Missing / Invalid
+
+### Release 边界
+
+- `ensureDebugBridge()`: `if (!BuildConfig.DEBUG) return`
+- DebugBridge: 仅 debug build 创建
+
+### 修改约束
+
+- PRESERVE_EXISTING_BEHAVIOR = YES
+- MINIMAL_INTRUSION = YES
+- UI callback 名称保留: onSend / onStopRun / onNewSession / onReconnect / switchNode
+- Debug 新 handler 只做代理: parse → HostActions → serialize
+- 旧 Debug 命令 UNCHANGED: ping / send / tool_invoke / session_* / bootstrap_*
+
+---
+
+## 2. 静态审计整改前现状 (callback_debug_static_audit_before.txt)
+
+### runBlocking 分布 (BEFORE)
+
+```
+HostActions.kt:
+  Line 5:   import kotlinx.coroutines.runBlocking
+  Line 55:  runBlocking { r.send(text) }              # send()
+  Line 106: runBlocking { SessionHolder.newSession() } # newSession()
+  Line 127: runBlocking { shell.connect() }           # adbReconnect()
+  Line 223: runBlocking { SessionHolder.initialize() } # applyConfigShared()
+
+SessionHolder.kt:
+  Line 15:  import kotlinx.coroutines.runBlocking    # 历史遗留, 未使用
+
+CALLBACK_DEBUG_RUNBLOCKING (HostActions 内) = 4 处调用 + 1 import
+```
+
+### Send 路径 (BEFORE)
+
+- UI onSend → r.send(text) [独立路径]
+- Debug handleSend → runtime.send(text) [独立路径]
+- HostActions.send → 死代码 (无人调用)
+- **SEND_SHARED_ENTRY = NO**
+
+### Stop 路径 (BEFORE)
+- UI + Debug → HostActions.stop() [已共享]
+- **STOP_SHARED_ENTRY = YES**
+
+### NewSession 路径 (BEFORE)
+- UI + Debug → HostActions.newSession() [已共享, 内部 runBlocking 需修]
+- **NEW_SESSION_SHARED_ENTRY = YES**
+
+### ADB Reconnect 路径 (BEFORE)
+- UI + Debug → HostActions.adbReconnect() [已共享, 内部 runBlocking 需修]
+- **ADB_RECONNECT_SHARED_ENTRY = YES**
+
+### Provider Switch 路径 (BEFORE)
+- ChatActivity.applyConfig() = 第一套 applyConfig 核心逻辑
+- HostActions.applyConfigShared() = 第二套 applyConfig 核心逻辑
+- **CANONICAL_APPLY_CONFIG_IMPLEMENTATION_COUNT = 2** (状态不一致风险)
+
+### Send 行为基线 (用于 AFTER 比较)
+
+| 行为 | BEFORE | AFTER 必须保持 |
+|------|--------|----------------|
+| blank | UI: return / Debug: error | ✓ |
+| busy | UI: status / Debug: busy() | ✓ |
+| User block | UI: onUser 1次 / Debug: userInputSink 1次 | HostActions.send 内 onUser 只 1 次 |
+| streaming | ModelStreamObserver | ✓ |
+| final answer | AgentEvent.AnswerProduced | ✓ |
+| failure | AgentEvent.RunFailed | ✓ |
+| Interrupted | RunFinished(Interrupted) + "Stopped." | ✓ |
+| busy reset | UI: setBusy(false) / Debug: onRunStateChanged(false) | HostActions.send 内 setBusy(false) 1 次 |
+| Run count | 每次 send 恰好 1 个 Run | ✓ |
+
+---
+
+## 3. runBlocking 审计 (callback_debug_runblocking_audit.txt)
+
+### AFTER
+
+```
+HostActions.kt: 0 hits (import 已删, 4 处调用全部移除)
+SessionHolder.kt: Line 15 import (历史遗留, 未使用, 不改)
+
+CALLBACK_DEBUG_RUNBLOCKING = 0
+```
+
+### 整改前 → 整改后
+
+| 方法 | BEFORE | AFTER |
+|------|--------|-------|
+| send | `runBlocking { r.send(text) }` | `r.send(text)` (suspend) |
+| newSession | `runBlocking { SessionHolder.newSession() }` | `SessionHolder.newSession()` (suspend) |
+| adbReconnect | `runBlocking { shell.connect() }` | `shell.connect()` (suspend) |
+| applyConfigShared | `runBlocking { SessionHolder.initialize() }` | `SessionHolder.initialize()` (suspend) |
+| import | `kotlinx.coroutines.runBlocking` | 已删 |
+
+---
+
+## 4. Send 共享入口 (callback_debug_send_shared_entry.txt)
+
+### AFTER 路径
+
+**UI Send:**
+```
+ChatActivity.onSend()
+  → text = input.text.toString().trim(); if empty return
+  → input.setText("")                    # 纯 UI
+  → autoFollow = true                    # 纯 UI
+  → lifecycleScope.launch {
+      result = HostActions.send(text)    # 共享入口
+      when (result) {
+          Rejected -> updateRunStatus(msg); renderStatus()
+          Sent -> logTrace(); if Interrupted -> updateRunStatus("Stopped.")
+      }
+      renderTranscript()
+    }
+```
+
+**Debug Send:**
+```
+DebugBridge.handleSend(text, writer)
+  → if blank -> error("blank send rejected")
+  → if runtime == null -> error("runtime not ready")
+  → if runtime.isBusy -> busy()
+  → accepted()
+  → result = HostActions.send(text)     # 共享入口
+  → Log.i("debug run finished: $result")
+```
+
+**HostActions.send (唯一公共语义):**
+```
+1. text.isBlank() -> Rejected("blank send rejected")
+2. runtime == null -> Rejected("runtime not ready")
+3. r.isBusy -> Rejected("busy")
+4. transcriptModel.onUser(text)     # User block (1 次)
+5. setBusy(true)
+6. setRunStatus("Running...")
+7. notifyUiUpdate()
+8. outcome = r.send(text)           # AgentRuntime.send (1 次)
+   finally { setBusy(false) }
+9. if Interrupted -> setRunStatus("Stopped.")
+10. notifyUiUpdate()
+11. return SendResult.Sent(outcome)
+```
+
+### 结论
+- **SEND_SHARED_ENTRY = YES**
+- User block: exactly 1
+- Run count: exactly 1
+- busy: true→false 各 1 次
+
+---
+
+## 5. Provider 共享入口 (callback_debug_provider_shared_entry.txt)
+
+### AFTER 路径
+
+**UI switchNode:**
+```
+lifecycleScope.launch {
+  result = HostActions.switchProvider(node)
+  Applied -> {
+    root = SessionHolder.root           # mirror 同步
+    runtime = SessionHolder.runtime
+    activeModel = SessionHolder.activeModel
+    endpointLabel.text = SessionHolder.endpointLabel
+    ensureDebugBridge()
+    renderStatus()
+  }
+  Rejected -> { revertSpinner(); updateRunStatus(result.reason) }
+}
+```
+
+**Debug handleProviderSwitch:**
+```
+解析 ProviderNode → HostActions.switchProvider(pNode) → providerSwitchResult
+```
+
+**HostActions.applyConfigCanonical (唯一 canonical):**
+```
+1. SessionHolder.createRoot(cfg, ctx, node, onRunEvent, onDebugEvent, streamObserver)
+2. SessionHolder.setProviderStatus / setEndpoint / setAtStatus(null) / setRunStatus(null) / setActiveModel
+3. notifyUiUpdate()
+4. adbReconnect()
+5. SessionHolder.initialize()
+```
+
+### 结论
+- **CANONICAL_APPLY_CONFIG_IMPLEMENTATION_COUNT = 1**
+- ChatActivity.applyConfig() 已删除
+- Activity.root/runtime 从 SessionHolder 同步 (mirror)
+- DebugBridge lambdas 全部动态读 SessionHolder
+
+---
+
+## 6. DebugBridge 启动独立性 (debugbridge_startup_independence.txt)
+
+### 整改
+
+`ensureDebugBridge()` 从 "provider Applied 之后" 移到 "onCreate 最前面"。
+
+```
+BEFORE:
+  onCreate -> tryDeviceLocalConfig -> switchNode -> switchProvider
+    -> Applied -> applyConfigCanonical -> ensureDebugBridge()
+    -> Rejected -> (no ensureDebugBridge)  ← bridge 永远不启动
+
+AFTER:
+  onCreate -> ensureDebugBridge()          # 始终启动 (debug build)
+         -> tryDeviceLocalConfig -> switchNode -> switchProvider
+           -> Applied / Rejected (bridge 已启动, 命令诚实返回 not ready)
+```
+
+### 验证 (logcat)
+```
+15:34:07.420 onCreate: restoreState=false
+15:34:07.421 ensureDebugBridge called; DEBUG=true
+15:34:07.448 ensureDebugBridge: bridge.start()=true
+15:34:07.448 debug bridge listening on 0.0.0.0:45678
+15:34:07.490 tryDeviceLocalConfig loadResults={OPENROUTER=Missing, EMG=Loaded}
+15:34:07.805 switchNode(EMG) -> Applied
+15:34:07.807 ensureDebugBridge: already running
+```
+
+### Release 边界
+`BuildConfig.DEBUG == false` → `ensureDebugBridge` 直接 return。
+**RELEASE_DEBUG_BOUNDARY = PASS**
+
+### Provider 未 Ready 时 Debug 仍可用
+**DEBUG_AVAILABLE_BEFORE_PROVIDER_READY = YES**
+
+---
+
+## 7. Provider 启动诊断 (provider_startup_diagnosis.txt)
+
+### 根因 (历史: bridge 未启动)
+整改前: `ensureDebugBridge()` 只在 `applyConfig` 内调用, `applyConfig` 只在 `switchNode` Applied 分支执行。Provider load 失败 (Rejected) 时 bridge 永远不启动。
+
+### 修复
+`ensureDebugBridge()` 移到 `onCreate` 最前面, bridge 动态读 SessionHolder。
+
+### 网络限制
+设备在移动数据网络 (10.5.64.95), 非 Wi-Fi。`adb reverse tcp:18080 tcp:18080` 已设置但设备无法到达 PC fixture。这是设备/网络环境限制, 非产品 bug。
+
+```
+PROVIDER_STARTUP_ROOT_CAUSE = ensureDebugBridge 曾在 provider Applied 之后才调用 (已修)
+PROVIDER_STARTUP_FIX = ensureDebugBridge 移到 onCreate 最前面, bridge 动态读 SessionHolder
+```
+
+---
+
+## 8. 测试与构建 (callback_debug_tests_after.txt + callback_debug_build_after.txt)
+
+### 测试
+```
+APP_TESTS_TOTAL = 406
+APP_TESTS_FAILURES+ERRORS = 0
+
+Baseline (before remediation) : 406 tests / 0 failures
+After remediation             : 406 tests / 0 failures
+All tests PASS. No regressions.
+```
+
+详细:
+```
+AgentPreflightTest              11  (×2 flavors)
+debug.DebugProtocolTest         26  (×2)
+DeviceLocalProviderConfigTest   13  (×2)
+HostActionsTest                  8  (×2)
+HostStatusModelTest             24  (×2)
+HostStopStateTest               10  (×2)
+PhaseGRoomIntegrationTest       10  (×2)
+RoomTopicSessionStoreTest       21  (×2)
+StoreMessageDurabilityTest      17  (×2)
+PhaseITranscriptProjectionTest   3  (×2)
+AndroidTransportCancelTest       6  (×2)
+ProviderNodeTest                 6  (×2)
+TranscriptModelTest             36  (×2)
+WorkspaceShellStateTest         12  (×2)
+```
+
+### 构建
+```
+.\gradlew :app:assembleDebug  → BUILD SUCCESSFUL
+.\gradlew :app:test           → BUILD SUCCESSFUL (406 / 0)
+ASSEMBLE_DEBUG = PASS
+```
+
+### 架构边界
+```
+PROD_MODULE_CHANGED = 0
+GRADLE_CHANGED = 0
+```
+
+---
+
+## 9. 设备 Gate A-I
+
+### Gate A: Ping
+```
+Command: {"type":"ping"}
+Response: {"type":"pong"}
+GATE_A_PING = PASS
+```
+
+### Gate B: Snapshot
+```
+Command: {"type":"snapshot"}
+Response:
+{
+  "type": "snapshot",
+  "runtimeReady": true,
+  "busy": false,
+  "currentSessionId": "session-7221a867-8cdc-41f3-88b3-e1ec20ea0cd2",
+  "activeProvider": "EMG",
+  "activeModel": "fixture-stream",
+  "adbState": "PAIRING_REQUIRED",
+  "transcriptBlockCount": 2,
+  "lastBlockType": "Assistant"
+}
+All required fields present. No secret keys.
+GATE_B_SNAPSHOT = PASS
+SNAPSHOT_SECRET_SAFE = YES
+```
+
+### Gate C: Debug Send → UI
+```
+Command: {"type":"send","text":"AUTOMATION_DEBUG_SEND_<ts>"}
+Response: {"type":"accepted"}
+Events: run_start → model_turn_start → run_failed (provider_failure: Network) → run_finished
+
+Send 路径正确:
+  DebugBridge.handleSend → HostActions.send → AgentRuntime.send
+  User block inserted, Run started, Run failed due to NETWORK (非产品 bug)
+
+GATE_C_DEBUG_TO_UI = DEFERRED_WITH_REASON (network: adb reverse not functional)
+USER_BLOCK_COUNT_FOR_REQUEST = 1
+RUN_COUNT_FOR_REQUEST = 1
+```
+
+### Gate D: UI Send → Debug
+```
+GATE_D_UI_TO_DEBUG = DEFERRED_WITH_REASON (same network issue as Gate C)
+```
+
+### Gate E: UI Stop → Debug
+```
+GATE_E_UI_STOP_TO_DEBUG = DEFERRED_WITH_REASON (same)
+```
+
+### Gate F: Debug Stop → UI
+```
+Status: DEFERRED_WITH_REASON
+Reason: Cannot start a long-running run (provider network unreachable).
+
+Stop 路径静态验证正确:
+  DebugBridge.handleStop → HostActions.stop() → AgentRuntime.interruptActiveRun()
+  UI onStopRun 也委托 HostActions.stop() (共享入口)
+
+GATE_F_DEBUG_STOP_TO_UI = DEFERRED_WITH_REASON (network)
+```
+
+### Gate G: New Session
+```
+Before: currentSessionId = session-7221a867-...
+Command: {"type":"new_session"}
+Response: {"type":"new_session_result","success":true}
+After: currentSessionId = session-f8dcc375-...
+
+Session changed: YES
+UI status: "New session started." (uiautomator 验证)
+
+GATE_G_NEW_SESSION = PASS
+```
+
+### Gate H: ADB Reconnect
+```
+GATE_H_ADB_RECONNECT = DEFERRED_WITH_REASON (ADB not connected)
+```
+
+### Gate I: Provider Switch
+```
+Command: {"type":"provider_switch","node":"OpenRouter"}
+Response: {"type":"provider_switch_result","success":false,
+           "node":"OpenRouter","reason":"OpenRouter config not provisioned"}
+
+只有 EMG provisioned。Switch 被诚实拒绝, active provider 不变。
+Post-switch ping: PASS
+
+GATE_I_PROVIDER_SWITCH = DEFERRED_WITH_REASON (only 1 provider provisioned)
+  - Valid provider → Applied: ✓ (startup EMG Applied)
+  - Invalid provider → honest Rejected: ✓
+  - Active provider not incorrectly changed: ✓
+  - Cross-provider: NOT TESTABLE
+
+DEBUG_SURVIVES_PROVIDER_SWITCH = YES
+```
+
+### Gate 汇总
+```
+GATE_A_PING = PASS
+GATE_B_SNAPSHOT = PASS
+GATE_C_DEBUG_TO_UI = DEFERRED_WITH_REASON
+GATE_D_UI_TO_DEBUG = DEFERRED_WITH_REASON
+GATE_E_UI_STOP_TO_DEBUG = DEFERRED_WITH_REASON
+GATE_F_DEBUG_STOP_TO_UI = DEFERRED_WITH_REASON
+GATE_G_NEW_SESSION = PASS
+GATE_H_ADB_RECONNECT = DEFERRED_WITH_REASON
+GATE_I_PROVIDER_SWITCH = DEFERRED_WITH_REASON
+DEBUG_SURVIVES_PROVIDER_SWITCH = YES
+DEBUG_AVAILABLE_BEFORE_PROVIDER_READY = YES
+```
+
+---
+
+## 10. Shell 设备验证 (shell_device_validation.txt)
+
+```
+D1  Launch                    = PASS
+D2  Light theme               = PASS
+D3  Header fixed              = PASS ([0,130][1200,286], 44dp)
+D4  Viewport fixed/scroll     = PASS ([0,289][1200,2318])
+D5  Composer fixed            = PASS ([26,2418][1174,2626])
+D6  Sidebar open/close/Back   = PASS (tap open → sidebar [0,130][988,2652]; tap close → gone)
+D7  ADB header state          = PASS ("ADB" + dot + "ADB disconnected")
+D8  Reconnect                 = DEFERRED (ADB not connected)
+D9  Pair UI reachable         = DEFERRED (requires ADB)
+D10 Provider switch           = DEFERRED (only 1 provider)
+D11 New Session               = PASS
+D12 Send                      = DEFERRED (network)
+D13 Running -> Stop           = DEFERRED (network)
+D14 Debug callback + observe  = PARTIAL (A/B/G PASS)
+D15 Activity recreation       = PASS (rotation → full recovery, no stale ref)
+```
+
+---
+
+## 10b. Visual Alignment (visual_alignment_evidence.txt)
+
+```
+V1  Header hierarchy          = PASS (44dp, 14sp normal, no elevation)
+V2  ADB compact summary       = PASS ("ADB" + 8dp dot + status text)
+V3  Workspace background      = PASS (#F4F5F7)
+V4  Compact status            = PASS (12sp, hint color, 24dp height)
+V5  Composer one visual unit  = PASS (unified surface, border, 12dp corner)
+V6  Model label inside        = PASS (fixture-stream, 11sp, hint color)
+V7  Send compact restrained   = PASS (36dp rounded square, not FAB)
+V8  No giant blue FAB         = PASS (old circle removed)
+V9  Fixed zones hold          = PASS (header/viewport/composer all fixed)
+SHELL_VISUAL_ALIGNMENT = PASS
+```
+
+---
+
+## 11. 整改 diff 摘要 (callback_debug_remediation_diff.txt)
+
+完整 git diff 见 `callback_debug_remediation_diff.txt` (1066 行)。
+
+涉及文件:
+- `app/src/main/java/com/androidagent/app/HostActions.kt` (新增, untracked)
+- `app/src/main/java/com/androidagent/app/ChatActivity.kt` (修改)
+- `app/src/main/java/com/androidagent/app/SessionHolder.kt` (修改)
+- `app/src/main/java/com/androidagent/app/debug/DebugBridge.kt` (修改)
+- `app/src/main/java/com/androidagent/app/debug/DebugProtocol.kt` (修改, additive)
+- `app/src/test/java/com/androidagent/app/HostActionsTest.kt` (新增, untracked)
+- `app/src/test/java/com/androidagent/app/debug/DebugProtocolTest.kt` (修改)
+- `tools/ui_automation/debug_automation.py` (新增, untracked)
+- `tools/ui_automation/run_gates.py` (新增, untracked)
+
+---
+
+## 12. 最终状态
+
+```
+CALLBACK_DEBUG_STATIC_REMEDIATION = PASS
+RUNBLOCKING_REMOVED = YES
+SEND_SHARED_ENTRY = YES
+STOP_SHARED_ENTRY = YES
+NEW_SESSION_SHARED_ENTRY = YES
+ADB_RECONNECT_SHARED_ENTRY = YES
+PROVIDER_SWITCH_SHARED_ENTRY = YES
+CANONICAL_PROVIDER_APPLY_PATH = 1
+ACTIVITY_RUNTIME_MIRROR_SYNC = YES
+DEBUG_SEND_DELEGATES_TO_HOST_ACTION = YES
+DEBUG_PROVIDER_USES_LATEST_COMPOSITION = YES
+SECOND_RUNTIME = NO
+SECOND_SESSION_STATE = NO
+SECOND_TRANSCRIPT_STATE = NO
+DEBUG_AVAILABLE_BEFORE_PROVIDER_READY = YES
+RELEASE_DEBUG_BOUNDARY = PASS
+HOST_ACTIONS_STALE_ACTIVITY_REFERENCE = NO
+
+FINAL_TESTS = 406 / 0
+FINAL_ASSEMBLE_DEBUG = PASS
+PROD_MODULE_CHANGED = 0
+GRADLE_CHANGED = 0
+
+SHELL_VISUAL_ALIGNMENT = PASS
+  (V1-V9 all PASS, 2026-10-27 real device)
+
+CALLBACK_DEBUG_AUTOMATION = PARTIAL
+  (核心 Gate A/B/G PASS; C/D/E/F/I DEFERRED 因设备网络限制)
+```
+
+### 延迟项 (DEFERRED)
+
+| 项 | 原因 | 解除条件 |
+|----|------|----------|
+| Gate C/D (Send) | adb reverse 不工作 (设备在移动数据) | 设备连 Wi-Fi 或修复 adb reverse |
+| Gate E/F (Stop) | 同上 | 同上 |
+| Gate H (ADB) | ADB 未连接 | 连接 ADB |
+| Gate I cross-provider | 只有 1 个 provider | provision 第二个 provider |
+| D8/D9 (ADB/Pair) | ADB 未连接 | 连接 ADB |
+| 诊断日志清理 | 保留到 Gate 全部完成 | 清理 Log.i("AG.UI", ...) |
+| DebugBridgeHolder 双引用 | 技术债 | 长期统一 |

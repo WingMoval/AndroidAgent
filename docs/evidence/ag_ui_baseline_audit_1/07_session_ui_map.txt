@@ -1,0 +1,55 @@
+AG.UI-BASELINE-AUDIT-1 — Session UI Map
+
+DESIGN TARGET (VNext §20/§21): Collapsible Sidebar with
+  + New Session ; Sessions list ; Today/Yesterday/Earlier grouping ; Current highlight ;
+  Rename ; ADB block ; Settings block.
+
+CURRENT STATE:
+  - NO sidebar. NO session list. NO session browser.
+  - The only session control is a single "New Session" Button on the main surface.
+  - "Switch Session" = NOT IMPLEMENTED in the UI (no way to list/select an old session).
+
+PERSISTENCE CAPABILITY (what exists to SUPPORT a sidebar):
+  TopicSessionEntity (Room): id, created_at, last_used_at, model, provider, title(nullable)
+  TopicSessionStore (ag-runtime contract) methods:
+    createSession(id, now, model, provider, title)
+    appendMessage(sessionId, message, now)
+    loadSession(id) -> TopicSessionRecord?
+    loadLatestSession() -> TopicSessionRecord?      (ORDER BY last_used_at DESC LIMIT 1)
+    loadMessages(sessionId) -> List<Message>?
+    updateModelProviderMetadata(sessionId, model, provider)
+  TopicSessionDao (Room): insert, findById, findLatest, updateModelProvider, probe
+  MessageDao: insert, findBySession, nextSequence, touchLastUsed, countBySession
+
+GAPS (for a V1 Session Browser):
+  1. NO list-all-sessions query. The store/DAO only expose loadLatestSession (LIMIT 1)
+     and loadSession(id). A sidebar "Sessions" list needs a listSessions() (e.g.
+     ORDER BY last_used_at DESC). This is a PERSISTENCE/STORE addition.
+       - It is NOT a schema change (topic_sessions table + last_used_at index already
+         exist; a SELECT-all query is additive).
+       - It touches the ag-runtime TopicSessionStore contract (add a method) + the
+         Room impl + DAO query. This is the ONE item that crosses the frozen
+         TopicSessionStore contract boundary. See 11_gap_matrix + verdict.
+  2. NO session switch API in the UI/Runtime. AgentRuntime has newSession() and
+     initialize() (create-or-restore latest) but NO switchToSession(id). Switching to a
+     prior session requires loading that session's history and making it current.
+     This is a RUNTIME addition (or a Host composition over currentHistory + a new
+     store-backed load). See verdict (may be HOST composition or a small Runtime seam).
+  3. title field EXISTS (nullable) in the entity + createSession param, but:
+     - it is NEVER SET in production (createSession is called with title=null by the
+       Runtime; no title auto-generation, no rename path).
+     - NO rename API (no updateTitle in store/DAO).
+     - The design wants Rename. V1 rename = add an updateTitle path (store+DAO) OR
+       a presentation-derived label. Per design §27, do NOT add a title column (it
+       already exists); rename is an additive store method or presentation label.
+  4. Today/Yesterday/Earlier grouping = PRESENTATION-derived from last_used_at/created_at
+     (NO schema change; the columns exist).
+
+SESSION_BROWSER = NOT IMPLEMENTED (only New Session button)
+SESSION_TITLE = field exists (nullable, never populated in production); rename = GAP
+SESSION_LIST = GAP (needs list-all query — additive store/DAO method)
+SESSION_SWITCH = GAP (no UI switch; no Runtime switchToSession)
+
+NOTE: None of these require a DB SCHEMA change (columns already exist). They require
+additive STORE/DAO query methods + a Runtime/Host switch seam + UI. The store-contract
+addition (listSessions) is the boundary item to flag (see verdict / gap matrix).

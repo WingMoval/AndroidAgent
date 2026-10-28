@@ -1,0 +1,287 @@
+AG.UI-BASELINE-AUDIT-1 — VNext Gap Matrix
+
+Severity: BLOCKER / MAJOR / MINOR / POLISH / DEFERRED
+Layer: Presentation / Host UI / Host / Host+Store / Host+Runtime / Provider / Debug
+
+Columns: DESIGN_ITEM | CURRENT_STATE | TARGET_STATE | OWNER_LAYER | FILES | SEVERITY | ARCHITECTURE_IMPACT | NEXT_STEP
+
+G1 Light Theme / Workspace
+   CURRENT: Theme.AppCompat.DayNight.DarkActionBar; no light-priority workspace palette.
+   TARGET:  Light theme; workspace grey-white / card white / subtle dividers.
+   LAYER:   Presentation (theme + resources)
+   FILES:   res/values/themes.xml (+colors/dimens), activity_chat.xml
+   SEVERITY: MAJOR
+   ARCH:    NO (resources only)
+   NEXT:    Define light theme + card styling in AG.UI-SHELL-1.
+
+G2 Collapsible Sidebar
+   CURRENT: No sidebar; single main surface.
+   TARGET:  Collapsible sidebar (New Session / Sessions / ADB / Settings).
+   LAYER:   Host UI (new layout + controller)
+   FILES:   activity_chat.xml (restructure) + new sidebar layout + ChatActivity (or new fragment/controller)
+   SEVERITY: MAJOR
+   ARCH:    NO (presentation + host wiring only)
+   NEXT:    AG.UI-SHELL-1 (sidebar frame) + AG.UI-CONTROLS-1 (session/adb/settings content).
+
+G3 Fixed Conversation Viewport
+   CURRENT: Whole-page ScrollView; composer grows with content; no fixed 3-zone frame.
+   TARGET:  Header fixed / Viewport fills remaining / Composer fixed; transcript internal scroll.
+   LAYER:   Presentation (layout)
+   FILES:   activity_chat.xml (replace root ScrollView with a fixed 3-zone LinearLayout/ConstraintLayout)
+   SEVERITY: MAJOR
+   ARCH:    NO
+   NEXT:    AG.UI-SHELL-1.
+
+G4 UserCard
+   CURRENT: "User\n<text>" in single TextView.
+   TARGET:  UserCard (Copy/Retry/Edit&Resend/More + native selection).
+   LAYER:   Presentation (card view + adapter)
+   FILES:   new card layout + transcript list adapter + TranscriptModel (already has Block.User)
+   SEVERITY: MAJOR
+   ARCH:    NO (data exists; presentation only)
+   NEXT:    AG.UI-TRANSCRIPT-CARDS-1.
+
+G5 ThoughtCard
+   CURRENT: "Thinking.../Thought\n<text>" in single TextView (same block, phase flip).
+   TARGET:  ThoughtCard (Collapse/Expand/Copy/Select); Thinking->Thought same card.
+   LAYER:   Presentation
+   FILES:   new card layout + adapter
+   SEVERITY: MAJOR
+   ARCH:    NO (semantics already match design §11)
+   NEXT:    AG.UI-TRANSCRIPT-CARDS-1.
+
+G6 AssistantCard
+   CURRENT: "Assistant\n<text>" in single TextView (streams incrementally).
+   TARGET:  AssistantCard (Copy/Select/Retry); streaming incremental.
+   LAYER:   Presentation
+   FILES:   new card layout + adapter
+   SEVERITY: MAJOR
+   ARCH:    NO (streaming + final de-dup already correct)
+   NEXT:    AG.UI-TRANSCRIPT-CARDS-1.
+
+G7 ToolExecutionCard (generic)
+   CURRENT: "Shell\n$ <command>" + "Result\n<rendered>" in single TextView; shell-payload-aware
+            render; block NAMED Shell but generic command extraction.
+   TARGET:  Unified ToolExecutionCard for Shell/File/Network (action+result combined visually,
+            independent semantically); Preview/Expand/Collapse/Copy.
+   LAYER:   Presentation
+   FILES:   new card layout + adapter (use call.name + arguments, not assume shell)
+   SEVERITY: MAJOR
+   ARCH:    NO (generic ToolCall/ToolResult data exists; rename is presentation)
+   NEXT:    AG.UI-TRANSCRIPT-CARDS-1.
+
+G8 FailureCard
+   CURRENT: "Failed\n<text>" in single TextView (run failure); tool failure in Result block.
+   TARGET:  FailureCard (Copy/Select); tool failure in-card with real diagnosis.
+   LAYER:   Presentation
+   FILES:   new card layout + adapter
+   SEVERITY: MINOR
+   ARCH:    NO
+   NEXT:    AG.UI-TRANSCRIPT-CARDS-1.
+
+G9 InterruptedCard
+   CURRENT: "Stopped\n<text>" in single TextView (NOT a Failure).
+   TARGET:  InterruptedCard (can re-run originating Turn).
+   LAYER:   Presentation
+   FILES:   new card layout + adapter
+   SEVERITY: MINOR
+   ARCH:    NO (Interrupted != Failure already correct)
+   NEXT:    AG.UI-TRANSCRIPT-CARDS-1.
+
+G10 Section Divider (User/Thought/Assistant)
+   CURRENT: None (single text block).
+   TARGET:  Restrained divider before User/Thought/Assistant; Tool/Result inside execution.
+   LAYER:   Presentation (rendering; NOT persisted data)
+   FILES:   card list adapter (divider decoration)
+   SEVERITY: MINOR
+   ARCH:    NO (divider is rendering, derived from block type ordering)
+   NEXT:    AG.UI-TRANSCRIPT-CARDS-1.
+
+G11 Copy (single block)
+   CURRENT: Whole transcript is one selectable TextView; NO per-block copy; NO ClipboardManager
+            usage; NO copy helper.
+   TARGET:  Per-block Copy (whole block body, no metadata) + native text selection.
+   LAYER:   Host UI / Presentation (ClipboardManager + per-card copy action)
+   FILES:   card views (copy button) + ClipboardManager helper
+   SEVERITY: MAJOR
+   ARCH:    NO (pure presentation; block text already available in TranscriptModel)
+   NEXT:    AG.UI-TRANSCRIPT-CARDS-1 (copy per card).
+   COPY_SINGLE_BLOCK = GAP (presentation-only to fix)
+   NATIVE_TEXT_SELECTION = PARTIAL (whole-TextView selectable today; per-card selection in cards)
+
+G12 Retry / Re-run (latest completed Turn)
+   CURRENT: NO retry/resend/rewind/rollback API in ag-core/ag-runtime/app (verified 0 hits).
+            AgentRuntime has no rewind. A "retry" today would only re-send a fresh user text.
+   TARGET:  ↻ Retry / Re-run originating User Turn (latest completed Turn first; hidden while running).
+   LAYER:   Host (composition) — RE-EVALUATE
+   FILES:   ChatActivity / Host Action + TranscriptModel (locate last User block)
+   SEVERITY: MAJOR (V1 lists Retry as must-do)
+   ARCH:    POSSIBLE — see note. A "Retry latest Turn" can be COMPOSED from existing
+            capability IF the semantics are "re-send the same user text as a NEW turn"
+            (append a new User + re-run). That is a Host composition over AgentRuntime.send —
+            NO Core/Runtime change. BUT a STRICT retry (drop the prior failed/partial turn and
+            redo) would require history rewind/retract = NOT available = would cross the frozen
+            boundary. The design's "Retry / Re-run" (NOT strict Redo/Unrevert) maps to the
+            re-send composition. Verdict: LATEST_TURN_RETRY = PARTIAL (re-send composition is
+            possible presentation/host-only; strict redo is DEFERRED per design §28).
+   NEXT:    AG.UI-CONTROLS-1 — implement re-send semantics (host composition); document that
+            strict redo/unrevert is DEFERRED (design §28). No Core/Runtime change for re-send.
+
+G13 Edit & Resend
+   CURRENT: NO rewind/retract API; NO draft restore to composer; composer is a plain EditText
+            (input) with no per-turn association.
+   TARGET:  Select old User Turn -> restore text to Composer -> edit -> re-send via existing path.
+            FORBIDDEN: directly modify old durable UserMessage.
+   LAYER:   Host (composition) — RE-EVALUATE
+   FILES:   UserCard "More" action + Composer (input) + Host Action
+   SEVERITY: MAJOR
+   ARCH:    NO — the design's own semantics are "restore text to composer + re-send" (a NEW
+            message), NOT modifying the old durable message. This is a pure HOST composition:
+            read the User block text (TranscriptModel) -> set composer text -> user edits ->
+            existing send path. NO Core/Runtime/DB change. 
+   NEXT:    AG.UI-CONTROLS-1.
+   EDIT_RESEND = REALIZABLE as host composition (re-send new message); no domain change.
+
+G14 Stop / Interrupt
+   CURRENT: UI Stop -> AgentRuntime.interruptActiveRun() -> RunOutcome.Interrupted ->
+            RunFinished(Interrupted) -> TranscriptModel.onInterrupted() (NOT Failure).
+            Working (HOST-STOP-1 verified on device).
+   TARGET:  Idle:↑ / Running:■ Stop; UI=Stop / AG=Interrupt / Runtime=cancellation.
+   LAYER:   Host (already wired) — re-place in Composer
+   FILES:   Composer submit/stop button (re-place existing onStopRun)
+   SEVERITY: MINOR (capability exists; just re-place + idle/running toggle)
+   ARCH:    NO
+   STOP_UI_BACKEND_READY = YES
+   NEXT:    AG.UI-SHELL-1 (composer submit/stop) reuses onStopRun.
+
+G15 Composer (Codex-style)
+   CURRENT: Plain EditText + Send/Stop/NewSession buttons in a row; on the scrolling page.
+   TARGET:  ＋ Context/File + Input + Model·Effort + Submit/Stop, fixed bottom.
+   LAYER:   Presentation + Host
+   FILES:   composer layout + ChatActivity
+   SEVERITY: MAJOR
+   ARCH:    NO (input + send/stop exist; re-place + add model/effort label + attachment)
+   NEXT:    AG.UI-SHELL-1 (frame) + AG.UI-CONTROLS-1 (attachment/model).
+
+G16 Attachment / Context (File/Folder, SAF)
+   CURRENT: NO attachment UI; NO SAF picker in the app (the 39 Uri/content hits are from the
+            AT/transport code, not a user file-picker). FileTool is READ-only over
+            filesDir/agent/ (APP_SELF realm) — that is a TOOL, not an attachment-context input.
+   TARGET:  ＋ add file/folder via Android SAF; chips; do NOT dump file body into input.
+            Attachment -> model CONTEXT (NOT equivalent to FileTool read).
+   LAYER:   Host + (NEW) attachment context contract
+   FILES:   SAF picker (Activity) + attachment model + how attachments enter model context
+   SEVERITY: MAJOR
+   ARCH:    GAP — there is NO attachment/context contract today. "Attachment enters model
+            context" is NOT the same as FileTool read. Implementing it requires deciding how
+            attachment content is injected into the Run (e.g. an instruction/context block or
+            a new input channel). This MAY touch Core (how context reaches the model) — flag
+            as a contract decision. For V1, the SAF picker + chips are presentation; the
+            "into model context" mechanism is the open item. Per design §23, do NOT invent a
+            temp input protocol for the UI; mark GAP and resolve in a scoped step.
+   NEXT:    Flag in CONTROLS step; resolve the attachment->context mechanism (may be a small
+            Core/Run-options addition) BEFORE building the picker UX.
+   ATTACHMENT_CONTEXT = GAP (SAF picker = presentation; context-injection = contract decision)
+
+G17 Model / Effort selector
+   CURRENT: NO model picker; NO effort (config has no effort field).
+   TARGET:  "Model · Effort" on main surface; tap to switch model + effort.
+   LAYER:   Presentation + Provider config (effort)
+   FILES:   composer label + provider config (effort field) + wire
+   SEVERITY: MAJOR
+   ARCH:    MODEL = presentation (read active model from config). EFFORT = Provider config/wire
+            addition (flag). Do NOT fake effort for unsupported providers (design §24).
+   NEXT:    Model label in SHELL; effort wiring scoped (provider) if required in CONTROLS.
+
+G18 Provider / API Key Settings page
+   CURRENT: Provider Spinner + endpoint on main surface; config file read-only; no Save/Test.
+   TARGET:  Provider/API Key/Endpoint in Settings; Test Connection + Save.
+   LAYER:   Host UI (re-place) + Host (write path for Save)
+   FILES:   settings layout + ChatActivity + DeviceLocalProviderConfigLoader (write) if Save
+   SEVERITY: MINOR
+   ARCH:    NO (re-place existing; Save = additive host write; REUSE existing config loader)
+   NEXT:    AG.UI-CONTROLS-1 (settings page). Reuse config system; do NOT build a second one.
+
+G19 ADB indicator (header dot + sidebar)
+   CURRENT: "AT: <status>" text line + Reconnect + Pair on main surface.
+   TARGET:  Header ADB ● + sidebar Connected/Connecting/Disconnected + Reconnect + reason.
+   LAYER:   Presentation (re-place)
+   FILES:   header + sidebar layout + ChatActivity
+   SEVERITY: MINOR
+   ARCH:    NO (status + reconnect + readinessState all exist; re-place)
+   ADB_STATUS_READY = YES ; ADB_RECONNECT_READY = YES
+   NEXT:    AG.UI-SHELL-1 (header) + AG.UI-CONTROLS-1 (sidebar ADB block).
+
+G20 DebugBridge
+   CURRENT: TCP JSONL 0.0.0.0:45678 (debug builds only); shares AgentRuntime.send + event stream.
+   TARGET:  PRESERVE / REUSE / DO NOT REBUILD; UI/Debug same action path.
+   LAYER:   Debug (preserve)
+   FILES:   DebugBridge.kt (no rebuild)
+   SEVERITY: POLISH (no change) — but see G21 for the optional stop command.
+   ARCH:    NO
+   DEBUG_BRIDGE = PRESERVE
+   NEXT:    Keep as-is; optionally add a "stop" client command (G21).
+
+G21 Debug stop command (optional)
+   CURRENT: NO debug stop command (ClientMessage has no stop).
+   TARGET:  (design §24 wants UI Stop / Debug Stop to share the interrupt path)
+   LAYER:   Debug protocol (additive)
+   FILES:   DebugProtocol.kt (new ClientMessage.Stop) + DebugBridge.handleStop
+   SEVERITY: MINOR (nice-to-have; not a V1 blocker — UI Stop already works)
+   ARCH:    NO (calls the SAME AgentRuntime.interruptActiveRun; protocol-compatible; older
+            clients ignore unknown type)
+   NEXT:    Optional; can be folded into CONTROLS or a small debug step. Not required for V1.
+
+G22 Session Browser (list/switch/rename)
+   CURRENT: Only "New Session" button. No list/switch/rename. title field exists (nullable,
+            never populated). No list-all query; no switchToSession.
+   TARGET:  + New Session / Sessions list / Today-Yesterday / Current highlight / Rename.
+   LAYER:   Host UI + Host+Store (list query) + Host+Runtime (switch)
+   FILES:   sidebar + TopicSessionStore.listSessions (additive) + DAO query +
+            Runtime/Host switchToSession + rename (updateTitle or presentation label)
+   SEVERITY: MAJOR
+   ARCH:    BOUNDARY ITEM — adding TopicSessionStore.listSessions() extends the frozen
+            ag-runtime TopicSessionStore CONTRACT (additive method; NO schema change; the
+            table + last_used_at index already exist). switchToSession is a Runtime/Host seam.
+            This is the one item that touches a frozen contract surface. Per §36, flag it:
+            it is ADDITIVE (not a rewrite) and does NOT break frozen semantics (D1/D2/D3,
+            sequence ownership, ordering). Verdict: FREEZE_REOPEN_REQUIRED = NO for the SCHEMA,
+            but the STORE CONTRACT needs a small additive extension — record as a scoped
+            contract addition (not a reopen). See verdict.
+   NEXT:    AG.UI-CONTROLS-1 (session browser) — includes the additive store query + switch seam.
+
+G23 Product identity (icon/version/label)
+   CURRENT: applicationId com.androidagent.app; versionCode 1; versionName 0.1.0; label
+            "AndroidAgent"; icon = @android:drawable/sym_def_app_icon (DEFAULT); minSdk 26;
+            targetSdk 34; theme DayNight.DarkActionBar.
+   TARGET:  (for AG.UI-RELEASE-FREEZE-1) real launcher icon, version bump, final label/theme.
+   LAYER:   Resources / manifest
+   FILES:   AndroidManifest.xml + mipmap icons + build.gradle.kts (version)
+   SEVERITY: DEFERRED (explicitly a RELEASE-FREEZE step, not V1 UI)
+   ARCH:    NO
+   NEXT:    AG.UI-RELEASE-FREEZE-1 (gap list captured here).
+
+G24 Host Action normalization (UI/Debug share entry)
+   CURRENT: Action semantics mostly in Runtime/SessionHolder, but Activity callbacks own
+            busy juggling + pre-checks + debug wiring; Debug send already shares runtime.send.
+   TARGET:  UI callback -> Host Action -> Runtime ; Debug command -> SAME Host Action.
+   LAYER:   Host (refactor)
+   FILES:   new Host Action layer (Send/Stop/NewSession/...) + ChatActivity + DebugBridge
+   SEVERITY: MINOR (cleanliness; not user-visible)
+   ARCH:    NO (host-only; does not cross Core/Runtime)
+   HOST_ACTION_NORMALIZATION_NEEDED = POSSIBLE (recommended, low risk)
+   NEXT:    Optional; can be done in SHELL/CONTROLS as the UI is restructured.
+
+DEFERRED (design §28 — NOT V1 blockers; do NOT list as blockers):
+  Grok-style Turn switching, Focus View, pinch zoom, complex animation, strict Redo/Unrevert,
+  arbitrary historical Fork, Checkpoint UI, Export, complex syntax highlighting, Voice,
+  new Debug protocol, second Debug runtime, architecture redesign, Gradle/module redesign.
+
+SUMMARY COUNTS (V1-relevant, excluding DEFERRED):
+  BLOCKER = 0
+  MAJOR   = G1,G2,G3,G4,G5,G6,G7,G11,G12,G13,G15,G16,G17,G22  (14)
+  MINOR   = G8,G9,G10,G14,G18,G19,G21,G24  (8)
+  POLISH  = G20  (1)
+  DEFERRED = G23 (release identity) + all §28 items
+  NOTE: G12 (Retry) and G16 (Attachment context) carry the only ARCH=POSSIBLE/GAP notes;
+        neither forces a Core/Runtime REWRITE. G22 is the one frozen-CONTRACT additive item.

@@ -1,0 +1,30 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — Provider Startup Diagnosis
+
+## 现象
+- `provider.local.json` 存在于设备 filesDir (run-as 确认, 193 bytes)
+- `tryDeviceLocalConfig loadResults={OPENROUTER=Missing, EMG=Loaded}`
+- `switchNode(EMG) -> Applied`
+- `ensureDebugBridge` 在 `onCreate` 中调用 (整改后)
+- `bridge.start()=true`, logcat 显示 `debug bridge listening on 0.0.0.0:45678`
+
+## 根因 (历史: bridge 未启动)
+整改前: `ensureDebugBridge()` 只在 `applyConfig` 内调用, 而 `applyConfig` 只在
+`switchNode` Applied 分支执行。若 provider load 失败 (Rejected), bridge 永远不启动。
+
+整改后: `ensureDebugBridge()` 移到 `onCreate` 最前面 (provider switch 之前),
+bridge 的 provider lambdas 全部动态读 SessionHolder, 不依赖 provider ready。
+
+## 当前状态
+- Provider EMG Applied 成功 (fixture-stream, 127.0.0.1:18080)
+- DebugBridge 启动成功 (0.0.0.0:45678, tcp6 dual-stack)
+- adb forward tcp:45678 tcp:45678 工作正常
+- PC 侧 ping/snapshot 均 PASS
+
+## 网络限制
+设备在移动数据网络 (10.5.64.95), 非 Wi-Fi。
+adb reverse tcp:18080 tcp:18080 已设置但设备无法到达 PC fixture (127.0.0.1:18080)。
+curl 从设备测试 127.0.0.1:18080 和 192.168.5.1:18080 均无响应。
+这是设备/网络环境限制, 非产品 bug。
+
+PROVIDER_STARTUP_ROOT_CAUSE = ensureDebugBridge 曾在 provider Applied 之后才调用 (已修)
+PROVIDER_STARTUP_FIX = ensureDebugBridge 移到 onCreate 最前面, bridge 动态读 SessionHolder

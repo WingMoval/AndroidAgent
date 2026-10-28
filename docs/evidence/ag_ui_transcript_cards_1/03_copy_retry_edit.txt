@@ -1,0 +1,81 @@
+AG.UI-TRANSCRIPT-CARDS-1 — Copy / Retry / Edit & Resend
+
+日期: 2026-10-27
+
+============================================================
+Copy
+============================================================
+
+实现: ClipboardManager
+  val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+  clipboard.setPrimaryClip(ClipData.newPlainText("Transcript", text))
+
+范围: 只复制当前 block 正文
+  User: block.text
+  Thought: block.text
+  Assistant: block.text
+  Shell: block.command (只复制命令，不复制 "$ " 前缀)
+  Result: block.text
+  Failure: block.text
+  Interrupted: block.text
+
+不自动复制整个 transcript。
+
+============================================================
+Retry / "重做"
+============================================================
+
+UI: "↻" icon (ic_menu_rotate)
+内部语义: Retry / Re-run originating User Turn
+不是: Strict Redo / History rollback / Undo / Rewind
+
+行为:
+  1. 点击 Retry 按钮
+  2. findOriginUserText(position): 向后扫描找 nearest User block
+  3. onRetry(originText) → ChatActivity.retrySend(text)
+  4. retrySend → HostActions.send(text)
+  5. 作为新 User Turn 发送
+  6. 旧历史不删除、不修改
+
+RETRY_CREATES_NEW_TURN = YES
+RETRY_MUTATES_HISTORY = NO
+
+范围:
+  UserCard Retry: 直接发送 block.text
+  AssistantCard Retry: 找 origin User → send
+  FailureCard Retry: 找 origin User → send
+  InterruptedCard Retry: 找 origin User → send
+
+Active Run 时:
+  isBusy = true → Retry 按钮 GONE
+  不允许第二个 active Run。
+
+文案:
+  accessibility / More 文案: "重新发送为新一轮"
+  避免用户误以为是回滚历史。
+
+============================================================
+Edit & Resend
+============================================================
+
+触发: UserCard More → "Edit & Resend"
+行为:
+  1. 读取旧 User text
+  2. input.setText(oldText) — 放回 Composer
+  3. input.setSelection(text.length)
+  4. input.requestFocus()
+  5. 用户编辑
+  6. 点击 Send → 生成新 UserMessage
+
+禁止: 修改旧 durable Message。
+
+============================================================
+More Menu
+============================================================
+
+UserCard More (ic_menu_more):
+  PopupMenu:
+    - Copy → copyToClipboard(userText)
+    - Edit & Resend → onEditResend(userText)
+
+其他 Card 无 More 菜单。

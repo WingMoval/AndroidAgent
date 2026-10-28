@@ -118,6 +118,9 @@ class StoreMessageDurabilityTest {
         ) {
         }
 
+        override suspend fun listSessions(): List<TopicSessionRecord> =
+            sessions.map { TopicSessionRecord(it, 0, 0) }
+
         private fun typeOf(m: com.androidagent.core.Message): String = when (m) {
             is UserMessage -> "USER"
             is ModelMessage -> "MODEL"

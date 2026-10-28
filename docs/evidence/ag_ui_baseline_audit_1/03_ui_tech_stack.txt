@@ -1,0 +1,31 @@
+AG.UI-BASELINE-AUDIT-1 — UI Tech Stack Verdict
+
+UI_TECH_STACK = XML/View based (NOT Compose, NOT Hybrid)
+
+Evidence:
+  - build.gradle.kts: plugins = com.android.application + kotlin(android) + KSP.
+    No Compose plugin, no compose BOM, no Compose compiler. The module comment
+    itself states: "the UI stays deliberately minimal — no Compose, no DI, no
+    Navigation, no Room, no third-party HTTP client" (Room was later added for
+    persistence only; the UI is still plain Views).
+  - res/layout/activity_chat.xml: a <ScrollView> root with a <LinearLayout>
+    (vertical) containing plain widgets: TextView (title), Spinner
+    (provider_node), TextView (provider_endpoint), Button (reconnect),
+    EditText (pairing_code) + Button (pair), TextView (status), View (divider),
+    TextView (transcript, textIsSelectable=true), EditText (input), and a
+    horizontal LinearLayout with Button send / stop / new_session.
+  - ChatActivity extends AppCompatActivity; it references views directly
+    (findViewById-style), wires Spinner onItemSelected, Button onClick.
+  - No Fragment, no Navigation component, no ViewModel, no Compose.
+
+Implication for VNext:
+  The current surface is a vertical stack that grows with content (whole-page
+  ScrollView). The VNext target (fixed Header / fixed Conversation Viewport /
+  fixed bottom Composer with internal transcript scroll + Cards) requires
+  restructuring this single layout into a fixed 3-zone frame, and replacing the
+  single transcript TextView with a card-based scrollable list (RecyclerView
+  or a custom card container). This is a PRESENTATION-ONLY change: no Compose
+  migration is required or implied by the design SSOT (which is framework-
+  agnostic); it can be done in XML/View to stay consistent with the current
+  stack. (Choosing Compose for VNext would itself be a larger decision and is
+  NOT required by the design; default = keep XML/View.)

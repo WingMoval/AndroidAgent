@@ -1,0 +1,11 @@
+AG.UI-SHELL-1.CALLBACK-DEBUG-AUTOMATION — Gate G: New Session (Debug)
+
+Before: currentSessionId = session-7221a867-8cdc-41f3-88b3-e1ec20ea0cd2
+Command: {"type":"new_session"}
+Response: {"type":"new_session_result","success":true}
+After: currentSessionId = session-f8dcc375-b0e...
+
+Session changed: YES
+UI status text updated: "New session started." (verified via uiautomator dump)
+
+GATE_G_NEW_SESSION = PASS

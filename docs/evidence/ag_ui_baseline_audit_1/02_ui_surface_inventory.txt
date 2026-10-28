@@ -1,0 +1,44 @@
+AG.UI-BASELINE-AUDIT-1 — Current UI Surface Inventory
+
+app/src/main (full inventory):
+  AndroidManifest.xml
+  java/com/androidagent/app/AgentInstructions.kt        (Host-owned Agent instructions, frozen)
+  java/com/androidagent/app/ChatActivity.kt             (594 lines; the ONLY Activity)
+  java/com/androidagent/app/ChatCompositionRoot.kt      (205 lines; Composition Root)
+  java/com/androidagent/app/CompositionAdbSemantic.kt   (82 lines; Host ADB semantic bridge)
+  java/com/androidagent/app/DeviceLocalProviderConfig.kt(150 lines; ProviderNode + loader)
+  java/com/androidagent/app/HostStatusModel.kt          (90 lines; pure status mapping)
+  java/com/androidagent/app/SessionHolder.kt            (337 lines; process-scoped Session)
+  java/com/androidagent/app/TranscriptModel.kt          (428 lines; Block model + render)
+  java/com/androidagent/app/debug/DebugBridge.kt        (544 lines; TCP JSONL server)
+  java/com/androidagent/app/debug/DebugProtocol.kt      (382 lines; pure protocol)
+  java/com/androidagent/app/persistence/Daos.kt         (Room DAOs)
+  java/com/androidagent/app/persistence/Entities.kt     (Room entities)
+  java/com/androidagent/app/persistence/RoomTopicSessionStore.kt
+  java/com/androidagent/app/persistence/StoreMessageDurability.kt
+  java/com/androidagent/app/persistence/TopicSessionDatabase.kt
+  java/com/androidagent/app/provider/AndroidOpenAiHttpTransport.kt
+  java/com/androidagent/app/trace/AgentTrace.kt
+  java/com/androidagent/app/trace/AgentTraceCollector.kt
+  java/com/androidagent/app/trace/TraceFormatter.kt
+  res/layout/activity_chat.xml                          (124 lines; the ONLY layout)
+  res/values/strings.xml                                (1 string: app_name)
+  res/values/themes.xml                                 (1 style: Theme.AndroidAgent)
+
+UI SURFACE FACTS:
+  Activities        = 1 (ChatActivity, LAUNCHER + MAIN)
+  Fragments         = 0
+  Compose           = 0 (no Jetpack Compose)
+  XML layouts       = 1 (activity_chat.xml)
+  RecyclerView      = NONE
+  ScrollView        = 1 (root; whole-page scroll)
+  ViewBinding       = NONE (findViewById-style direct references)
+  DataBinding       = NONE
+  custom Views      = 0
+  theme             = Theme.AppCompat.DayNight.DarkActionBar (NOT light-priority)
+  launcher icon     = @android:drawable/sym_def_app_icon (DEFAULT system icon)
+
+The app is a single-Activity, single-layout, XML/View-based host. The entire
+chat surface (provider selector + ADB pair + status + transcript + input +
+Send/Stop/NewSession buttons) is one vertically-stacked LinearLayout inside a
+whole-page ScrollView.

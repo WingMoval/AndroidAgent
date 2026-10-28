@@ -1,0 +1,128 @@
+AG.UI-SHELL-1.VISUAL-ALIGNMENT — 真机视觉验收证据
+
+日期: 2026-10-27
+设备: HONOR ALI-AN00 APLMUT4312005935, Android 15 (屏幕 1200x2652)
+APK: debug build (visual alignment applied)
+截图: visual_alignment_screenshot.png (同目录)
+
+============================================================
+V1: Header Hierarchy
+============================================================
+workspace_header bounds: [0,130][1200,286]
+  高度 = 286-130 = 156px ≈ 44dp (从 56dp/182px 收紧)
+  无 elevation, 无 shadow
+  标题 "AndroidAgent" 字号 14sp, textStyle=normal (非 bold)
+  Hamburger icon 48dp touch target, 简洁 icon
+  左右 padding: start=8dp, end=12dp (自然)
+V1 = PASS
+
+============================================================
+V2: ADB Compact Summary
+============================================================
+Header ADB 区域显示:
+  "ADB" label (ws_text_label 11sp, ws_text_secondary)
+  + 8dp dot (adb_dot, 颜色 = ws_adb_disconnected #B0B4B8)
+  + 状态文本 (adb_label, 11sp, 保留 accessibility)
+
+adb_dot bounds: [763,195][789,221] → 26x26px ≈ 8dp ✓
+adb_label: "ADB disconnected" (完整状态文本保留, 供 accessibility)
+contentDescription on dot: "ADB disconnected" ✓
+
+主 Header 不再显示大段状态文本如 "ADB disconnected" 独占空间。
+详细状态 (Disconnected/Pairing/Reconnect/错误原因) 仍在 Sidebar ADB section。
+V2 = PASS
+
+============================================================
+V3: Workspace Background
+============================================================
+workspace_root background: @color/ws_workspace_bg = #F4F5F7
+  very light neutral gray-white
+  无 gradient, 无图案, 无大块颜色
+  区别于系统默认纯白 Activity 背景
+V3 = PASS
+
+============================================================
+V4: Compact Status
+============================================================
+status bounds: [0,2318][1200,2405]
+  高度 = 87px ≈ 24dp (compact)
+  位置: Composer 上方, Viewport 下方
+  颜色: ws_text_hint (#9AA0A6) — 低存在感
+  字号: ws_text_caption (12sp)
+  padding: top=4dp, bottom=4dp
+  不像 Conversation message (无 card, 无 bubble)
+V4 = PASS
+
+============================================================
+V5: Composer is One Visual Unit
+============================================================
+composer bounds: [26,2418][1174,2626]
+  单一 LinearLayout, background=@drawable/ws_composer_surface
+  (白色 + 1dp border #D8DADD + 12dp 圆角)
+  无重 shadow
+  内部 padding: 10dp (composer_padding)
+
+  内含:
+    - btn_context (hidden, visibility=gone)
+    - input (EditText, background=@null, 无自身 pill)
+    - model_label (TextView, 11sp hint 色)
+    - send/stop FrameLayout (48dp touch target)
+
+  三个控件属于同一视觉容器, 不再割裂。
+V5 = PASS
+
+============================================================
+V6: Model Label Inside Composer
+============================================================
+model_label bounds: [695,2494][972,2550]
+  在 composer [26,2418][1174,2626] 内部 ✓
+  text="fixture-stream" (真实 model 值)
+  颜色: ws_text_hint (#9AA0A6)
+  字号: ws_text_label (11sp)
+  低视觉权重, secondary label
+  无 effort 标签 (High/Medium/Low 未实现)
+V6 = PASS
+
+============================================================
+V7: Send is Compact and Restrained
+============================================================
+send bounds: [1004,2463][1121,2580]
+  尺寸 = 117x117px ≈ 36dp (非 48dp 巨型)
+  外层 FrameLayout 48dp touch target (满足最小触控)
+  背景: ws_send_btn (36dp 圆角方形, 8dp 圆角, #3B82F6)
+  非圆形 FAB, 非巨型蓝色圆
+  颜色保持 restrained (中等蓝, 非高饱和)
+V7 = PASS
+
+============================================================
+V8: No Giant Blue FAB-style Send
+============================================================
+  旧: ws_primary_circle (oval, 48dp, #1F6FEB) — 已不再使用
+  新: ws_send_btn (rectangle 36dp, 8dp 圆角, #3B82F6)
+  Send 不再是最抢眼元素, 与 Composer 融合
+V8 = PASS
+
+============================================================
+V9: Fixed Viewport/Header/Composer Still Hold
+============================================================
+  Header: [0,130][1200,286] — fixed at top ✓
+  Viewport: transcript_scroll [0,289][1200,2318] — fills middle ✓
+  Status: [0,2318][1200,2405] — compact, fixed ✓
+  Composer: [26,2418][1174,2626] — fixed at bottom ✓
+  三段式结构保持, 只有 Viewport 内部滚动
+V9 = PASS
+
+============================================================
+附加验证
+============================================================
+- + slot (btn_context): visibility=gone, 不显示无功能 + ✓
+- Input: background=@null (去掉自身 pill), hint "Message…" ✓
+- Input: 支持多行 (textMultiLine, maxLines=5) ✓
+- Sidebar: 保持原结构, 视觉语言一致 (neutral palette, 相同 typography) ✓
+- Send/Stop 行为不变: 仍委托 HostActions.send/stop ✓
+- 空 Viewport: 干净空白, 无欢迎卡/假消息 ✓
+
+============================================================
+结论
+============================================================
+SHELL_VISUAL_ALIGNMENT = PASS

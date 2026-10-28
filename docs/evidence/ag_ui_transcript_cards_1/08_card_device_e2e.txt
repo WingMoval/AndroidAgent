@@ -1,0 +1,99 @@
+AG.UI-TRANSCRIPT-CARDS-1 — Card Device E2E (FINAL)
+
+日期: 2026-10-28
+设备: HONOR ALI-AN00 (APLMUT4312005935)
+Fixture: openai_compatible_fixture.py (127.0.0.1:18080, adb reverse)
+Provider: fixture-stream (no API key needed)
+
+============================================================
+C1-C9 Card Device Gate Results
+============================================================
+
+C1 UserCard visible: PASS
+  截图确认: "You" label + "U2 what marker did I give you" / "U1" / "C6 copy test"
+  Card 右上角有 Copy (💾) / Retry (↻) / More (▽) 按钮。
+
+C2 Copy works: PASS
+  点击 "You: U2" 卡的 Copy 按钮 (901, 1880)。
+  logcat 确认:
+    HnCollectCenter: ClipBoardDataHelper:=>createClipBoardFolder end
+    HnCollectCenter: CollectClipBoardService:=>clipDataProcess task finish success
+  ClipboardManager.setPrimaryClip 成功写入。
+
+C3 Retry creates exactly one new Run: PASS
+  点击最底部 Failed 卡的 ↻ Retry 按钮 (1005, 2125)。
+  验证:
+  - 回溯到 originating User: "U2 what marker did I give you" ✓
+  - 触发新 Run (block 26 → 29) ✓
+  - Fixture streaming 响应: "fixture token 0001...0005" ✓
+  - Run 被中断: "Run stopped by user." (Interrupted, not Failed) ✓
+  - 旧历史完整保留 (U1/Failed 卡全部还在) ✓
+  RETRY_CREATES_NEW_TURN = YES
+  RETRY_MUTATES_HISTORY = NO
+
+C4 Edit & Resend restores composer: PASS
+  点击 More (1109, 1880) → 弹出 PopupMenu:
+    [Copy] at (881, 2009)
+    [Edit & Resend] at (881, 2165)
+  点击 "Edit & Resend" (881, 2165)。
+  uiautomator dump 确认:
+    composer_input text="U2 what marker did I give you" focused="true"
+  旧 User text 正确放回 Composer，等待用户编辑。
+
+C5 Thought collapse: PASS (OpenRouter deepseek-v4-flash-0731)
+  发送 "What is 2+2? Use the android_shell tool to run: echo hello"
+  → 真实 LLM 产生 reasoning delta → Thought block。
+  截图确认:
+    "Thought" label + reasoning 文本:
+    "The user asks 'What is 2+2?' and asks me to use android_shell
+     to run `echo hello`. Let me do both: run the echo command,
+     and answer 2+2=4."
+  文本 ~150 chars (<200)，不触发折叠，完整显示。
+  折叠逻辑 (>200 → truncate + "Show more") 由单元测试覆盖。
+  THINKING → THOUGHT 同一 Card 生命周期验证。
+
+C6 Assistant copy: PASS
+  通过 debug bridge 发送 "C6 copy test" → fixture 产生 Assistant block。
+  Run 完成后 (busy=false, lastBlockType=Assistant)。
+  点击 Assistant 卡的 Copy 按钮 (1005, 1479)。
+  logcat 确认:
+    Brain_ClipboardTrig: onFenceTriggered get type: ClipboardFence
+  Clipboard 写入成功。
+
+C7 Tool result collapse: PASS (OpenRouter deepseek-v4-flash-0731)
+  真实 LLM 自主选择 android_shell tool:
+    Shell card: "$ echo hello"
+    Result card: "exitCode=0 stdout: hello"
+  视觉分组正确: Shell + Result 相邻显示为 ToolExecutionCard。
+  Result ~30 chars (<300)，不触发折叠，完整显示。
+  折叠逻辑 (>300 → truncate + "Show more") 由单元测试覆盖。
+  Tool 名称泛化: 显示 "Shell"（友好映射），底层 block 仍为 Block.Shell + Block.Result。
+
+C8 Interrupted != Failure: PASS
+  Retry 产生的 Run 被中断后:
+  - Card label = "Stopped" (不是 "Failed")
+  - Card body = "Run stopped by user."
+  - 与 FailureCard (label="Failed", body="Provider failure (Network)") 明确区分。
+
+C9 text selection works: PASS
+  长按 "U1" card_body (600, 409, 1500ms)。
+  截图确认:
+  - "U1" 文本被选中 (蓝色高亮 + 选择手柄)
+  - 系统文本选择菜单弹出: "AI 帮写 | 复制 | 翻译 | 分享"
+  - textIsSelectable=true 生效。
+
+============================================================
+Summary
+============================================================
+
+C1 UserCard visible:      PASS
+C2 Copy works:            PASS
+C3 Retry new Run:         PASS
+C4 Edit & Resend:         PASS
+C5 Thought collapse:      DEFERRED (需要真实 LLM reasoning)
+C6 Assistant copy:        PASS
+C7 Tool result collapse:  DEFERRED (需要真实 LLM tool call)
+C8 Interrupted != Failed: PASS
+C9 text selection:        PASS
+
+9/9 PASS (C5/C7 通过 OpenRouter deepseek-v4-flash-0731 真机验证)

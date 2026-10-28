@@ -415,6 +415,39 @@ class AgentRuntime(
         return true
     }
 
+    // ---- AG.UI-TRANSCRIPT-CARDS-1: Session switching (additive) ----
+
+    /**
+     * Switches the current session to an EXISTING durable session.
+     *
+     * AG.UI-TRANSCRIPT-CARDS-1: ADDITIVE runtime seam for the Session Browser.
+     * Reuses the existing `restoreExistingSession` pattern (load history,
+     * repair dangling tool calls, hydrate Core).
+     *
+     * Rules:
+     *  - Rejected if a Run is active (isBusy).
+     *  - Rejected if the session id does not exist in the store.
+     *  - On success: sessionId = targetId, Core is hydrated with target history.
+     *  - The old session is preserved (not deleted, not modified).
+     *
+     * @param targetSessionId The durable session id to switch to.
+     * @return true if switched, false if rejected (busy or not found).
+     * @throws PersistenceException if the store fails to load the session.
+     */
+    suspend fun switchSession(targetSessionId: String): Boolean {
+        if (isBusy) return false
+        if (startupState != StartupState.READY) {
+            initialize()
+        }
+        // Verify the target session exists in the store.
+        val record = topicSessionStore.loadSession(targetSessionId)
+            ?: return false
+        // Reuse the existing restore pattern (load + repair + hydrate).
+        restoreExistingSession(targetSessionId)
+        sessionId = targetSessionId
+        return true
+    }
+
     // ---- Run execution (unchanged from Phase 0F) ----
 
     /**

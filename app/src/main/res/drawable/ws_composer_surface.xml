@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AG.UI-SHELL-1 — Composer unified surface: white, thin border, light rounded corners. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/ws_surface" />
+    <corners android:radius="@dimen/ws_composer_corner" />
+    <stroke android:width="1dp" android:color="@color/ws_border" />
+</shape>
