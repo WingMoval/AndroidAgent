@@ -1,0 +1,62 @@
+AG.ARCH-DOC-AUDIT-0 — 05 CORE / RUNTIME OWNERSHIP
+Per current code + POST-I freeze §4 + AGENTS.md.
+
+AG CORE (com.androidagent.core, 11 production files, pure JVM):
+  AgentCore.kt        Agent loop (driveLoop), run lifecycle, interrupt
+                      reconciliation, MessageDurability integration (D1/D2/D3),
+                      restoreSession(), run exclusivity (tryBeginRun/endRun).
+  Session.kt          TopicSession domain: ordered List<Message>, restoreHistory.
+  Message.kt          UserMessage / ModelMessage (embeds ToolCalls) /
+                      ToolResultMessage; seq ownership by persistence.
+  Model.kt            ModelProvider contract, ModelTurn (FinalAnswer | ToolCalls
+                      with same-turn content), ModelRequest.
+  Tool.kt             Tool contract, ToolSpec, ToolResult, ToolCall.
+  ToolRegistry.kt     registry: register/lookup/dispatch (no typed schema).
+  ToolApproval.kt     allow/deny policy.
+  AgentEvent.kt       event stream (observation sink).
+  RunOutcome.kt       Answer / Interrupted / Failure (incl. DurabilityFailure).
+  MessageDurability.kt storage-agnostic commit contract + Noop.
+  AgCoreMarker.kt     marker.
+
+  CORE DOES NOT KNOW: Room, SQLite, DAO, Android, AT, provider wire formats,
+  HTTP, JSON, API keys, database paths.
+
+AGENT RUNTIME (com.androidagent.runtime, 4 production files, pure JVM):
+  AgentRuntime.kt     process-scoped Agent lifecycle; TopicSession startup
+                      (initialize: restore-or-create); current session
+                      selection; single-active-run Job ownership;
+                      interruptActiveRun() (cancels execution Job); durable
+                      write orchestration via TopicSessionStore; dangling
+                      repair orchestration; Core hydration; currentHistory();
+                      switchSession() + listSessions() (ADDITIVE, UI-era).
+  persistence/TopicSessionStore.kt  storage-agnostic contract
+                      (save/restore/listSessions).
+  persistence/Records.kt            durable record types.
+  persistence/MessageSerializer.kt  JSON (de)serialization boundary
+                      (kotlinx-serialization-json, tree API only).
+
+  RUNTIME DOES NOT: write SQL, hold DB connections, touch Android/AT,
+  own presentation.
+
+GOD-OBJECT CHECK (Runtime):
+  AgentRuntime.kt is the single largest orchestration class; it grew
+  additively: session init -> durability orchestration -> interrupt Job
+  ownership -> listSessions/switchSession (UI-era, additive seams).
+  All added responsibilities are within the frozen "Agent Runtime owns"
+  list of POST-I freeze §4 EXCEPT listSessions/switchSession which postdate
+  the freeze but are additive query/switch seams that do not move
+  ownership across layers (session selection was already Runtime-owned).
+  VERDICT: NOT a God Object; responsibilities remain single-domain
+  (process-scoped session/run orchestration). WATCH only if further
+  conversation-control semantics (rewind) are added without a new step.
+
+CORE-OWNED vs RUNTIME-OWNED vs HOST-OWNED (current):
+  history SSOT (live domain)      = AG Core Session
+  history SSOT (durable)          = Room DB (:app), via Runtime orchestration
+  session id generation           = Runtime (not Host, not Core)
+  active Run Job                  = Runtime (Host must NOT hold it)
+  interrupt decision (user Stop)  = Runtime.interruptActiveRun()
+  interrupt semantics             = Core (RunOutcome.Interrupted, synthetic T)
+  transcript rendering state      = Host TranscriptModel (projection only)
+  live process holder             = Host SessionHolder
+  UI                              = Host ChatActivity / TranscriptCardAdapter

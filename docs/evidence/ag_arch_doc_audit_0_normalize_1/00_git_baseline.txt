@@ -1,0 +1,34 @@
+AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 — 00 GIT BASELINE
+Date: 2026-10-28
+
+START_BRANCH   = main
+START_HEAD     = edfc603eadb0067bd010c04ca26b4bc28de2e685
+               (verified via git rev-parse HEAD; the audit doc's
+                edfc603...de285 was a transcription typo — C0)
+WORKTREE_BEFORE =
+  TRACKED_DIRTY:
+    D upload/AG.UI-TRANSCRIPT-CARDS-1.evidence.txt   (deleted from disk)
+    D upload/AG.UI-TRANSCRIPT-CARDS-1.md             (deleted from disk)
+  UNTRACKED:
+    docs/audit/AG.ARCH-DOC-AUDIT-0.md
+    docs/evidence/ag_arch_doc_audit_0/
+    docs/implementation/AG.UI-TRANSCRIPT-CARDS-1.CLOSEOUT-MERGE-0.md
+    upload/AG.ARCH-DOC-AUDIT-0.evidence.txt
+    upload/AG.ARCH-DOC-AUDIT-0.md
+    upload/AG.POST-I-ARCHITECTURE-FREEZE-V1.md
+    upload/AG.TOPIC-SESSION-ARCHITECTURE-FREEZE-0.md
+    upload/AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0_FINAL.md
+    upload/AGENTS.md
+    upload/AT_TO_AG_HANDOFF_CURRENT.md
+    upload/AndroidAgent_Architecture_Capability_Map_v1.0.md
+    upload/AndroidAgent_Master_Roadmap.md
+    upload/AndroidAgent_总体架构.md
+
+NOTE: the two deleted tracked upload files were removed from disk by an
+external change after the previous turn (they existed at commit edfc603).
+The deletion is NOT part of this Step: it is NOT staged, NOT restored, NOT
+hidden. It is reported in the Final Report. The canonical content of
+AG.UI-TRANSCRIPT-CARDS-1 remains in docs/implementation/ and in the commit
+history.
+
+REMOTE = none (PUSH = N/A)

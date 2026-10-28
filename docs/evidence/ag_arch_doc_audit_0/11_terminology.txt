@@ -1,0 +1,74 @@
+AG.ARCH-DOC-AUDIT-0 — 11 TERMINOLOGY (canonical vocabulary)
+
+PRODUCT / SYSTEMS
+  AG                  = AndroidAgent (this project) — Agent intelligence/runtime.
+  AG Engine           = AG Core + Agent Runtime (logical, = :ag-core + :ag-runtime).
+  AG Core             = :ag-core, com.androidagent.core — intelligence/domain kernel.
+  Agent Runtime       = :ag-runtime, com.androidagent.runtime — host-neutral
+                        lifecycle/session orchestration.
+  AGA                 = Android GUI host product (= :app). "AGA" also used in
+                        step IDs for host-side steps.
+  AGC                 = future CLI/TUI frontend (NOT IMPLEMENTED; shares
+                        AG Engine). Do not confuse with "AG Core".
+  AT                  = AndroidTerminal (external project).
+  AT Engine / AT Core = AT execution kernel (ADB transport, shell/PTY exec,
+                        identity/pairing). "AT Core" = older name used in
+                        AGENTS.md rules; "AT Engine" = name in V4-era docs.
+                        Same system.
+  Tool Layer          = concrete tool modules, one per capability (no central
+                        framework module).
+
+CONVERSATION DOMAIN (frozen)
+  TopicSession        = durable long-lived conversation (stable id, ordered
+                        messages, survives restart). == "Session" in most docs
+                        after TopicSession freeze.
+  Run                 = transient: one user input -> terminal outcome.
+  ModelCall           = transient single provider request.
+  Message             = UserMessage | ModelMessage (embeds ToolCalls) |
+                        ToolResultMessage; durable, seq-ordered.
+  Durable Message     = message committed via MessageDurability (D1/D2/D3).
+  Transcript          = user-visible rendering. TranscriptModel = presentation
+                        projection ONLY (not SSOT).
+  RunOutcome          = Answer | Interrupted | Failure.
+
+CONVERSATION CONTROL (frozen 3-layer vocabulary)
+  Stop                = UI-layer term (the button).
+  Interrupt /
+  Interrupted         = AG semantic layer (RunOutcome.Interrupted;
+                        "Stopped" block in transcript).
+  cancellation /
+  CancellationException = Runtime layer (coroutine cancellation of execution
+                        Job; Runtime.interruptActiveRun()).
+  Retry               = UI action: Retry-as-New-Turn (find origin user text,
+                        send again, NEW Run; history NOT mutated).
+  Redo                = DEFERRED (not never). NOT the same as Retry.
+  Rewind / Undo       = NOT IMPLEMENTED (CORE-007 RESEARCH_REQUIRED).
+  Fork / Branch       = NOT IMPLEMENTED (POST-V1 deferred).
+  Checkpoint          = NOT IMPLEMENTED.
+
+HOST / CONFIG
+  Host / Product      = :app (AGA). Composition Root + presentation + config.
+  Composition Root    = ChatCompositionRoot: constructs/registers Engine parts.
+  SessionHolder       = process-scoped live holder (NOT storage).
+  HostActions         = Host action facade (send/stop/session/provider).
+  Provider (node)     = endpoint identity (EMG, OpenRouter, custom) — a config
+                        value, NOT a class. There is exactly one concrete
+                        provider implementation (OpenAiCompatibleProvider).
+  Model               = model id string (e.g. deepseek-v4-flash-0731).
+  ProviderProfile /
+  ModelCatalog /
+  ModelDiscovery      = :app config/catalog types (UI-SHELL-1 era).
+
+DEPRECATED / CONFLATION-RISK TERMS
+  "LLMSession"        = rejected name (TopicSession survives provider changes).
+  "ATTerminalSession" = AT-side PTY session; NEVER an AG TopicSession.
+  "Host Session"      = informal for process-scoped holder state; use
+                        SessionHolder.
+  "PTY Session"       = AT-side only; not AG.
+  "Session" alone     = post-freeze means TopicSession; pre-freeze (ag-0 docs)
+                        meant in-memory Session. Check doc era.
+  "AGC"               = CLI frontend; NOT "AG Core" (both abbreviate to 3
+                        letters; historical misreading risk).
+  "EMGProvider"       = does NOT exist; EMG is an endpoint of
+                        OpenAiCompatibleProvider.
+  "Tool layer module" = forbidden concept (:tool-layer does not exist).

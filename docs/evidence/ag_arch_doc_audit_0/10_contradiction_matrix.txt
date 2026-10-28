@@ -1,0 +1,68 @@
+AG.ARCH-DOC-AUDIT-0 — 10 CONTRADICTION MATRIX
+Cross-era doc conflicts. Format: CONTRADICTION | OLD | NEW | CURRENT CANONICAL | EVIDENCE.
+
+C1. AG Core production dependencies
+  OLD (ag-0 总体架构, still in file): "AG Core 没有任何生产依赖，只依赖
+      Kotlin 标准库" / "kotlinx-coroutines 仅用于测试".
+  NEW (AG.RUN-CONTROL-1.DETERMINISTIC.FIX step doc): coroutines-core added
+      to :ag-core production (NonCancellable shielding).
+  CURRENT CANONICAL: coroutines-core IS a legitimate minimal Core production
+      dependency (pure JVM, no platform leak). The ag-0 doc is a point-in-time
+      freeze of the ag-0 state — its claim was true AT ag-0.
+  STATUS: SUPERSEDED_BUT_UNMARKED inside the ag-0 doc (it is marked FROZEN,
+  which is why the drift is low-severity: frozen docs are snapshots).
+
+C2. ag-runtime "no JSON"
+  OLD (ag-0 总体架构): ":ag-runtime 不引入 ... JSON".
+  NEW (TopicSession persistence step): kotlinx-serialization-json added.
+  CURRENT CANONICAL: Runtime owns MessageSerializer (storage-neutral JSON
+  boundary) per POST-I freeze §4. Old doc snapshot predates TopicSession.
+  STATUS: same as C1.
+
+C3. AT snapshot identity
+  OLD (AGENTS.md integration snapshot block): AT.AG-CONSUMER-FREEZE-V1,
+      c9cee21, contract DRAFT, NEXT = POST_AT_EMULATOR_0_AND_CONTRACT_1_REVIEW.
+  NEW (AT_TO_AG_HANDOFF_CURRENT.md, updated 2026-10-22): AT_V4_CONSUMER_HANDOFF,
+      7216d0e, contract FROZEN, NEXT = POST_V4_RELEASE_VALIDATION.
+  CURRENT CANONICAL: V4 (handoff file is explicitly the canonical pointer;
+  AGENTS.md defers to it). AGENTS.md block = stale residue.
+  STATUS: SUPERSEDED_BUT_UNMARKED (D4).
+
+C4. "AT Core" vs "AT Engine"
+  OLD docs: "AT Core" (AndroidTerminal execution kernel).
+  NEW docs: "AT Engine" (com.at.engine.* public API surface).
+  CURRENT CANONICAL: one system, two names for kernel vs public engine API.
+  AGENTS.md rule text ("AT Core lives in the AndroidTerminal project") remains
+  the governing statement. No semantic conflict.
+  STATUS: TERMINOLOGY only (D5).
+
+C5. TranscriptModel role
+  OLD (OBSERVABILITY-0 era practice): TranscriptModel held the rendered
+      transcript as the UI's conversation state.
+  NEW (TopicSession freeze): TranscriptModel = presentation projection ONLY;
+      durable SSOT = Room; live SSOT = Core Session.
+  CURRENT CANONICAL: projection-only (frozen POST-I §8; verified in code —
+  TranscriptModel has no persistence imports).
+  STATUS: RESOLVED & FROZEN. No live contradiction.
+
+C6. Session naming
+  "Session" (ag-0, in-memory) vs "TopicSession" (durable) vs
+  "ATTerminalSession" (AT-side PTY) vs "Host session continuity".
+  CURRENT CANONICAL: TopicSession = AG conversation (frozen terminology);
+  explicitly != ATTerminalSession; AT knows nothing about TopicSession.
+  STATUS: RESOLVED by AG.TOPIC-SESSION-ARCHITECTURE-FREEZE-0 §1.
+
+C7. Retry vs Redo vs Rewind vocabulary
+  Risk: UI-era docs could conflate "Retry" with "Redo/Rewind".
+  CURRENT CANONICAL (CONVERSATION-CONTROL-0 + TRANSCRIPT-CARDS-1 closeout):
+  Retry = Retry-as-New-Turn (new Run, history unchanged); Redo = DEFERRED;
+  Rewind = NOT IMPLEMENTED; no display-only fake rewind exists.
+  STATUS: CONSISTENT across docs. No contradiction found.
+
+C8. AGENTS.md "AG Core ... no production dependency beyond Kotlin stdlib"
+  vs measured coroutines dep (same fact as C1, different document).
+  STATUS: SUPERSEDED_BUT_UNMARKED (D1).
+
+CONTRADICTIONS REQUIRING ACTION: C1/C2/C8 (normalize ag-0 doc or add
+supersession note) + C3 (sync AGENTS.md AT block). All LOW.
+NO high-severity semantic contradictions between eras.

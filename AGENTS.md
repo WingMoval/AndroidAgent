@@ -549,6 +549,25 @@ AGA.OBSERVABILITY-0 PASS      Active Provider Truth & Streaming Agent
                        imports) DEFERRED non-blocking; M3 (I11 full-matrix
                        flake) known non-blocking; M4 (dirty worktree) CLOSED by
                        this freeze commit. NEXT = UI + RELEASE PREPARATION.
+ AG.UI-SHELL-1     CLOSED      VNext UI shell (workspace layout, sidebar,
+                               composer, provider settings with custom
+                               profiles + model discovery, SAF open
+                               file/folder readonly, debug automation
+                               commands). :app only; AG Core / Runtime /
+                               Tool / Provider / AT Engine unchanged.
+ AG.UI-TRANSCRIPT- CLOSED      Semantic RecyclerView transcript cards
+ CARDS-1           (User/Thought/Assistant/ToolExecution/Failure/
+                   Interrupted) with per-block Copy, Retry-as-New-Turn,
+                   Edit & Resend, Thought/Result collapse, native text
+                   selection; TopicSession browser (durable session list,
+                   last_used ordering, current highlight, session switch).
+                   C1-C9 + S1-S10 real-device PASS; TESTS 410/0;
+                   assembleDebug PASS. :app + additive :ag-runtime seams
+                   (listSessions/switchSession only). DB schema UNCHANGED
+                   (DATABASE_VERSION=1); Core architecture NOT reopened;
+                   Retry = Retry-as-New-Turn (NO history mutation);
+                   Rewind/Redo/Fork/Checkpoint remain NOT IMPLEMENTED.
+                   COMMITTED edfc603 (co-commit with AG.UI-SHELL-1).
 ```
 
 ## Current integration snapshot (canonical pointer)
@@ -559,28 +578,27 @@ The single authoritative source for "which AT snapshot AG consumes" is:
 docs/integration/AT_TO_AG_HANDOFF_CURRENT.md
 ```
 
-Current facts (updated by AG.V2-2.AT-INTEGRATION; do not restate
-the full AT state in other docs — point to the file above):
+Current facts (canonical values live in the file above; do not restate
+the full AT state in other docs):
 
 ```text
-AT_CONSUMER_INTEGRATION     = AT.AG-CONSUMER-FREEZE-V1
-AT_HANDOFF                  = AT_TO_AG_CONSUMER_HANDOFF_V1
-SOURCE_BASELINE             = c9cee21
-CONSUMER                    = :tool-android-shell integration boundary
-android_shell               = VERIFIED on real device (uid=2000(shell))
-identity                    = per-consumer app-private / self-generated
-pairing                     = AT-owned via AdbConsumerBootstrap
-ADB_lifecycle               = single AdbRuntime (UNIQUE owner)
-legacy_handoff_v0           = superseded / inactive
-AG_consumption              = ONE-SHOT ONLY
-PERSISTENT_TERMINAL_ENGINE  = CAPABILITY EXISTS IN AT (NOT consumed by AG V2)
-PERSISTENT_TERMINAL_TOOL    = NOT IMPLEMENTED
-SCREEN_AWARE_TERMINAL       = NOT IMPLEMENTED
+CURRENT AT CONSUMED SNAPSHOT = AT_V4_CONSUMER_HANDOFF
+AT_CONSUMER_FREEZE          = AT.V4-CONSUMER-FREEZE-V1 (source baseline 7216d0e)
+AT_CONTRACT_STATUS          = FROZEN (V4 consumer boundary)
+AG_CONSUMPTION_MODE         = VENDORED_AAR (repo-local Maven, debug variant)
+CONSUMER                    = :integration-at (single AT consumption point);
+                              :tool-android-shell = thin one-shot consumer
+android_shell               = VERIFIED on real device
+AG_MODEL_VISIBLE_CAPABILITY = ONE_SHOT ONLY
 AG_CORE_DIRECT_AT_DEP       = NONE (verified)
 AG_RUNTIME_DIRECT_AT_DEP    = NONE (verified)
-AT_CONTRACT_STATUS          = DRAFT
-NEXT_FORMAL_AT_SYNC         = POST_AT_EMULATOR_0_AND_CONTRACT_1_REVIEW
+LEGACY_BUNDLES              = V0/V3 SUPERSEDED / INACTIVE
+NEXT_FORMAL_AT_SYNC         = POST_V4_RELEASE_VALIDATION
 ```
+
+AT upstream may contain newer in-progress capabilities. They are not part
+of AG's current consumed baseline until a formal AT handoff / consumer
+freeze / sync Step occurs.
 
 Strategy note (AG.V1-PRE-FREEZE-NORMALIZATION): the technical finding
 `PRODUCTION_REFACTOR_REQUIRED = NO` stands, but the Controller selected
@@ -602,14 +620,13 @@ V2 BASELINE      = AG.V2-BASELINE-V1 (equivalent to the V1 freeze; established
                    by AG.V2-1.BASELINE-MIGRATION as a direct clone at the freeze
                    commit — production content byte-equivalent to V1)
 V2 ARCHITECTURE  = INHERITED FROM CONFIRMED V1 / UNCHANGED
-CURRENT AT       = AT.AG-CONSUMER-FREEZE-V1 (source baseline c9cee21)
-                   consumed via vendored AAR (self-contained build)
-AT MODULES       = :at-engine, :at-backend-adb, :adb-engine
+CURRENT AT       = AT.V4-CONSUMER-FREEZE-V1 (source baseline 7216d0e)
+                   consumed via vendored AAR (self-contained build);
+                   canonical pointer: docs/integration/AT_TO_AG_HANDOFF_CURRENT.md
 AT ADAPTER       = :integration-at (AtExecutionAdapter — unified AT consumption)
-AT BOOTSTRAP     = AdbConsumerBootstrap (AT-owned; AG does not implement pairing)
 IDENTITY         = per-consumer app-private, self-generated
-LEGACY AT V0     = SUPERSEDED / INACTIVE (no longer in dependency graph)
-NEXT             = AG.OUTPUT-BOUND.PREFLIGHT (TOOL-006, per Roadmap queue)
+LEGACY AT V0/V3  = SUPERSEDED / INACTIVE (no longer in dependency graph)
+NEXT             = CONTROLLER_DECISION (Roadmap execution queue)
 ```
 
 This is a repository/current-state note only: no production contract, module,
@@ -664,9 +681,22 @@ config/provider.local.json     ignored, real key
 ```
 
 `AgentCore.run`, `ModelProvider.complete`, and `Tool.execute` are all `suspend`.
-AG Core ships no blocking wrapper and has no production dependency beyond the
-Kotlin standard library. AG Core does not know about HTTP, JSON, API keys,
-config files, OpenAI, EMG, Android, or AT Core.
+AG Core ships no blocking wrapper. AG Core remains pure JVM /
+platform-independent; its only current production dependency is
+`kotlinx-coroutines-core` (introduced by the authorized Run-Control /
+durability closeout semantics — minimal `NonCancellable` shielding). Still
+forbidden in AG Core: Android / AndroidX, Room / SQLite, AT, app, concrete
+Tool, concrete Provider, HTTP / provider wire implementation. AG Core does
+not know about HTTP, JSON, API keys, config files, OpenAI, EMG, Android, or
+AT Core.
+
+`Agent Runtime` remains pure JVM / host-neutral / Android-free / AT-free /
+Room-free / concrete-tool-free / concrete-provider-free; its current
+production dependencies are `kotlinx-coroutines-core` (execution Job
+ownership) and `kotlinx-serialization-json` (TopicSession
+`MessageSerializer`, storage-neutral persistence serialization boundary).
+Persistence serialization JSON is NOT provider wire JSON: provider wire
+formats still live only in the provider modules.
 
 `ModelTurn.ToolCalls` carries `content`, so a single assistant turn can hold
 prose and tool calls together. Verified against a real endpoint.

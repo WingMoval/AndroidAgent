@@ -1,0 +1,78 @@
+AG.ARCH-DOC-AUDIT-0 — 08 HOST / UI BOUNDARY
+Source: app/src/main/java/com/androidagent/app/** (24 production kt files,
+measured 2026-10-28) + POST-I freeze §4 (Host ownership) + UI step docs.
+
+LAYER ASSIGNMENT of current :app classes:
+
+COMPOSITION ROOT (Host assembly):
+  ChatCompositionRoot.kt   constructs AgentCore/AgentRuntime/Provider/tools,
+                           registers into Core; also wires Room persistence
+                           + AT Android composition (M1 debt: direct AT
+                           imports here, tracked).
+  CompositionAdbSemantic.kt ADB readiness/pairing semantics for Host UI
+                           (direct AT composition imports — M1 debt).
+
+PROCESS-SCOPED HOLDERS:
+  SessionHolder.kt         object singleton: holds composition root,
+                           TranscriptModel, state strings across Activity
+                           recreation; wires RoomTopicSessionStore/
+                           StoreMessageDurability (Host persistence wiring).
+                           NOT persistent storage (frozen: SessionHolder !=
+                           persistent storage).
+
+RUNTIME BRIDGE (Host -> Engine actions):
+  HostActions.kt           single action facade: send/stop/newSession/
+                           listSessions/switchSession/providerSwitch.
+                           SECRET-FREE by construction. All conversation
+                           control flows through here (verified in
+                           TRANSCRIPT-CARDS-1 closeout: Retry ->
+                           HostActions.send -> AgentRuntime.send).
+  HostStatusModel.kt       run-phase status projection for UI.
+
+PRESENTATION:
+  ChatActivity.kt          Activity: layout wiring, card adapter binding,
+                           session switcher dialog, provider settings UI.
+                           LARGEST class — see OVERLOAD note.
+  TranscriptModel.kt       presentation projection ONLY (frozen): renders
+                           AgentEvent stream + Core history reproject.
+                           No Room/DB/model/tool imports (verified).
+  TranscriptCardAdapter.kt RecyclerView semantic cards (User/Thought/
+                           Assistant/ToolExecution/Failure/Interrupted),
+                           per-block Copy/Retry/Edit&Resend/collapse.
+  ModelCatalog.kt / ModelDiscovery.kt / ProviderProfile.kt /
+  DeviceLocalProviderConfig.kt / SafResource.kt
+                           provider config + model catalog (Host config layer).
+
+DEBUG (debug builds only):
+  debug/DebugBridge.kt     TCP JSONL 127.0.0.1:45678; routes PC input through
+                           the SAME AgentRuntime.send; automation commands
+                           (stop/new_session/provider_switch/snapshot).
+                           One direct AT import (ATTerminalSession) — M1.
+  debug/DebugProtocol.kt   protocol types.
+
+PERSISTENCE (Host capability):
+  persistence/TopicSessionDatabase.kt (Room DB, v1)
+  persistence/Entities.kt, persistence/Daos.kt
+  persistence/RoomTopicSessionStore.kt (implements ag-runtime contract)
+  persistence/StoreMessageDurability.kt (implements core MessageDurability)
+
+TRACE:
+  trace/AgentTrace.kt / AgentTraceCollector.kt / TraceFormatter.kt
+  (redacted agent trace; Host-owned per AGENT-0.PREFLIGHT)
+
+OVERLOAD ASSESSMENT (report-only, NO refactor this round):
+  ChatActivity.kt          = WATCH. Grew across UI-SHELL-1 + TRANSCRIPT-CARDS-1
+                             (composer, provider dialog, session switcher,
+                             card actions, status). Functionally cohesive
+                             (Activity glue) but large; a future UI step could
+                             extract dialogs/handlers. Not an architecture
+                             violation (still Host layer, no Engine semantics
+                             ownership — actions delegate to HostActions).
+  SessionHolder.kt         = OK. Process holder + persistence wiring.
+  HostActions.kt           = HEALTHY. Clean facade; single entry for all
+                             conversation control; no state of its own beyond
+                             references.
+  DUPLICATE_OWNER_FOUND    = NO (single Runtime, single Core, single store).
+  DUPLICATE_PIPELINE_FOUND = NO (single transcript pipeline DB->Core->
+                             projection->cards; verified no UI->DAO transcript
+                             path; debug bridge reuses same send path).

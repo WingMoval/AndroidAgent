@@ -1,0 +1,59 @@
+AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 — 03 ROADMAP STATUS RECONCILIATION
+Edits applied to docs/roadmap/AndroidAgent_Master_Roadmap.md.
+Stable IDs: none invented, none reused, none renamed.
+
+REGISTRY ROWS:
+  STATE-003  DISCOVERED -> VERIFIED
+             note: AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0,
+             Room/SQLite durable TopicSession (DB v1), MessageDurability ->
+             TopicSessionStore chain, real-device persistence/recovery
+             verified, foundation FROZEN (AG.POST-I-CORE-FREEZE-V1)
+  STATE-006  DISCOVERED -> VERIFIED
+             note: restore latest durable session + app-restart/process-
+             death resume + Core hydration + transcript re-projection;
+             FULL_USER_VISIBLE_RESUME real-device verified;
+             "Fork/Share/Export NOT included in this ID"
+  HOST-010   DISCOVERED -> VERIFIED
+             note: AG.UI-TRANSCRIPT-CARDS-1, durable session list
+             (last_used ordering) + current highlight + switch; S1-S10 PASS
+  HOST-011   DISCOVERED (UNCHANGED — composite not falsely closed)
+             note: "Resume path exists through TopicSession restoration +
+             browser (STATE-006 VERIFIED); Fork/Share/Export remain pending
+             — NOT closed"
+
+COVERAGE MATRIX (live mirror) SYNCED:
+  Session Persistence  STATE-003            DISCOVERED -> VERIFIED
+  Session Resume       STATE-006, HOST-011  DISCOVERED -> VERIFIED (STATE-006)
+  Session list/browser HOST-010             DISCOVERED -> VERIFIED
+
+COMPLETED BASELINE (§21, VERIFIED/CLOSED, do not re-plan):
+  ADDED: HOST-010, STATE-003, STATE-006 (evidence in AGENTS.md + step docs)
+  No bulk additions; only the three evidence-backed IDs.
+
+DEPENDENCY GRAPH (§22):
+  Edges UNCHANGED (STATE-006 -> STATE-003 etc. still correct).
+  Status consequence only: STATE-005/014 (fork/checkpoint) re-entry
+  condition "STATE-003 persistence done" is now SATISFIED (noted in
+  Update Trail; no DAG redraw, no status change for 005/014 — they remain
+  DISCOVERED/P4, awaiting their own Step).
+
+EXECUTION QUEUE (§24):
+  CURRENT: NONE -> AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 (docs-only) + prior-state
+           note (edfc603; AT V4 baseline; V1 frozen)
+  NEXT:    stale V3-era queue text marked "Historical queue (superseded,
+           kept for provenance)"; queue suspended:
+           NEXT = CONTROLLER_DECISION; NEXT_OPEN_AUTHORIZED = NO
+           (AT upstream in-progress; no AG feature step authorized)
+  LATER:   "STATE-003/006 (persistence/resume)" entry removed (now VERIFIED;
+           pointer to Completed Baseline)
+
+UPDATE TRAIL (§26):
+  NEW subsection "AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 (2026-10-28)" with
+  old -> new -> reason rows for: STATE-003, STATE-006, HOST-010, HOST-011
+  note, Completed Baseline, coverage matrix, execution queue.
+  Historical trail rows left intact.
+
+RETRY/REWIND STATUS UNCHANGED (task §18):
+  CORE-007 = RESEARCH_REQUIRED; STATE-001 = RESEARCH_REQUIRED;
+  STATE-002 = DISCOVERED (NOT IMPLEMENTED); Redo/Fork = NOT IMPLEMENTED.
+  No status promotion from persistence completion.

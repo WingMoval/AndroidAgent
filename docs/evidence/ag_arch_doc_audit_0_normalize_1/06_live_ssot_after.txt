@@ -1,0 +1,39 @@
+AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 — 06 LIVE SSOT AFTER
+State of live docs AFTER normalization (post-edit, pre-commit).
+
+AGENTS.md:
+  ✓ "AG Core ... only current production dependency is
+     kotlinx-coroutines-core (authorized Run-Control / durability
+     closeout)" — forbidden list intact
+  ✓ Runtime paragraph: coroutines + serialization-json; "persistence
+     serialization JSON is NOT provider wire JSON"
+  ✓ Integration snapshot block = V4 values from canonical handoff
+     (AT_V4_CONSUMER_HANDOFF / 7216d0e / FROZEN / VENDORED_AAR /
+     :integration-at / ONE_SHOT / POST_V4_RELEASE_VALIDATION)
+  ✓ One restrained upstream line (in-progress AT work != AG baseline)
+  ✓ Repository identity: CURRENT AT = V4/7216d0e + pointer reference;
+     NEXT = CONTROLLER_DECISION
+  ✓ Step registry: AG.UI-SHELL-1 CLOSED + AG.UI-TRANSCRIPT-CARDS-1 CLOSED
+     (what-is-true-now entries)
+  ✓ No "c9cee21", no "AT.AG-CONSUMER-FREEZE-V1", no "AT_CONTRACT_STATUS =
+     DRAFT", no "beyond the Kotlin standard library" remaining in live
+     sections
+
+Roadmap:
+  ✓ STATE-003 = VERIFIED (real persistence note)
+  ✓ STATE-006 = VERIFIED (real resume note; Fork/Share/Export excluded)
+  ✓ HOST-010 = VERIFIED (S1-S10 evidence)
+  ✓ HOST-011 = DISCOVERED with split note (NOT falsely closed)
+  ✓ Coverage matrix mirrored (3 rows)
+  ✓ Completed Baseline += STATE-003, STATE-006, HOST-010
+  ✓ Execution queue: CURRENT = NORMALIZE-1; NEXT = CONTROLLER_DECISION;
+     NEXT_OPEN_AUTHORIZED = NO; stale queue marked historical
+  ✓ Update Trail: new NORMALIZE-1 subsection (old->new->reason)
+  ✓ No "Session in-memory only" / "storage model NOT frozen" in live
+     sections (only in the new Update Trail "Old" column, which is
+     historical by design)
+
+AT_TO_AG_HANDOFF_CURRENT.md: UNCHANGED (canonical).
+Frozen docs: UNCHANGED.
+Historical 总体架构: UNCHANGED (supersession recorded elsewhere).
+Audit doc: + §19 Controller Review Addendum; C0 typo corrected.

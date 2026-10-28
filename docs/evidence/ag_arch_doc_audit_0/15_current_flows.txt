@@ -1,0 +1,86 @@
+AG.ARCH-DOC-AUDIT-0 — 15 CURRENT DATA / CONTROL FLOWS (5 paths)
+
+A. NORMAL USER SEND
+  owner: Host (input capture) -> Runtime (run lifecycle) -> Core (loop)
+  path:
+    Composer text -> ChatActivity -> HostActions.send(text)
+      -> AgentRuntime.send():
+         - session busy check (single-active-Run)
+         - execution Job started (Runtime-owned)
+      -> AgentCore.run():
+         - tryBeginRun; D1: commit UserMessage (durability) then append
+         - ModelProvider.complete (streaming; AndroidOpenAiHttpTransport)
+         - D2: commit ModelMessage per turn; tool calls dispatched via
+           ToolRegistry (Tool.execute); D3: commit ToolResultMessage
+         - final: RunOutcome.Answer + RunFinished event
+  boundaries: Host->Runtime = HostActions facade; Runtime->Core = direct
+  (same AG Engine); Core->Provider/Tool = Core contracts.
+  SSOT: durable = Room (messages); live = Core Session; UI = projection.
+
+B. MODEL -> TOOL -> MODEL
+  owner: Core (orchestration), Tool module (execution)
+  path:
+    ModelTurn.ToolCalls -> Core dispatch loop:
+      ToolRegistry.lookup(name) -> Tool.execute(spec args)  [suspend]
+        shell: AndroidShellToolImpl -> ShellConnection -> AtExecutionAdapter
+               (:integration-at) -> AT one-shot exec -> ADB -> device
+        network: NetworkToolImpl -> AppHttpFetcher (HttpsURLConnection)
+        file: FileToolImpl -> PathResolver -> app-private FS
+      ToolResult (success = mechanism OK) -> D3 commit -> back into history
+      -> next ModelProvider.complete with tool results appended
+  boundaries: Core never sees ADB/HTTP/FS details; tool args opaque string.
+  SSOT: ToolResultMessage in Core history + Room.
+
+C. STOP / INTERRUPT
+  owner: Host (button) -> Runtime (Job cancel) -> Core (semantics)
+  path:
+    Stop tap (enabled only when RUNNING) -> HostActions.stop()
+      -> AgentRuntime.interruptActiveRun():
+         atomic per-Run USER claim (CAS) + executionJob.cancel()
+      -> coroutine cancellation propagates: Core -> Provider transport
+         (finally: disconnect) / in-flight Tool (cooperative)
+      -> Core finalizes: RunOutcome.Interrupted, synthetic ToolResult per
+         declared-uncompleted call (IN_FLIGHT_INTERRUPTED), exactly one
+         RunFinished(Interrupted)
+      -> send() converts (caller active && USER claim && Core committed)
+         to Host-visible RunOutcome.Interrupted
+    UI: INTERRUPTING -> "Stopped" block (NOT a Failure) -> IDLE.
+  invariants: Host never cancels the Job itself; lifecycle cancel propagates
+  (parent cancellation dominates, NOT converted); double-stop = no-op;
+  partial stream = transcript-only (not in durable history beyond committed
+  messages); session reusable at terminal.
+  SSOT: durable committed messages unchanged; Interrupted = RunOutcome +
+  event; transcript shows "Stopped".
+
+D. TOPICSESSION PERSIST / RESUME / SWITCH
+  owner: Runtime (orchestration), Room (storage), Core (hydrate)
+  paths:
+  persist: (see A) D1/D2/D3 commit -> StoreMessageDurability ->
+    RoomTopicSessionStore -> Room (per message, seq contiguous).
+  resume (app/process start):
+    SessionHolder (process holder) -> ChatCompositionRoot ->
+    AgentRuntime.initialize(): restore-or-create latest TopicSession
+      -> TopicSessionStore.restore (Room read) -> MessageSerializer
+      -> Core restoreSession(history) + dangling ToolCall repair
+         (controlled; NO auto-replay; UNKNOWN outcomes marked)
+      -> TranscriptModel reproject (REPLACE, idempotent) -> Cards
+    invariants: 0 durable writes / 0 model calls / 0 tool exec on restore.
+  switch (UI era, additive):
+    session switcher dialog -> HostActions.switchSession(id)
+      -> AgentRuntime.switchSession(id): load + repair + hydrate target
+         session into Core, set current session
+      -> reproject -> cards. DB untouched except no writes.
+  SSOT: Room DB is durable SSOT; current session selection = Runtime.
+
+E. UI TRANSCRIPT PROJECTION
+  owner: Host (TranscriptModel + adapter)
+  path:
+    AgentEvent stream (Core) + Core currentHistory() (Runtime read-only seam)
+      -> TranscriptModel (presentation projection; reasoning delta ->
+         Thinking -> flips to Thought on finish; tool action/result blocks)
+      -> TranscriptCardAdapter (RecyclerView) -> 6 card types with
+         per-block Copy / Retry(as-new-turn) / Edit&Resend / collapse
+  invariants: projection only — no persistence writes, no session
+  selection, no tool/model calls; single pipeline (no UI->DAO transcript);
+  reproject is REPLACE + idempotent (safe after switch/restore).
+  SSOT: NOT here. Here is derived state only.

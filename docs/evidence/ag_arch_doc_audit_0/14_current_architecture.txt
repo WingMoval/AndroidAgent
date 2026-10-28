@@ -1,0 +1,64 @@
+AG.ARCH-DOC-AUDIT-0 — 14 CURRENT ARCHITECTURE (reconstructed)
+Basis: settings.gradle.kts + build.gradle.kts (measured) + POST-I freeze +
+AGENTS.md + TopicSession freeze + V4 handoff. HEAD = edfc603.
+
+CODE DEPENDENCY (compile-time):
+
+  ┌────────────────────────────────────────────────────────────────┐
+  │  :app (AGA / Host / Product / Composition Root)               │
+  │  ChatActivity · TranscriptCardAdapter · TranscriptModel       │
+  │  HostActions · SessionHolder · HostStatusModel                │
+  │  ProviderProfile/ModelCatalog/ModelDiscovery/SafResource      │
+  │  Room persistence (DB v1) · AndroidOpenAiHttpTransport        │
+  │  DebugBridge (debug) · AgentTrace · AgentInstructions         │
+  └───┬─────────┬──────────┬───────────┬──────────┬────────────────┘
+      │         │          │           │          │
+      ▼         ▼          ▼           ▼          ▼
+ :ag-runtime :ag-core  :provider-  :tool-*    :integration-at
+ (lifecycle/ session)   oai-compat (shell/net/ (AtExecutionAdapter)
+  session orch.)        (+jdk)      file)        │
+      │            ▲ ▲ ▲ ▲ ▲ ▲ ▲                    ▼
+      └────────────┘ │ │ │ │ │ │          AT V4 AARs (vendored)
+                     │ │ │ │ │ │          com.at.engine.api:4.0.0
+   (tools + provider implement Core contracts)
+                     │
+        :provider-openai-compatible-jdk --> :provider-openai-compatible
+
+RUNTIME CALL FLOW (not code dependency):
+
+  User
+   │
+   ▼
+  Host / UI (ChatActivity + Composer)
+   │  HostActions.send / stop / switchSession / providerSwitch
+   ▼
+  Agent Runtime (:ag-runtime)
+   │  session selection · single-active-Run Job · interruptActiveRun()
+   │  durable orchestration (TopicSessionStore) · hydration
+   ▼
+  AG Core (:ag-core)
+   │  Agent Loop · Session/Run semantics · policy · events
+   │  MessageDurability.commit (D1/D2/D3)
+   ├──▶ ModelProvider (OpenAiCompatibleProvider -> Android transport)
+   └──▶ ToolRegistry -> concrete Tool
+            ├── :tool-android-shell ──▶ :integration-at ──▶ AT Engine ──▶ ADB/Android
+            ├── :tool-network        ──▶ platform HttpsURLConnection (no AT)
+            └── :tool-file           ──▶ app-private filesDir/agent (no AT)
+
+  Persistence (side chain, Host-owned):
+  Core MessageDurability ──▶ StoreMessageDurability (:app)
+      ──▶ RoomTopicSessionStore ──▶ Room ──▶ SQLite (durable SSOT)
+
+  Presentation (side chain, Host-owned):
+  AgentEvent stream + Core currentHistory() ──▶ TranscriptModel
+      ──▶ TranscriptCardAdapter ──▶ Cards (User/Thought/Assistant/
+      ToolExecution/Failure/Interrupted)
+
+INARIANTS VERIFIED AGAINST CODE:
+  ✓ ag-core: 0 forbidden imports (Android/AT/app/runtime/tool)
+  ✓ ag-runtime: 0 forbidden imports
+  ✓ AT AARs referenced only by :integration-at (dep graph)
+  ✓ no :tool-layer / ToolManager / framework types
+  ✓ single transcript pipeline (no UI->DAO transcript path)
+  ✓ single Runtime / single Core / single store (no duplicate owner)
+  ✓ DB schema version still 1 (UI era made no schema change)

@@ -1,0 +1,53 @@
+AG.ARCH-DOC-AUDIT-0 — 13 DOCUMENTS THAT MUST NOT DRIVE NEW DESIGN
+READ FOR HISTORY ONLY. DO NOT USE AS CURRENT SSOT.
+
+1. docs/architecture/AndroidAgent_总体架构.md (PARTIAL)
+   ag-0-era FROZEN snapshot. Dependency/module-state sections outdated
+   (D1/D2; "AT integration NOT IMPLEMENTED"). Use only for foundational
+   boundary concepts, and verify against POST-I freeze + Gradle before use.
+
+2. docs/v2-research/pre-migration-workspace/**  (all 13 files)
+   Pre-migration V1-era research workspace: AG.V2-0.ARCHITECTURE-RESEARCH,
+   AG.V2-CONTROLLER-DECISION, old AT handoff copy, V1 module graph evidence.
+   Preserved for migration provenance. Its "current module graph" and AT
+   baseline facts describe the V1 tree and pre-V4 AT.
+
+3. docs/audit/* (all 7 files)
+   Point-in-time audits anchored to specific baseline HEADs
+   (e.g. CORE-RUNTIME.BOUNDARY-AUDIT at ag-stable-1; AT-V4-Handoff-Audit
+   pre-integration). Their "current" findings were true at their baseline.
+   Superseded by later steps where they conflict with current code.
+
+4. docs/migration/* + docs/regression/AG.ADB-LKG-REGRESSION.md
+   Closed migration/regression records (V1->V2 baseline, ADB LKG root cause).
+   Historical context for why V2 exists and why AT V4 replaced V3.
+
+5. docs/implementation/steps/* (5 AG.0-era step docs)
+   Earliest implementation records (AG.0 Core v0, PROVIDER-0, AGA-0,
+   BASELINE-0, R1 async boundary). Historical.
+
+6. docs/design/AG.SHELL-0_INTEGRATION_DESIGN.md
+   Superseded by implemented AG.SHELL-1 (+ V4 integration). Design intent
+   history only.
+
+7. docs/design/AGENT-0_First_Real_Android_Agent_Vertical_Slice.md
+   Historical design for the first live agent loop (implemented + closed).
+
+8. docs/integration/AG.V2-2.AT-INTEGRATION.md
+   Superseded by AG.AT-V4-INTEGRATION-1 + AT_TO_AG_HANDOFF_CURRENT (V4).
+
+9. docs/handoff/AG_POST_I_CLOSURE_HANDOFF.md
+   Point-in-time handoff at post-I closure; facts superseded by UI-era steps.
+
+10. AG.CONVERSATION-CONTROL-0 research docs (referenced in AGENTS.md;
+    docs/research/AG.MATURE-AGENT-SESSION-RESEARCH-0.md)
+    Research inputs. Valid for vocabulary (Stop/Interrupt/cancellation) but
+    NOT a design authority for Rewind — Rewind needs its own preflight.
+
+11. *_修正 / _修正1 companion copies (3 files in architecture/ + implementation/)
+    Correction copies of earlier drafts. The files WITHOUT the suffix are the
+    names referenced by SSOT text. Do not read the copies as current.
+
+12. third_party/at-engine-handoff-v0/ + third_party/at-consumer-freeze-v1/
+    SUPERSEDED AT bundles (V0, V3). Rollback reference only; not in the
+    dependency graph (V3 m2 entry commented out).

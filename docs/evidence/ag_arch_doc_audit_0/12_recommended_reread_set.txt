@@ -1,0 +1,72 @@
+AG.ARCH-DOC-AUDIT-0 — 12 RECOMMENDED REREAD SET (TOP 8)
+Ordered by value to a Controller re-entering the project.
+
+1. AGENTS.md
+   WHY: the only LIVE "what is true now" SSOT; step registry, frozen rules,
+   forbidden areas, current AT pointer, repo roles.
+   SOLVES: current ground truth in one file.
+   AUTHORITATIVE: YES (continuously normalized; last: b7dbc04).
+   IGNORE: the "Current integration snapshot" values block (stale vs V4 —
+   read AT_TO_AG_HANDOFF_CURRENT.md instead); the "no production dependency
+   beyond Kotlin stdlib" line for AG Core (D1 drift).
+
+2. docs/freeze/AG.POST-I-ARCHITECTURE-FREEZE-V1.md
+   WHY: the current most complete architecture freeze: layers, allowed/
+   forbidden dependency directions, ownership per layer, persistence chain,
+   presentation boundary, AT boundary, deferred list, reopen conditions.
+   SOLVES: "what is the frozen architecture right now (pre-UI)".
+   AUTHORITATIVE: YES for non-UI layers (tag AG.POST-I-CORE-FREEZE-V1).
+   IGNORE: nothing, except it predates the UI generation (UI is deferred by
+   design, not an error).
+
+3. docs/AndroidAgent_Architecture_Capability_Map_v1.0.md
+   WHY: Controller-approved capability placement ("where capabilities belong");
+   upstream basis of the roadmap; the 11 domains + anti-abstraction rules.
+   SOLVES: capability ownership questions without reading every step doc.
+   AUTHORITATIVE: YES (FROZEN; roadmap obeys it, never reopens it).
+   IGNORE: none (frozen by design; implementation detail intentionally out).
+
+4. docs/roadmap/AndroidAgent_Master_Roadmap.md
+   WHY: LIVE plan — capability registry, dependency DAG, execution queue,
+   deferred registry, intake protocol.
+   SOLVES: "what is next / what is deferred / why".
+   AUTHORITATIVE: YES for planning (LIVE status).
+   IGNORE: none; note it explicitly does not describe current code state.
+
+5. docs/integration/AT_TO_AG_HANDOFF_CURRENT.md
+   WHY: canonical AT snapshot pointer (V4, vendored AAR, boundary rules).
+   SOLVES: "which AT does AG consume, and what may import what".
+   AUTHORITATIVE: YES (updated by each AT sync round).
+   IGNORE: nothing; it is short by design.
+
+6. docs/architecture/AG.TOPIC-SESSION-ARCHITECTURE-FREEZE-0.md
+   WHY: TopicSession terminology + layer ownership + DB tech freeze +
+   V1/POST-V1 feature boundary (rewind/fork listed as POST-V1).
+   SOLVES: session/run/durability semantics — the foundation for any future
+   conversation-control work (Rewind preflight will build on this).
+   AUTHORITATIVE: YES (FROZEN).
+   IGNORE: the _修正1 companion file (correction copy; this file is the
+   referenced name in SSOT text).
+
+7. docs/implementation/AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0_FINAL.md
+   WHY: the persistence implementation SSOT (Phases A-I + DEVICE-I); exact
+   commit points D1/D2/D3, repair rules, device evidence summary.
+   SOLVES: "how durability actually works end to end".
+   AUTHORITATIVE: YES (named SSOT in AGENTS.md; 98 KB — read §1-2 + invariants).
+   IGNORE: the two _修正 companion copies (superseded); phase-by-phase diff
+   tables are point-in-time.
+
+8. docs/architecture/AndroidAgent_总体架构.md
+   WHY: the ag-0-era general architecture; the clearest single statement of
+   dependency direction, Tool/Provider inversion, AGA/AGC roles, and the
+   runtime-call-flow vs code-dependency distinction.
+   SOLVES: foundational mental model of the whole system.
+   AUTHORITATIVE: PARTIAL — FROZEN snapshot of ag-0 state.
+   IGNORE: dependency claims for :ag-core/:ag-runtime (superseded, D1/D2);
+   "Android Tool / AT integration NOT IMPLEMENTED" (superseded by AG.SHELL-1+);
+   roadmap section §10 (historical).
+
+HONORABLE MENTIONS (read only when needed):
+  - docs/design/AndroidAgent_V2_VNext_UI_设计基线.md (UI-generation target).
+  - docs/audit/AG.UI-BASELINE-AUDIT-1.md (current UI state -> VNext mapping).
+  - docs/research/AG.MATURE-AGENT-SESSION-RESEARCH-0.md (session research basis).

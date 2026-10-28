@@ -1,0 +1,58 @@
+AG.ARCH-DOC-AUDIT-0 — 17 FINAL VERDICT
+
+VERDICT = PASS_WITH_DRIFT
+
+Drift found: 4 LOW items (D1 ag-core dep doc, D2 ag-runtime dep doc,
+D3 pre-UI freeze scope note, D4 stale AT snapshot block in AGENTS.md).
+No MEDIUM / HIGH / ARCHITECTURE_BLOCKER drift.
+No duplicate owner. No duplicate pipeline. No forbidden dependency edge.
+Code matches the newest frozen docs on every checked boundary.
+
+DOCUMENTS_SCANNED        = ~100 (.md/.txt, excl. build artifacts)
+ARCHITECTURE_DOCS_FOUND  = 24 core architecture docs + 20 step/audit docs
+LIVE_SSOT_COUNT          = 4 (AGENTS.md, Master_Roadmap,
+                           AT_TO_AG_HANDOFF_CURRENT,
+                           TOPIC-SESSION-PERSISTENCE-0_FINAL)
+FROZEN_BASELINE_COUNT    = 7 (Capability_Map_v1.0, POST-I freeze,
+                           TopicSession FREEZE-0, Durability PREFLIGHT-0,
+                           总体架构, BASELINE-FREEZE-0, ENGINE-BOUNDARY-FREEZE,
+                           V1-KNOWN-GOOD-FREEZE = 8 total)
+HISTORICAL_COUNT         = ~25 (step docs, audits, migration, regression,
+                           pre-migration workspace)
+SUPERSEDED_COUNT         = 6 (3 修正 copies, 2 old AT bundles,
+                           SHELL-0 design, old V2-2 integration doc,
+                           old handoff copy in v2-research)
+UNKNOWN_COUNT            = 0
+
+TOP RE-READ SET          = see 12_recommended_reread_set.txt (8 docs)
+DO-NOT-USE-AS-SSOT SET   = see 13_do_not_use_as_ssot.txt (12 groups)
+
+ARCHITECTURE HEALTH:
+  AG Core        = HEALTHY (0 forbidden imports; minimal coroutines dep
+                   is step-authorized; doc drift only)
+  Agent Runtime  = HEALTHY (single-domain orchestration; not a god object;
+                   additive UI-era seams within frozen ownership)
+  Provider       = HEALTHY (one contract, one impl, two transports;
+                   UI-era catalog types correctly Host-scoped)
+  Tool Layer     = HEALTHY (one module per capability; no framework;
+                   AT isolation verified)
+  Persistence    = HEALTHY (frozen chain intact; DB v1 unchanged by UI era;
+                   restore invariants device-verified)
+  AT Integration = HEALTHY (V4 vendored AAR; single consumption point;
+                   M1 host-import debt tracked, LOW)
+  Host / UI      = WATCH (ChatActivity growing; no violation; HostActions
+                   clean facade; single pipeline verified)
+  Documentation  = DRIFT (LOW) — 4 low items; recommend one small
+                   SSOT-normalization pass after Controller review
+
+INvariants HOLDS: AG=Intelligence, AT=Execution; dependency directions;
+anti-abstraction list; single transcript SSOT chain; no AT in Core/Runtime.
+
+PRODUCTION_CODE_CHANGED = NO
+TEST_CODE_CHANGED       = NO
+GRADLE_CHANGED          = NO
+DB_CHANGED              = NO
+COMMIT / TAG / PUSH     = NO
+
+NEXT = CONTROLLER_REVIEW
+STOP = YES

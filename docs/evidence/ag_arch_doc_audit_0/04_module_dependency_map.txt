@@ -1,0 +1,72 @@
+AG.ARCH-DOC-AUDIT-0 — 04 MODULE DEPENDENCY MAP
+Source of truth: settings.gradle.kts + each module build.gradle.kts (read 2026-10-28).
+
+MODULES (9):
+  :ag-core                        kotlin("jvm")   pure JVM
+  :ag-runtime                     kotlin("jvm")   pure JVM
+  :provider-openai-compatible     kotlin("jvm")
+  :provider-openai-compatible-jdk kotlin("jvm")
+  :tool-android-shell             Android lib
+  :tool-network                   Android lib
+  :tool-file                      Android lib
+  :integration-at                 Android lib
+  :app                            Android app (AGA Host / Composition Root)
+
+PRODUCTION DEPENDENCIES (measured):
+  :ag-core
+    - kotlinx-coroutines-core:1.10.2   (RUN-CONTROL-1: NonCancellable shielding
+                                        of durable synthetic ToolResult commit)
+    - (NO project deps, NO Android, NO AT, NO Room, NO HTTP/JSON)
+  :ag-runtime
+    - project(:ag-core)
+    - kotlinx-coroutines-core:1.10.2   (execution Job ownership)
+    - kotlinx-serialization-json:1.8.0 (TopicSession MessageSerializer;
+                                        tree API only, no provider coupling)
+  :provider-openai-compatible
+    - project(:ag-core), kotlinx-serialization-json, kotlinx-coroutines-core
+  :provider-openai-compatible-jdk
+    - project(:provider-openai-compatible), JDK java.net.http
+  :tool-android-shell
+    - project(:ag-core); api(project(:integration-at)); serialization; coroutines
+  :tool-network
+    - project(:ag-core); serialization; coroutines (platform HttpsURLConnection)
+  :tool-file
+    - project(:ag-core); serialization; coroutines
+  :integration-at
+    - com.at.engine.api:at-engine-api:4.0.0 (api)
+    - com.at.cli:at-cli:4.0.0 (api)
+    - coroutines
+    (AT internal modules = transitive only, not imported)
+  :app
+    - project(:ag-core, :ag-runtime, :provider-openai-compatible,
+              :tool-android-shell, :tool-network, :tool-file, :integration-at)
+    - AndroidX core/appcompat/activity/lifecycle/recyclerview/room
+
+GRAPH:
+  :app --> ag-core, ag-runtime, provider-oai, tool-*, integration-at, AndroidX/Room
+  :ag-runtime --> ag-core
+  :tool-* --> ag-core
+  :tool-android-shell --> integration-at (api)
+  :integration-at --> AT V4 AARs (vendored local m2)
+  :provider-oai --> ag-core ; :provider-jdk --> :provider-oai
+
+FORBIDDEN EDGES — VERIFIED ABSENT (import scan 2026-10-28):
+  ag-core  -> android.*, androidx.*, com.androidterminal.*, com.at.*, com.adb.*,
+              com.androidagent.app/runtime/tool  : 0 matches
+  ag-runtime -> same set                              : 0 matches
+  tool-network/tool-file -> AT                       : absent (dep graph)
+  integration-at -> ag-core/ag-runtime/app           : absent (dep graph)
+
+KNOWN DEVIATION (documented, non-blocking debt M1 in POST-I freeze §11):
+  :app host files import AT composition types directly (3 files):
+    ChatCompositionRoot.kt   -> com.at.composition.android.ATAndroid, ATAndroidConfig
+    CompositionAdbSemantic.kt-> com.at.composition.android.ATAndroidAdbControl,
+                                ATAdbBootstrapState, ATAdbReadinessState,
+                                ATAdbPairingDiscovery, ATAdbPairingResult
+    DebugBridge.kt (debug)   -> com.at.engine.ATTerminalSession
+  Ruling: AT_TO_AG_HANDOFF_CURRENT §7 allows :integration-at to import
+  com.at.engine.*/composition; the POST-I freeze lists these host imports as
+  DEFERRED NON-BLOCKING (M1: "route through :integration-at in a future
+  cleanup round"). This is a HOST-LEVEL deviation from the ideal
+  "AT consumption ONLY through :integration-at", already tracked.
+  SEVERITY = LOW (tracked debt, debug + composition only, no Core/Runtime impact).

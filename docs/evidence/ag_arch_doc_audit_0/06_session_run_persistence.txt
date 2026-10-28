@@ -1,0 +1,64 @@
+AG.ARCH-DOC-AUDIT-0 — 06 SESSION / RUN / PERSISTENCE
+
+TERMINOLOGY (frozen, AG.TOPIC-SESSION-ARCHITECTURE-FREEZE-0):
+  TopicSession = durable long-lived conversation, stable id, ordered
+                 Message history, survives process death + app restart.
+  Run          = transient, one user input -> final answer/failure/interrupt.
+  ModelCall    = transient single provider request.
+  TopicSession != Run != ModelCall != ATTerminalSession.
+  same TopicSession: max one active Run. newSession != delete old history.
+
+EVOLUTION of the Session concept:
+  ag-0 era:            "Session" = in-memory multi-turn context
+                       (com.androidagent.core.Session, no persistence).
+  OBSERVABILITY era:   TranscriptModel (Host) held rendered transcript;
+                       SessionHolder kept process-scoped live objects.
+  TOPIC-SESSION-ARCH:  "TopicSession" named + frozen; durable semantics;
+                       TranscriptModel demoted to presentation projection.
+  PERSISTENCE-0 (A-I): Room/SQLite durable SSOT (topic_sessions + messages,
+                       DATABASE_VERSION=1); restore pipeline fixed.
+  UI era (CURRENT):    listSessions()/switchSession() additive; session
+                       browser UI. Durable schema UNCHANGED (version 1).
+
+CURRENT DURABLE CHAIN (frozen, POST-I §5):
+  AgentCore --(MessageDurability.commit)--> StoreMessageDurability (:app)
+            --> TopicSessionStore (ag-runtime contract)
+            --> RoomTopicSessionStore (:app) --> Room --> SQLite
+
+CURRENT SOURCE OF TRUTH:
+  durable SSOT       = Room/SQLite (messages table, seq 0..N-1 per session)
+  live domain SSOT   = Core Session (hydrated from DB on restore)
+  presentation state = TranscriptModel (READ-ONLY projection; reproject =
+                       REPLACE + idempotent; must NOT write/select/execute)
+  restore direction  = DB -> Runtime/Core -> Presentation (ONE pipeline;
+                       second UI->DB path FORBIDDEN — verified: no Room
+                       imports in TranscriptModel; Room imports in
+                       ChatCompositionRoot/SessionHolder are composition-
+                       level wiring, permitted Host ownership)
+
+RESTORE/REPAIR INVARIANTS (frozen):
+  - 0 durable writes on restore (device-verified)
+  - 0 model calls, 0 tool executions on restore
+  - dangling ToolCall repair = controlled/explicit; DANGLING_AUTO_REPLAY = NO
+    (cross-process unresolved tool outcome = UNKNOWN)
+  - interrupted in-flight tool = IN_FLIGHT_INTERRUPTED (honest)
+  - ToolCall embedded in ModelMessage durable representation
+
+RUN SEMANTICS (frozen):
+  RunOutcome = Answer | Interrupted | Failure
+  Interrupt: Runtime cancels execution Job; Core finalizes Interrupted +
+  synthetic ToolResult per declared-uncompleted call (pairing invariant);
+  exactly one RunFinished(Interrupted). Partial stream = transcript-only.
+  Retry (UI) = Retry-as-New-Turn: find origin User text -> HostActions.send
+  -> new Run. NO history mutation. (Verified in TRANSCRIPT-CARDS-1 closeout.)
+
+PERSISTENCE CLASSIFICATION:
+  Persistence is a HOST capability (Room impl in :app) + RUNTIME contract
+  (TopicSessionStore/Records/Serializer in ag-runtime, storage-neutral) +
+  CORE contract (MessageDurability, storage-agnostic).
+  It is NOT an independent subsystem/module; it is a layered contract chain.
+  FROZEN decisions: engine (SQLite), access layer (Room), location
+  (app-private), version (1), seq owner (persistence), D1/D2/D3 commit
+  points, no-auto-replay.
+  EXTENSION SEAMS (not frozen): schema migration path (reopen condition #2),
+  retention policy, multi-session UI beyond switch, compaction, cloud sync.

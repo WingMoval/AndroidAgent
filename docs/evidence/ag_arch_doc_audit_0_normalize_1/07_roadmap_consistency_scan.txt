@@ -1,0 +1,62 @@
+AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 — 07 ROADMAP CONSISTENCY SCAN
+Scan of docs/roadmap/AndroidAgent_Master_Roadmap.md after edits
+(patterns per task §32). Each hit classified LIVE vs HISTORICAL.
+
+"STATE-003" occurrences:
+  L264 registry row            LIVE     -> VERIFIED + real note   [FIXED]
+  L265 STATE-006 requires col  LIVE     -> unchanged (dep edge ok)
+  L273 STATE-013 requires      LIVE     -> unchanged (013 still DISC)
+  L274 STATE-005 requires      LIVE     -> unchanged
+  L275 STATE-014 requires      LIVE     -> unchanged
+  L508 dep graph (resume)      LIVE     -> edge unchanged
+  L509 dep graph (fork/checkpt)LIVE     -> edge unchanged
+  L623 LATER list              LIVE     -> removed (now VERIFIED)
+  L661 deferred re-entry       LIVE     -> condition satisfied (no status
+                                             change to 005/014)
+  L824 coverage matrix         LIVE     -> VERIFIED               [FIXED]
+  L726 Update Trail            HISTORICAL (REVIEW-1A split row)  [KEEP]
+  New Update Trail rows        HISTORICAL (old->new log)         [KEEP]
+
+"STATE-006" occurrences:
+  L265 registry row            LIVE     -> VERIFIED + real note   [FIXED]
+  L406 HOST-011 requires       LIVE     -> unchanged
+  L508 dep graph               LIVE     -> edge unchanged
+  L825 coverage matrix         LIVE     -> VERIFIED (STATE-006)   [FIXED]
+
+"HOST-010" occurrences:
+  L405 registry row            LIVE     -> VERIFIED + evidence    [FIXED]
+  L911 coverage matrix         LIVE     -> VERIFIED               [FIXED]
+  Completed Baseline           LIVE     -> added                  [FIXED]
+
+"HOST-011" occurrences:
+  L406 registry row            LIVE     -> DISCOVERED + split note (kept open)
+  L825/L912 coverage matrix    LIVE     -> mirror note (STATE-006 VERIFIED)
+
+"Session in-memory only":
+  L264 old note                LIVE     -> REMOVED (replaced)
+  New Update Trail Old column  HISTORICAL [KEEP by design]
+
+"storage model NOT frozen":
+  L264 old note                LIVE     -> REMOVED (replaced)
+  New Update Trail Old column  HISTORICAL [KEEP by design]
+
+"not started" (near session rows):
+  L405/L406 old notes          LIVE     -> replaced (HOST-010 evidence;
+                                           HOST-011 split note)
+
+"c9cee21":
+  AGENTS.md live sections      LIVE     -> REMOVED (replaced by 7216d0e)
+  Roadmap L592 CURRENT text    LIVE     -> replaced by V4 text      [FIXED]
+  Roadmap L723 Update Trail    HISTORICAL (AG.V2-2 row)            [KEEP]
+
+"AT_CONTRACT_STATUS" / "DRAFT":
+  AGENTS.md live block         LIVE     -> FROZEN (V4)             [FIXED]
+  (Roadmap has no AT_CONTRACT_STATUS live row)
+
+"AT.AG-CONSUMER-FREEZE-V1":
+  AGENTS.md live blocks        LIVE     -> replaced by V4          [FIXED]
+  Roadmap L723/724 Update Trail HISTORICAL                        [KEEP]
+
+RESULT: all LIVE occurrences consistent with current truth; remaining
+stale-looking values exist only in historical Update Trail rows (kept by
+design). ROADMAP_COVERAGE_SYNC = PASS.

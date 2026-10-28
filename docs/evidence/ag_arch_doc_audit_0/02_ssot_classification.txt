@@ -1,0 +1,82 @@
+AG.ARCH-DOC-AUDIT-0 — 02 SSOT CLASSIFICATION
+Model: LIVE_SSOT / FROZEN_BASELINE / CURRENT_SUPPORTING / HISTORICAL_POINT_IN_TIME /
+       SUPERSEDED / IMPLEMENTATION_EVIDENCE / RESEARCH_ONLY / FUTURE_DESIGN
+
+LIVE_SSOT (authority for "what is true now" / "where going" / "what AT snapshot"):
+  1. AGENTS.md
+     Role = WHAT IS TRUE NOW. Implemented/frozen facts, verification baseline,
+     forbidden areas, step registry. Continuously normalized (b7dbc04).
+  2. docs/roadmap/AndroidAgent_Master_Roadmap.md
+     Role = WHERE WE ARE GOING. Capability registry, DAG, priority, execution
+     queue. LIVE status header. Obeys (never reopens) Architecture v1.0.
+  3. docs/integration/AT_TO_AG_HANDOFF_CURRENT.md
+     Role = canonical pointer for "which AT snapshot AG consumes".
+     Current = AT_V4_CONSUMER_HANDOFF (7216d0e, tag AT.V4-CONSUMER-FREEZE-V1,
+     vendored AAR, debug variant). Explicitly supersedes V0/V3 handoffs.
+  4. docs/implementation/AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0_FINAL.md
+     Role = persistence implementation SSOT (per AGENTS.md entry: "SSOT: ...").
+     Phases A-I + DEVICE-I closed; FROZEN foundation.
+
+FROZEN_BASELINE (point-in-time architecture, valid until reopen conditions):
+  5. docs/AndroidAgent_Architecture_Capability_Map_v1.0.md
+     Role = WHERE CAPABILITIES BELONG. Controller-approved, FROZEN.
+     Upstream basis of the roadmap. Never edited to match roadmap.
+  6. docs/freeze/AG.POST-I-ARCHITECTURE-FREEZE-V1.md
+     Role = current most complete architecture freeze (layers, dependency
+     directions, ownership, persistence, presentation boundary, AT boundary,
+     deferred features, reopen conditions). Tag AG.POST-I-CORE-FREEZE-V1.
+     NOTE: pre-UI — does not cover the UI shell / transcript cards layer.
+  7. docs/architecture/AG.TOPIC-SESSION-ARCHITECTURE-FREEZE-0.md
+     Role = TopicSession semantics/layering/database tech freeze.
+  8. docs/architecture/AG.TOPIC-SESSION-DURABILITY-SEAM-PREFLIGHT-0.md
+     Role = durability seam preflight freeze.
+  9. docs/architecture/AndroidAgent_总体架构.md
+     Role = AG.0-era FROZEN general architecture (ag-0/ag-provider-0).
+     Contains claims later extended (see 09_drift_matrix D1/D2/D3).
+  10. docs/baseline/AG.BASELINE-FREEZE-0.md, docs/baseline/AG.ENGINE-BOUNDARY-FREEZE.md
+      Role = early baseline freezes (ag-baseline-0, ag-engine-0).
+  11. docs/freeze/AG.V1-KNOWN-GOOD-FREEZE-V1.md
+      Role = V1 known-good manifest (anchors external V1 repo).
+
+CURRENT_SUPPORTING_DOC:
+  12. docs/design/AndroidAgent_V2_VNext_UI_设计基线.md
+      User-owned VNext UI design baseline (UI-generation SSOT, read-only).
+      Architecture layers explicitly stated as unchanged.
+  13. docs/implementation/AG.UI-TRANSCRIPT-CARDS-1.md + closeout
+      Current UI step record (CLOSED/PASS).
+
+HISTORICAL_POINT_IN_TIME (never rewritten; read for history only):
+  - All docs/implementation/* step docs (RUN-CONTROL, HOST-STOP, SHELL-1,
+    NETWORK-0, FILE-0, AGENT-0.*, AGA.*, DEBUG-*, V4-*, TOPIC-SESSION 修正 copies,
+    steps/ AG.0-era docs).
+  - All docs/audit/* (7 files): point-in-time audits at their baseline HEADs.
+  - docs/migration/* (3), docs/regression/* (1), docs/handoff/* (1),
+    docs/design/AG.SHELL-0_INTEGRATION_DESIGN.md,
+    docs/design/AGENT-0_First_Real_Android_Agent_Vertical_Slice.md,
+    docs/integration/AG.V2-2.AT-INTEGRATION.md.
+
+RESEARCH_ONLY:
+  - docs/research/AG.MATURE-AGENT-SESSION-RESEARCH-0.md
+  - docs/audit/AG.SESSION-PERSISTENCE-RESEARCH-0.md (research+preflight hybrid)
+  - docs/v2-research/pre-migration-workspace/** (13 files)
+
+SUPERSEDED (explicitly marked or factually replaced; must not be used as SSOT):
+  - *_修正1 / _修正 copies (TopicSession FREEZE-0, DURABILITY-PREFLIGHT-0,
+    TOPIC-SESSION-PERSISTENCE-0_FINAL) — correction copies; original files
+    remain the referenced names in SSOT text.
+  - third_party/at-engine-handoff-v0/ (AT V0) and third_party/at-consumer-freeze-v1/
+    (AT V3) — SUPERSEDED/INACTIVE per AT_TO_AG_HANDOFF_CURRENT §6; V4 is CURRENT.
+  - AG.SHELL-0_INTEGRATION_DESIGN.md — superseded by implemented AG.SHELL-1.
+  - AT_TO_AG_HANDOFF_CURRENT.md copy inside docs/v2-research/pre-migration-workspace/
+    — old (V1-era) copy; live one is docs/integration/.
+
+IMPLEMENTATION_EVIDENCE:
+  - docs/evidence/** (7 step evidence dirs, 90+ files), upload/ exports.
+
+FUTURE_DESIGN:
+  - AG.POST-I-ARCHITECTURE-FREEZE-V1 §13 list (session browser design, naming,
+    retention, cloud sync, provider fallback, AT tool catalog, CLI syntax,
+    final visual style) — deferred, not frozen.
+  - AG.TOPIC-SESSION-ARCHITECTURE-FREEZE-0 §4 POST-V1 list (fork/branch/rewind,
+    compaction, multi-session UI, etc.).
+  - Roadmap DEFERRED/OUT registry entries.

@@ -261,8 +261,8 @@ Special placement rules (frozen by v1.0, recorded here):
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | STATE-001 | Active Input Retract (cancel run + rollback latest user turn + restore input) | State + Core + Runtime + Host | RESEARCH_REQUIRED | P1 | RUN-003, RUN-004, CORE-007 | Session append-only; Host mutates UI before send | - | composite: Runtime cancel + Core history rollback + Host input restore |
 | STATE-002 | Completed Conversation Rewind | State | DISCOVERED | P3 | - | - | - | RELATED to STATE-001 (shared rollback semantics), NOT a hard dependency |
-| STATE-003 | Session Persistence | State | DISCOVERED | P2 | CORE-001 | - | STATE-006 | Session in-memory only; storage model NOT frozen |
-| STATE-006 | Session Resume | State + Host | DISCOVERED | P2 | STATE-003 | - | - | split from historical STATE-003 persistence/resume; new ID for Resume |
+| STATE-003 | Session Persistence | State | VERIFIED | P2 | CORE-001 | - | STATE-006 | AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0: Room/SQLite durable TopicSession persistence (DB v1, topic_sessions+messages); MessageDurability -> TopicSessionStore chain; real-device persistence/recovery verified; TopicSession foundation FROZEN (AG.POST-I-CORE-FREEZE-V1) |
+| STATE-006 | Session Resume | State + Host | VERIFIED | P2 | STATE-003 | - | - | split from historical STATE-003 persistence/resume; new ID for Resume; restore latest durable TopicSession + app-restart/process-death resume + Core hydration + transcript re-projection; FULL_USER_VISIBLE_RESUME real-device verified; Fork/Share/Export NOT included in this ID |
 | STATE-004 | Context Compaction | State / Context | DISCOVERED | P0 | CORE-001 | - | long-session viability | historical STATE-004 identity preserved; foundational; algorithm NOT frozen |
 | STATE-007 | Tool-result Pruning | State / Context | DISCOVERED | P2 | CORE-001 | - | - | keep tool-call/result pairs intact |
 | STATE-008 | Context Summary | State / Context | DISCOVERED | P3 | STATE-004 | - | - | not started |
@@ -402,8 +402,8 @@ Host owns SHOW / USER CONTROL / PRODUCT SURFACE. Historical HOST-004 remains
 | HOST-007 | Approval / Ask UI | AGA | DISCOVERED | P2 | AUTH-008 | - | - | not started |
 | HOST-008 | Execution Mode selector (PLAN / BUILD) | AGA | DISCOVERED | P2 | AUTH-016 | - | - | selector/presentation only; enforcement in Authority |
 | HOST-009 | Human Interaction UI (question / choice) | AGA | RESEARCH_REQUIRED | P1 | CORE-008 | - | - | representation NOT frozen |
-| HOST-010 | Session list / browser | AGA | DISCOVERED | P3 | STATE-003 | - | - | not started |
-| HOST-011 | Resume / Fork / Share / Export UX | AGA | DISCOVERED | P3 | STATE-006, STATE-005, STATE-013 | - | - | not started |
+| HOST-010 | Session list / browser | AGA | VERIFIED | P3 | STATE-003 | - | - | AG.UI-TRANSCRIPT-CARDS-1: durable session list (last_used ordering) + current-session highlight + session switch; S1-S10 real-device PASS (A/B switching) |
+| HOST-011 | Resume / Fork / Share / Export UX | AGA | DISCOVERED | P3 | STATE-006, STATE-005, STATE-013 | - | - | Resume path exists through TopicSession restoration + browser (STATE-006 VERIFIED); Fork/Share/Export remain pending — NOT closed |
 | HOST-012 | Background notifications | AGA | DISCOVERED | P3 | RUN-006 | - | - | not started |
 | HOST-013 | Context usage UI | AGA | DISCOVERED | P3 | OBS-007 | - | - | not started |
 | HOST-014 | Cost / Health UI | AGA | DISCOVERED | P3 | OBS-006, OBS-008 | - | - | not started |
@@ -477,8 +477,8 @@ Update Trail (§26).
 
 CORE-001..006, RUN-001, RUN-002, PROVIDER-001, PROVIDER-002, PROVIDER-009,
 TOOL-001, TOOL-002, TOOL-003, TOOL-004, ENV-001, F-ROOT, OBS-001, OBS-002,
-OBS-003, OBS-004, HOST-001, HOST-002, HOST-003, AUTH-001, AUTH-004, AUTH-005,
-AUTH-013.
+OBS-003, OBS-004, HOST-001, HOST-002, HOST-003, HOST-010, AUTH-001, AUTH-004,
+AUTH-005, AUTH-013, STATE-003, STATE-006.
 
 Full verification evidence remains in `AGENTS.md` Current Frozen State and the
 cited historical Step docs. REVIEW-1A changes Roadmap IDs only; it does not
@@ -588,18 +588,20 @@ risk after the v1.0 normalization. **CURRENT is NONE** immediately after
 AG.ROADMAP-0.REVIEW-1A closes (this repair is documentation-only).
 
 ### CURRENT
-- NONE. AG.V2-2.AT-INTEGRATION = CLOSED. AT.AG-CONSUMER-FREEZE-V1 (source
-  baseline c9cee21) consumed via vendored AAR (self-contained build).
-  android_shell one-shot VERIFIED on device (uid=2000(shell)). Self-generated
-  identity + AdbConsumerBootstrap pairing. V1 remains FROZEN_KNOWN_GOOD.
+- AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 (docs-only live-SSOT normalization;
+  no capability status of its own).
+- Prior state: NONE open after AG.UI-TRANSCRIPT-CARDS-1 (CLOSED, edfc603).
+  AT consumed baseline = AT.V4-CONSUMER-FREEZE-V1 (source baseline 7216d0e)
+  via vendored AAR; android_shell one-shot VERIFIED on device; V1 remains
+  FROZEN_KNOWN_GOOD.
 
 ### NEXT (<=5, in recommended order)
-Recomputed after AG.V2-2B.AT-ENGINE-FULL-INTEGRATION (full AT V3 execution
-engine integrated; D1-D4 + E1-E20 device verified; 726 tests 0 failures;
-full build PASS). Frozen migration sequence:
-AG.V2-2.AT-INTEGRATION (DONE) -> NEW AT INTEGRATION GATE (DONE) ->
-AG.OUTPUT-BOUND.PREFLIGHT -> future capabilities on V2.
-NEXT_OPEN_AUTHORIZED = NO (awaiting Controller Review).
+Recomputed by AG.ARCH-DOC-AUDIT-0.NORMALIZE-1: stale queue entries below
+were based on pre-TopicSession / pre-V4 capability states; the queue is now
+suspended pending Controller decision (AT upstream has in-progress work; no
+AG feature step is currently authorized). NEXT_OPEN_AUTHORIZED = NO.
+
+Historical queue (superseded, kept for provenance):
 
  1. **AG.OUTPUT-BOUND.PREFLIGHT** — TOOL-006.
     Status DISCOVERED; P0; hard prereq CORE-003 (satisfied); blocker none; risk
@@ -620,8 +622,8 @@ NEXT_OPEN_AUTHORIZED = NO (awaiting Controller Review).
 - COMP-003 / NET-004 (download) — after TOOL-005 + TOOL-002.
 - COMP-004 / HOST-009 (human interaction) — after a representation preflight.
 - AUTH-016 (PLAN/BUILD) + HOST-008 — after an approval-policy preflight.
-- STATE-003/006 (persistence/resume), OBS-005/006 (token/cost), AUTH-003/009
-  (approval persistence / named modes) — P2.
+- OBS-005/006 (token/cost), AUTH-003/009 (approval persistence / named
+  modes) — P2. (STATE-003/006 removed: VERIFIED, see Completed Baseline.)
 - NET-002/AUTH-011 (per-host policy), AUTH-006 (pinning), F-REALM (SAF) — P2/P3.
 - TOOL-007 (AGENT-0.CONTRAST) — P2, evaluation step.
 - COMP-001 (search), EXT-002 (RAG), AUTH-007 (credential) — P3.
@@ -741,6 +743,20 @@ OUT_OF_SCOPE.
 | F-ROOT status | IMPLEMENTATION_READY | VERIFIED | alias of ENV-001; AG.FILE-0 |
 | Execution Queue NEXT | AG.FILE-0 first | AG.RUN-CONTROL-0.PREFLIGHT first | capability completed; remaining items shift up |
 
+### AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 (2026-10-28) — live-SSOT normalization
+
+Live-status reconciliation after the AG.ARCH-DOC-AUDIT-0 retrospective (PASS_WITH_DRIFT; Controller Review added D5). Docs-only; no capability IDs invented or reused; no architecture reopened.
+
+| Item | Old | New | Reason |
+| --- | --- | --- | --- |
+| STATE-003 status | DISCOVERED ("Session in-memory only; storage model NOT frozen") | VERIFIED | AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0: Room/SQLite durable TopicSession persistence (DB v1); MessageDurability -> TopicSessionStore chain; real-device persistence/recovery verified; foundation FROZEN (AG.POST-I-CORE-FREEZE-V1) |
+| STATE-006 status | DISCOVERED | VERIFIED | restore latest durable TopicSession + app-restart/process-death resume + Core hydration + transcript re-projection; FULL_USER_VISIBLE_RESUME real-device verified |
+| HOST-010 status | DISCOVERED ("not started") | VERIFIED | AG.UI-TRANSCRIPT-CARDS-1: durable session list (last_used ordering) + current highlight + session switch; S1-S10 real-device PASS |
+| HOST-011 note | "not started" | "Resume path exists through TopicSession restoration/browser; Fork/Share/Export remain pending" | Resume (STATE-006) is done, but HOST-011 is composite — NOT closed |
+| Completed Baseline | (no STATE/HOST-010 entries) | + STATE-003, STATE-006, HOST-010 | VERIFIED capabilities per §21 definition |
+| Coverage matrix | STATE-003/006, HOST-010 = DISCOVERED | VERIFIED (mirror of registry) | live-status mirror sync |
+| Execution Queue CURRENT/NEXT | stale (pre-TopicSession, pre-V4 queue) | CURRENT = AG.ARCH-DOC-AUDIT-0.NORMALIZE-1; NEXT = CONTROLLER_DECISION; NEXT_OPEN_AUTHORIZED = NO | stale capability states invalidated the old queue; AT upstream in-progress work is NOT AG current baseline |
+
 ### REVIEW-1A — Stable-ID Integrity Repair
 
 REVIEW-1 correctly normalized architecture placement but accidentally reused several
@@ -821,8 +837,8 @@ composite/parent row), EXTERNAL (tracked as an external backend), DEFERRED
 | Multimodal attachment normalization | Tool Layer | TOOL-012 | DEFERRED | COVERED |
 | Conversation History | State | CORE-001, STATE-* | CLOSED | COVERED |
 | Active Input Retract | State+Core+Runtime+Host | STATE-001, HOST-006 | RESEARCH_REQUIRED | COVERED |
-| Session Persistence | State | STATE-003 | DISCOVERED | COVERED |
-| Session Resume | State+Host | STATE-006, HOST-011 | DISCOVERED | COVERED |
+| Session Persistence | State | STATE-003 | VERIFIED | COVERED |
+| Session Resume | State+Host | STATE-006, HOST-011 | VERIFIED (STATE-006) | COVERED |
 | Conversation Rewind | State | STATE-002 | DISCOVERED | COVERED |
 | Resource / File Undo | State+Tool/Workspace | STATE-015 | DISCOVERED | COVERED |
 | Session Fork | State | STATE-005 | DISCOVERED | COVERED |
@@ -908,7 +924,7 @@ composite/parent row), EXTERNAL (tracked as an external backend), DEFERRED
 | Approval / Ask UI | Host | HOST-007 | DISCOVERED | COVERED |
 | Execution Mode selector | Host | HOST-008 | DISCOVERED | COVERED |
 | Human Interaction UI | Host | HOST-009 | RESEARCH_REQUIRED | COVERED |
-| Session list / browser | Host | HOST-010 | DISCOVERED | COVERED |
+| Session list / browser | Host | HOST-010 | VERIFIED | COVERED |
 | Resume / Fork / Share / Export UX | Host | HOST-011 | DISCOVERED | COVERED |
 | Background notifications | Host | HOST-012 | DISCOVERED | COVERED |
 | Context usage UI | Host | HOST-013 | DISCOVERED | COVERED |

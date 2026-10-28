@@ -1,0 +1,91 @@
+AG.ARCH-DOC-AUDIT-0 — 03 ARCHITECTURE TIMELINE
+Chronology reconstructed from git tags + doc dates + step records.
+
+PHASE 0 — V1 era (D:\codebank\AndCode\AndroidAgent, now FROZEN_KNOWN_GOOD)
+  ag-baseline-0        Project init; AndroidAgent = AG intelligence/runtime,
+                       not a terminal app; AG Core / AGA / AGC roles defined.
+  ag-0                 AG Core v0: Agent Loop, Session/Run, ModelProvider +
+                       Tool contracts, ToolRegistry, policy, events, RunOutcome.
+                       Frozen async boundary: run/complete/execute = suspend;
+                       "AG Core has no production deps" (later relaxed, see D1).
+  ag-provider-0        First real OpenAI-compatible provider (external module),
+                       real endpoint verified. ModelTurn contract frozen.
+  ag-aga-0             :app Android host (AGA) + AndroidOpenAiHttpTransport;
+                       4-layer boundary frozen (Core / Runtime / Composition /
+                       Frontend). AGA = thin frontend.
+  ag-stable-0/1        Baseline freezes.
+  ag-engine-0          Engine = Runtime + Core logical boundary audit.
+  AG.SHELL-1           :tool-android-shell + AT Engine Handoff Bundle v0
+                       (first AT consumption; one-shot model-visible).
+  AGENT-0.PREFLIGHT/LIVE  Real adaptive agent loop on device; instructions +
+                       trace (Host-owned).
+  AGA.DEV-CONFIG-0 / HOST-CONTROL-0 / DEBUG-0 / OBSERVABILITY-0/1
+                       Provider config, host controls, debug bridge, streaming
+                       transcript (TranscriptModel born).
+  AG.NETWORK-0 / AG.FILE-0   Tool Layer formalized: one module per capability;
+                       no central Tool framework.
+  AG.CONVERSATION-CONTROL-0  Research: Stop/Interrupt/Rewind/Fork vocabulary
+                       (3-layer terminology frozen: UI=Stop, AG=Interrupt,
+                       Runtime=cancellation).
+  AG.RUN-CONTROL-0/1(.FIX)   Runtime owns active-Run Job; interruptActiveRun();
+                       RunOutcome.Interrupted; coroutines dep added to Runtime.
+  AG.HOST-STOP-1       User-facing Stop UI + fixture-based device acceptance.
+  13df1db AG.V1-KNOWN-GOOD-FREEZE-V1 (2026-10-18)
+                       V1 frozen as known-good baseline; Strategy B chosen
+                       (V2 = separate active tree) — AG.V2-CONTROLLER-DECISION.
+
+PHASE 1 — V2 migration (this repo)
+  c84bf5d AG.V2-BASELINE-V1            Direct clone at V1 freeze commit.
+  5679dbf AG.V2-1 smoke                BLOCKED (post-TLS ADB handshake) —
+                                       historical; later superseded by AT V4.
+  1410d5f / 22e3f28 AG.V2-2            AT V3 full consumer integration via
+                                       :integration-at (AtExecutionAdapter).
+  1ea9654..a6eea61 AT consumer reconciliation + full V3 subsystem close.
+  4d8aec7 / c4a58fe HOST-SESSION-CONTINUITY  Session survives config change.
+
+PHASE 2 — TopicSession durability (V2)
+  AG.SESSION-PERSISTENCE-RESEARCH-0    Research: why durable session needed;
+                       UNKNOWN-tool-outcome scenario drives transactional store.
+  AG.TOPIC-SESSION-ARCHITECTURE-FREEZE-0  Terminology (TopicSession != Run !=
+                       ModelCall != ATTerminalSession); layer ownership;
+                       SQLite/Room/DBv1 freeze; V1 feature boundary.
+  AG.TOPIC-SESSION-DURABILITY-SEAM-PREFLIGHT-0  D1/D2/D3 durable-commit points;
+                       DANGLING_AUTO_REPLAY=NO; controlled recovery.
+  AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0 (Phases A-I)
+                       MessageDurability in Core; TopicSessionStore contract in
+                       Runtime; Room impl in :app; TranscriptModel demoted to
+                       presentation projection. DEVICE-I verified.
+
+PHASE 3 — Post-I closure + AT V4
+  f640ed0 AG.POST-I-CORE-FREEZE-V1     Pre-UI architecture freeze (current
+                       canonical freeze for non-UI layers). Known debt M1/M3.
+  b7dbc04 docs: normalize post-freeze live SSOT (AGENTS.md sync).
+  AG.AT-V4-INTEGRATION-1 (2026-10-22)  AT V4 consumer freeze (7216d0e) vendored
+                       AAR replaces V3; AT_TO_AG_HANDOFF_CURRENT updated.
+                       V0/V3 bundles marked SUPERSEDED/INACTIVE.
+
+PHASE 4 — VNext UI (current)
+  AG.UI-BASELINE-AUDIT-1               UI baseline audit (audit+evidence only).
+  AG.UI-SHELL-1                        Workspace shell, provider settings,
+                       debug automation, sidebar.
+  edfc603 AG.UI-TRANSCRIPT-CARDS-1 + SHELL-1 (2026-10-28, HEAD)
+                       RecyclerView transcript cards, per-block actions
+                       (Copy/Retry-as-new-turn/Edit&Resend/collapse),
+                       TopicSession list + switch (additive Runtime seam).
+                       CURRENT HEAD.
+
+INVARANTS THAT SURVIVED ALL PHASES:
+  - AG = Intelligence; AT = Execution.
+  - ag-core: no Android, no AT, no concrete impl, no Room/HTTP.
+  - ag-runtime: no Android/AT/concrete tool/provider.
+  - AT consumption only via :integration-at.
+  - One Tool = one module; no Tool framework.
+  - Host is thin: input/render/lifecycle; no Agent semantics in frontend.
+
+ASSUMPTIONS REPLACED OVER TIME:
+  - "AG Core has zero production deps" -> coroutines-core added (RUN-CONTROL-1).
+  - "no persistence" -> TopicSession/Room durable SSOT (Phase 2).
+  - TranscriptModel as transcript owner -> presentation projection only.
+  - AT V0 handoff -> V3 consumer freeze -> V4 consumer freeze (CURRENT).
+  - Single-TextView transcript -> RecyclerView cards (UI generation change
+    only; architecture unchanged).

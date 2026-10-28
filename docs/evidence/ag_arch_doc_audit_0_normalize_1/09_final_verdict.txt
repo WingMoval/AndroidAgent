@@ -1,0 +1,43 @@
+AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 — 09 FINAL VERDICT (pre-commit)
+
+VERDICT = PASS (pending commit)
+
+Live SSOT consistency gate (task §33):
+  [x] AGENTS current AT -> points to V4 canonical handoff values
+  [x] Roadmap STATE-003 -> current persistence truth (VERIFIED)
+  [x] Roadmap STATE-006 -> current resume truth (VERIFIED)
+  [x] Roadmap HOST-010  -> current browser truth (VERIFIED)
+  [x] Retry             -> Retry-as-New-Turn (unchanged, restated in
+                           AGENTS.md UI entry)
+  [x] Rewind            -> not implemented (STATE-002 DISCOVERED,
+                           CORE-007 RESEARCH_REQUIRED — unchanged)
+  [x] Post-I            -> remains PRE-UI architecture freeze (untouched)
+  [x] AT unfinished upstream work -> not treated as current AG baseline
+                           (one restrained line only)
+
+Drift result (task §34):
+  D1 = RESOLVED_IN_LIVE_SSOT
+  D2 = RESOLVED_IN_LIVE_SSOT
+  D3 = NOT_AN_ERROR / EXPECTED_SCOPE
+  D4 = RESOLVED
+  D5 = RESOLVED
+  Historical ag-0 statements = PRESERVED_AS_HISTORICAL
+
+Invariants:
+  PRODUCTION_CODE_CHANGED = NO
+  TEST_CODE_CHANGED = NO
+  GRADLE_CHANGED = NO
+  DB_CHANGED = NO
+  ARCHITECTURE_FREEZE_CREATED = NO
+  AT_SYNC_PERFORMED = NO
+  AT_UNFINISHED_UPSTREAM_IMPORTED = NO
+  FROZEN_ARCHITECTURE_DOC_CHANGED = NO
+  HISTORICAL_ARCH_DOC_REWRITTEN = NO
+  STABLE_ID_REUSED = NO
+  CAPABILITY_INVENTED = NO
+  HOST-011_FALSELY_CLOSED = NO
+
+Known worktree item (not a Step change):
+  2 tracked upload files deleted by external change (reported; not staged)
+
+NEXT = commit (docs-only atomic) -> CONTROLLER_DECISION -> STOP

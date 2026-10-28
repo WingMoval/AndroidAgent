@@ -1,0 +1,76 @@
+AG.ARCH-DOC-AUDIT-0 — 09 DRIFT MATRIX
+DOC says X / CODE does Y. Severity: NONE | LOW | MEDIUM | HIGH | ARCH_BLOCKER.
+
+D1. DEPENDENCY_DRIFT — LOW (doc outdated, code correct)
+  DOC: docs/architecture/AndroidAgent_总体架构.md §2/§10:
+       "AG Core 没有任何生产依赖，只依赖 Kotlin 标准库；kotlinx-coroutines
+        仅用于测试" and ":ag-core 生产 无（仅 Kotlin 标准库）".
+  CODE: ag-core/build.gradle.kts has production
+       implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2").
+  CAUSE: AG.RUN-CONTROL-1.DETERMINISTIC.FIX added coroutines to Core
+       (NonCancellable shielding of durable synthetic ToolResult commit).
+       AGENTS.md §"Implemented..." still says "AG Core ... has no production
+       dependency beyond the Kotlin standard library" (also outdated).
+  RULING: code change was step-authorized and documented in the step doc;
+       the frozen general-architecture doc and one AGENTS.md line were not
+       re-normalized. No boundary violated (still pure JVM, no Android/AT).
+  FIX (deferred to normalization step): update 总体架构 §2/§10 + AGENTS.md
+       line to "no production dependency beyond kotlinx-coroutines-core
+       (minimal, interrupt closeout)".
+
+D2. DEPENDENCY_DRIFT — LOW (doc outdated, code correct)
+  DOC: 总体架构 §10: ":ag-runtime 生产 project(:ag-core) + kotlin-stdlib;
+       不引入 Android / AndroidX / provider 实现 / HTTP / JSON".
+  CODE: ag-runtime adds kotlinx-serialization-json:1.8.0 (MessageSerializer)
+       + kotlinx-coroutines-core:1.10.2.
+  CAUSE: AG.TOPIC-SESSION-PERSISTENCE-IMPLEMENTATION-0 (Phase D) + RUN-CONTROL.
+  RULING: authorized step work; "不引入 JSON" predates TopicSession.
+       POST-I freeze (newer) already reflects Runtime's persistence contracts.
+  FIX (deferred): same normalization as D1.
+
+D3. SCOPE_DRIFT — LOW (doc scope, not error)
+  DOC: POST-I freeze is a PRE-UI freeze; it does not mention RecyclerView,
+       TranscriptCardAdapter, HostActions, ProviderProfile, session switcher.
+  CODE/UI: UI generation (VNext shell + cards) now exists.
+  RULING: expected — freeze §13 lists "final UI visual style / session
+       browser UI design" as explicitly DEFERRED. UI design SSOT is the
+       user-owned VNext design baseline. Not a contradiction; the freeze
+       remains authoritative for non-UI layers. AGENTS.md does NOT yet have
+       a UI step registry entry for SHELL-1/TRANSCRIPT-CARDS-1 (closeout
+       judged NO UPDATE NEEDED; watch item for next SSOT normalization).
+
+D4. SUPERSEDED_BUT_UNMARKED — LOW
+  DOC: AGENTS.md "Current integration snapshot" section still states
+       AT_CONSUMER_INTEGRATION = AT.AG-CONSUMER-FREEZE-V1 / c9cee21 /
+       AT_CONTRACT_STATUS = DRAFT / NEXT_FORMAL_AT_SYNC = POST_AT_EMULATOR...
+  CODE/DOC: actual current AT = AT_V4_CONSUMER_HANDOFF (7216d0e), contract
+       FROZEN (V4 consumer boundary), NEXT = POST_V4_RELEASE_VALIDATION.
+  CAUSE: AG.AT-V4-INTEGRATION-1 updated AT_TO_AG_HANDOFF_CURRENT.md (the
+       canonical pointer) but the AGENTS.md snapshot block was not synced.
+  RULING: the AGENTS.md block itself says "do not restate the full AT state
+       in other docs — point to the file above", so the pointer file wins;
+       but the stale values inside AGENTS.md are a misreading risk.
+  SEVERITY: LOW (pointer mechanism works; text is stale).
+
+D5. TERMINOLOGY_DRIFT — NONE (consistent)
+  "AT Core" (old docs) vs "AT Engine" (new docs): same system
+  (AndroidTerminal execution kernel). 总体架构/AGENTS use "AT Core";
+  V4 handoff docs use "AT Engine". Not contradictory — AGENTS.md still
+  defines the rule as "AT Core lives in the AndroidTerminal project".
+  Recorded for vocabulary normalization only.
+
+D6. DEAD_FUTURE_DESIGN — NONE FOUND
+  No orphan future-design docs present without a FUTURE/DEFERRED marker.
+  Deferred items are consistently tracked in POST-I §13 + Roadmap registry.
+
+D7. OWNERSHIP_DRIFT — NONE
+  No case found where a newer doc silently moved ownership across the
+  frozen layer boundary (Core/Runtime/Host). listSessions/switchSession
+  additions to Runtime stay within Runtime's frozen "session selection"
+  ownership.
+
+SUMMARY: 2 LOW dependency-doc drifts (D1/D2, both in the ag-0-era general
+architecture doc + one AGENTS.md line), 1 LOW scope note (D3), 1 LOW stale
+AT snapshot block in AGENTS.md (D4). No MEDIUM/HIGH/ARCH_BLOCKER drift.
+CODE matches the NEWER frozen docs (POST-I freeze, TopicSession freeze,
+V4 handoff) on every checked boundary.

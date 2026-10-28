@@ -1,0 +1,32 @@
+AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 — 05 HISTORICAL DOCS PRESERVATION
+
+docs/architecture/AndroidAgent_总体架构.md (ag-0-era FROZEN snapshot):
+  MODIFIED = NO
+  Rationale (task §9): the statements "AG Core 没有任何生产依赖，只依赖
+  Kotlin 标准库" and ":ag-runtime 不引入 JSON" were TRUE at the ag-0
+  freeze point. They were superseded by later authorized Steps
+  (AG.RUN-CONTROL-1.DETERMINISTIC.FIX; AG.TOPIC-SESSION-PERSISTENCE-
+  IMPLEMENTATION-0). The repo has NO established supersession-note
+  convention for frozen historical files, so per the fallback rule the
+  file is left untouched. Its superseded status is recorded instead in:
+    - docs/audit/AG.ARCH-DOC-AUDIT-0.md §19 (PRESERVED_AS_HISTORICAL)
+    - docs/evidence/ag_arch_doc_audit_0/09_drift_matrix.txt (D1/D2)
+    - this NORMALIZE-1 step doc + evidence
+
+Frozen architecture docs (task §30 — forbidden to modify):
+  AndroidAgent_Architecture_Capability_Map_v1.0.md  = UNCHANGED
+  AG.POST-I-ARCHITECTURE-FREEZE-V1.md               = UNCHANGED
+  AG.TOPIC-SESSION-ARCHITECTURE-FREEZE-0.md         = UNCHANGED
+  AG.V1-KNOWN-GOOD-FREEZE-V1.md                     = UNCHANGED
+  AG.BASELINE-FREEZE-0.md / AG.ENGINE-BOUNDARY-FREEZE.md = UNCHANGED
+
+D3 ruling (task §11): AG.POST-I-ARCHITECTURE-FREEZE-V1 remains a PRE_UI
+freeze by identity. UI generation (SHELL-1 / TRANSCRIPT-CARDS-1) extends
+Host/Product only and does NOT reopen Core/Runtime architecture. NO
+POST-UI / FINAL / V2-PRODUCT freeze was created.
+
+Audit doc handling (task §27):
+  docs/audit/AG.ARCH-DOC-AUDIT-0.md was NOT rewritten to look like it had
+  always found D5. Additive "Controller Review Addendum" (§19) records
+  C0 + D5; original verdict and body preserved (only the C0 SHA typo
+  corrected as an obvious transcription error, errata recorded in §19).

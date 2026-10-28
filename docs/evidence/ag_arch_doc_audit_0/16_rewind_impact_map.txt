@@ -1,0 +1,66 @@
+AG.ARCH-DOC-AUDIT-0 — 16 REWIND IMPACT MAP (audit only — NO design)
+Next candidate = AG.CONVERSATION-REWIND-0.PREFLIGHT.
+Question answered: which FROZEN boundaries would a future Rewind most
+likely touch? Based only on current frozen docs + code.
+
+IMPACT AREAS (ordered by coupling):
+
+1. TopicSession durable history (Room, DB v1)  [HIGHEST coupling]
+   - Rewind semantics = "which messages count as current history".
+     Current freeze: seq 0..N-1 contiguous, seq owner = persistence,
+     durable SSOT = DB. Any rewind that mutates/invalidates durable
+     messages touches: DATABASE_VERSION (reopen condition #2/#3),
+     MessageSerializer, Records, RoomTopicSessionStore, Daos.
+   - Frozen reopen conditions (POST-I §14) are the ONLY legitimate door:
+     schema change / new durable domain requirement / verified bug.
+
+2. Core Session + history semantics
+   - Session.restoreHistory / append / pairing invariant (every ToolCall
+     has a ToolResult). Rewind must preserve pairing for whatever
+     truncated history remains; synthetic ToolResult rules (RUN-CONTROL)
+     interact with "rewind after interrupt".
+   - Core history is live SSOT after hydration; Core owns run exclusivity.
+
+3. Runtime restore/hydrate + session selection
+   - initialize()/switchSession() assume "latest durable state = truth".
+     Rewind introduces a second notion of "current head" (logical head vs
+     durable tail) — new Runtime state, possibly a new seam.
+   - Dangling repair orchestration would need a rewind-aware variant
+     (rewound ToolCalls whose external side effects DID happen = the same
+     UNKNOWN-outcome problem DANGLING_AUTO_REPLAY=NO was created for).
+
+4. MessageDurability contract (Core)
+   - Currently append-only commit(sessionId, message). Rewind needs either
+     a new contract member (e.g. truncate/invalidation) or a new durable
+     domain concept (rewind marker / versioned history). Both are
+     "new durable domain requirement" class changes.
+
+5. Transcript projection + UI
+   - Cards are derived; a rewind reprojects. Low risk technically, but the
+     frozen projection boundary (TranscriptModel must NOT own policy) means
+     rewind DECISION must live in Runtime/Core, never in the adapter.
+   - Retry/Edit&Resend already reuse send(); rewind must not be implemented
+     as a display-only truncation (explicitly forbidden pattern).
+
+6. Run / interrupt semantics
+   - Interrupt already produces partial-transcript-only behavior +
+     synthetic results. Rewind + interrupt interaction (rewind to before an
+     interrupted tool whose external effect is UNKNOWN) is the sharpest
+     semantic edge.
+
+7. Host actions + debug bridge
+   - New HostActions entry (rewind) + DebugProtocol command; debug bridge
+     must route through the same Runtime seam (single-pipeline invariant).
+
+BOUNDARIES THAT STAY INTACT UNDER ANY REASONABLE REWIND:
+  - AG Core -X-> Android/AT (unchanged)
+  - AT knows nothing about TopicSession (unchanged)
+  - Tool/Provider contracts (unchanged)
+  - Single transcript pipeline (rewind must flow through it)
+
+KEY RISK REGISTERED: external side effects of already-executed tools.
+The architecture already answers "unknown outcome = never auto-replay";
+rewind inherits this. Any rewind design that implies undoing external
+effects violates the frozen NOT_PROMISED position (CONVERSATION-CONTROL-0).
+
+NO REWIND DESIGN OR IMPLEMENTATION PERFORMED THIS ROUND.

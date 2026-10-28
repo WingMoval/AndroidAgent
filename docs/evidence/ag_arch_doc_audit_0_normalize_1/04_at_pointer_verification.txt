@@ -1,0 +1,32 @@
+AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 — 04 AT POINTER VERIFICATION
+Source of all AT values used in normalization:
+docs/integration/AT_TO_AG_HANDOFF_CURRENT.md (read-only this round).
+
+Values cross-checked:
+  AT_HANDOFF          = AT_V4_CONSUMER_HANDOFF                -> used in AGENTS
+  SOURCE_BASELINE     = 7216d0e8131e92e8914ce7c8443e1668b1d53aca
+                                                               (abbrev 7216d0e)
+  FREEZE_TAG          = AT.V4-CONSUMER-FREEZE-V1              -> used in AGENTS
+  AT_CONTRACT_STATUS  = FROZEN (V4 consumer boundary)         -> used in AGENTS
+  AG_CONSUMPTION_MODE = VENDORED_AAR (repo-local Maven)       -> used in AGENTS
+  VARIANT             = debug (release NOT yet validated)     -> used in AGENTS
+  NEXT_FORMAL_SYNC    = POST_V4_RELEASE_VALIDATION            -> used in AGENTS
+  LEGACY: V0/V3 SUPERSEDED / INACTIVE                         -> used in AGENTS
+  Boundary (§7): :integration-at may import com.at.engine.* /
+                 composition / cli; com.adb.engine.* forbidden;
+                 ag-core/ag-runtime import any AT type = FORBIDDEN.
+
+Physical verification (dependency graph, unchanged):
+  settings.gradle.kts m2 = third_party/at-v4-consumer-freeze-v1/m2 (active)
+  V3 m2 entry = commented out (superseded)
+  :integration-at = only module with AT AAR deps
+  ag-core / ag-runtime = 0 AT imports (verified in original audit)
+
+NOT IMPORTED INTO AG (task §2/§26):
+  - No AT in-progress upstream capability recorded
+  - No tentative commit / provisional API / unfrozen module list
+  - One restrained line only: upstream in-progress work is not AG current
+    baseline until a formal handoff/consumer-freeze/sync Step.
+
+AT_TO_AG_HANDOFF_CURRENT.md itself: UNMODIFIED (canonical pointer untouched).
+AT_SYNC_PERFORMED = NO. AT_UNFINISHED_UPSTREAM_IMPORTED = NO.

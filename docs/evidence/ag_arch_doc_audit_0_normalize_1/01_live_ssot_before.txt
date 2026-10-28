@@ -1,0 +1,44 @@
+AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 — 01 LIVE SSOT BEFORE
+State of live docs BEFORE normalization (measured 2026-10-28).
+
+AGENTS.md:
+  1. "AG Core ships no blocking wrapper and has no production dependency
+     beyond the Kotlin standard library."          -> STALE (D1)
+  2. "Current integration snapshot" block:
+       AT_CONSUMER_INTEGRATION = AT.AG-CONSUMER-FREEZE-V1
+       SOURCE_BASELINE         = c9cee21
+       AT_CONTRACT_STATUS      = DRAFT
+       NEXT_FORMAL_AT_SYNC     = POST_AT_EMULATOR_0_AND_CONTRACT_1_REVIEW
+                                     -> STALE (D4)
+  3. "Repository identity (V2)" block:
+       CURRENT AT = AT.AG-CONSUMER-FREEZE-V1 (source baseline c9cee21)
+       AT MODULES = :at-engine, :at-backend-adb, :adb-engine
+       NEXT       = AG.OUTPUT-BOUND.PREFLIGHT (TOOL-006, per Roadmap queue)
+                                     -> STALE (D4)
+  4. No UI step registry entries for AG.UI-SHELL-1 /
+     AG.UI-TRANSCRIPT-CARDS-1.                     -> GAP (task §19)
+
+Roadmap (docs/roadmap/AndroidAgent_Master_Roadmap.md):
+  STATE-003 Session Persistence  = DISCOVERED
+              note: "Session in-memory only; storage model NOT frozen"
+  STATE-006 Session Resume       = DISCOVERED
+  HOST-010  Session list/browser = DISCOVERED, note "not started"
+  HOST-011  Resume/Fork/Share/Export UX = DISCOVERED, note "not started"
+  Coverage matrix: STATE-003/006 = DISCOVERED, HOST-010 = DISCOVERED
+  Completed Baseline: no STATE-003/006, no HOST-010
+  Execution Queue: CURRENT = NONE (stale text referencing c9cee21 AT
+                   baseline); NEXT list stale (pre-TopicSession/V4 states)
+                                     -> STALE (D5, MEDIUM)
+
+AT_TO_AG_HANDOFF_CURRENT.md (canonical pointer — UNCHANGED this round):
+  AT_HANDOFF        = AT_V4_CONSUMER_HANDOFF
+  SOURCE_BASELINE   = 7216d0e8131e92e8914ce7c8443e1668b1d53aca
+  FREEZE_TAG        = AT.V4-CONSUMER-FREEZE-V1
+  AT_CONTRACT_STATUS = FROZEN (V4 consumer boundary)
+  NEXT_FORMAL_SYNC  = POST_V4_RELEASE_VALIDATION
+  (all values used to normalize AGENTS.md come from this file)
+
+Audit doc (docs/audit/AG.ARCH-DOC-AUDIT-0.md):
+  HEAD SHA written as ...de285 (typo; real = ...de2e685)  -> C0
+  No D5 (roadmap live-state drift missed)                  -> Controller
+                                                             finding

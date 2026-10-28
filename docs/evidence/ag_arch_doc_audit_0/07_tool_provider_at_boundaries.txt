@@ -1,0 +1,64 @@
+AG.ARCH-DOC-AUDIT-0 — 07 TOOL / PROVIDER / AT BOUNDARIES
+
+TOOL ARCHITECTURE (frozen, verified):
+  Contract owner  = AG Core (Tool, ToolSpec, ToolCall, ToolResult,
+                    ToolRegistry). ToolCall.arguments = opaque string;
+                    typed schema DEFERRED.
+  Implementations = Core-external, one module per capability:
+    :tool-android-shell  (AndroidShellToolImpl; AT via :integration-at api)
+    :tool-network        (NetworkToolImpl fetch; HTTPS GET only; full SSRF
+                          guard; NO AT dependency — canonical counter-example)
+    :tool-file           (FileToolImpl read/search/list/stat; APP_SELF root =
+                          filesDir/agent/; READ-only; bounds enforced)
+  NO central :tool-layer module, NO ToolManager/ToolRuntime/ToolBackend/
+  ToolFactory (frozen anti-abstraction list; verified absent in code).
+  Registration = Host (ChatCompositionRoot) constructs + registers into
+  Core ToolRegistry. Adding a tool never touches Core/Runtime.
+  ToolResult.success = invocation mechanism OK, NOT domain success
+  (exitCode=7 still success=true).
+  "Not all Android capabilities go through AT" = CONFIRMED (network/file
+  prove the direct-API path).
+
+PROVIDER ARCHITECTURE (frozen, verified):
+  Contract owner      = AG Core (ModelProvider, ModelTurn, ModelRequest).
+  Implementation      = :provider-openai-compatible (protocol + config
+                        loader/resolver + OpenAiHttpTransport contract).
+  Transports          = :provider-openai-compatible-jdk (JDK java.net.http,
+                        JVM tests) and AndroidOpenAiHttpTransport in :app
+                        (HttpsURLConnection, production device path).
+  Host configuration  = :app DeviceLocalProviderConfig (filesDir/
+                        provider.local.json auto-load; manual UI fallback;
+                        ProviderProfile + ModelDiscovery + ModelCatalog
+                        added in UI-SHELL-1, all :app-scoped).
+  Model catalog       = :app (ModelCatalog/ModelDiscovery) — presentation/
+                        config layer, NOT Core, NOT provider module.
+  UI-Shell pollution check: ProviderProfile/ModelCatalog/ModelDiscovery/
+  SafResource all live in :app; zero new imports of app types in
+  ag-core/ag-runtime/provider-* (verified by import scan). NO reverse
+  pollution.
+  EMG / OpenRouter = provider NODES (endpoints) selected in Host; no
+  EMGProvider class exists (documented anti-misreading in 总体架构).
+
+AT / AG BOUNDARY (frozen, verified 2026-10-22):
+  AT Engine = AndroidTerminal execution engine (ADB connection/transport,
+  shell/PTY execution, identity/pairing). EXTERNAL project.
+  AG Engine = AG Core + Agent Runtime (intelligence + orchestration).
+  Connection point = :integration-at (AtExecutionAdapter) — the SINGLE
+  module on AT AARs. :tool-android-shell is a thin one-shot consumer of
+  that adapter.
+  Who may depend on whom:
+    :integration-at -> com.at.engine.api (public), com.at.composition.android
+                       (facade), com.at.cli (optional). ALLOWED.
+    :integration-at -> com.adb.engine.* / com.at.backend.*  FORBIDDEN.
+    :ag-core / :ag-runtime -> any com.at.* / com.adb.*       FORBIDDEN (0
+                       imports verified).
+  CURRENT AT snapshot = AT.V4-CONSUMER-FREEZE-V1 (7216d0e), vendored AAR in
+  third_party/at-v4-consumer-freeze-v1/, debug variant; release NOT yet
+  validated (sync cadence: POST_V4_RELEASE_VALIDATION).
+  Model-visible AT capability = ONE_SHOT only. PERSISTENT engine capability
+  exists in AT but is adapter-owned, not model-visible.
+  AG = Intelligence / AT = Execution still holds: AT knows nothing about
+  TopicSession; AG never imports ADB internals.
+  SUPERSEDED bundles (retained for rollback only): at-engine-handoff-v0 (V0),
+  at-consumer-freeze-v1 (V3); m2 entry for V3 commented out in
+  settings.gradle.kts.

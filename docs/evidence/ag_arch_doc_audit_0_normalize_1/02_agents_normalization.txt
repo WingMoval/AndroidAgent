@@ -1,0 +1,49 @@
+AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 — 02 AGENTS.md NORMALIZATION
+Edits applied to AGENTS.md (live SSOT, WHAT IS TRUE NOW).
+
+EDIT 1 (D1 + D2) — dependency truth, "Implemented" section:
+  OLD: "AG Core ships no blocking wrapper and has no production
+       dependency beyond the Kotlin standard library."
+  NEW: AG Core remains pure JVM / platform-independent; only current
+       production dependency = kotlinx-coroutines-core (authorized
+       Run-Control / durability closeout — minimal NonCancellable
+       shielding). Forbidden list restated (Android/AndroidX, Room,
+       AT, app, concrete Tool/Provider, HTTP/wire).
+       + NEW paragraph: Agent Runtime remains pure JVM / host-neutral /
+       Android-free / AT-free / Room-free / tool-free / provider-free;
+       current deps = kotlinx-coroutines-core + kotlinx-serialization-json
+       (TopicSession MessageSerializer, storage-neutral). Explicit:
+       "Persistence serialization JSON is NOT provider wire JSON."
+
+EDIT 2 (D4) — "Current integration snapshot" block:
+  OLD values (V1/c9cee21/DRAFT/POST_AT_EMULATOR...) REPLACED with the
+  canonical values from AT_TO_AG_HANDOFF_CURRENT.md:
+    AT_V4_CONSUMER_HANDOFF / 7216d0e / FROZEN / VENDORED_AAR debug /
+    :integration-at single consumption point / ONE_SHOT model-visible /
+    V0+V3 SUPERSEDED / NEXT = POST_V4_RELEASE_VALIDATION
+  + ONE restrained line: AT upstream in-progress capabilities are NOT AG
+    current baseline until a formal handoff/consumer-freeze/sync Step.
+  Full AT state intentionally NOT restated (pointer file stays canonical).
+
+EDIT 3 (D4) — "Repository identity (V2)" block:
+    CURRENT AT = AT.V4-CONSUMER-FREEZE-V1 (source baseline 7216d0e) +
+                 canonical pointer reference
+    AT MODULES row removed (internal AT module list no longer restated;
+                 V4 boundary = public API only)
+    LEGACY AT V0 -> LEGACY AT V0/V3
+    NEXT = CONTROLLER_DECISION (Roadmap execution queue)
+
+EDIT 4 (task §19) — "Current frozen state" step registry:
+  ADDED two concise entries (what-is-true-now, not step logs):
+    AG.UI-SHELL-1           CLOSED (VNext UI shell, :app only, engine
+                            unchanged)
+    AG.UI-TRANSCRIPT-CARDS-1 CLOSED (semantic RecyclerView cards + per-block
+                            actions + TopicSession browser; C1-C9 + S1-S10
+                            PASS; 410/0; DB schema UNCHANGED; Core NOT
+                            reopened; Retry = Retry-as-New-Turn;
+                            Rewind/Redo/Fork/Checkpoint NOT IMPLEMENTED;
+                            committed edfc603)
+
+NO CHANGE: Architecture rules / Package boundary / Frontend boundary /
+AT integration boundary / forbidden list / secret handling / SSOT roles.
+AGENTS.md was NOT turned into a step log.

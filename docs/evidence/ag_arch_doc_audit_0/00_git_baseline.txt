@@ -1,0 +1,28 @@
+AG.ARCH-DOC-AUDIT-0 — 00 GIT BASELINE
+Date: 2026-10-28
+
+BRANCH        = main
+HEAD          = edfc603eadb0067bd010c04ca26b4bc28de2e685
+WORKTREE      = DIRTY (2 untracked, non-architectural closeout docs:
+                docs/implementation/AG.UI-TRANSCRIPT-CARDS-1.CLOSEOUT-MERGE-0.md
+                upload/AG.UI-TRANSCRIPT-CARDS-1.CLOSEOUT-MERGE-0.md)
+MODIFIED_TRACKED = 0
+REMOTE        = none
+PUSH          = N/A (no remote)
+
+TAGS (relevant):
+  AG.V1-KNOWN-GOOD-FREEZE-V1   -> 13df1db
+  AG.V2-BASELINE-V1            -> c84bf5d
+  AG.POST-I-CORE-FREEZE-V1     -> f640ed0
+  ag-0 / ag-provider-0 / ag-aga-0 / ag-stable-0 / ag-stable-1 / ag-engine-0
+  (AT side: AT.V4-CONSUMER-FREEZE-V1 = 7216d0e, external repo)
+
+LOG (last 8):
+  edfc603 (HEAD -> main) AG.UI-TRANSCRIPT-CARDS-1 + AG.UI-SHELL-1
+  b7dbc04 docs: normalize post-freeze live SSOT
+  f640ed0 (tag: AG.POST-I-CORE-FREEZE-V1) freeze: establish post-I pre-UI AG core baseline
+  a6eea61 AG.AT-FULL-SUBSYSTEM-INTEGRATION-0: close complete AT V3 consumer subsystem
+  4d8aec7 AG.HOST-SESSION-CONTINUITY-0.1
+  c4a58fe AG.HOST-SESSION-CONTINUITY-0
+  6c4d8f1 AG.AT-FULL-CONSUMER-INTEGRATION-0
+  50211c6 AG.AT-CONSUMER-RECONCILIATION-0.1

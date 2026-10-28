@@ -1,0 +1,43 @@
+AG.ARCH-DOC-AUDIT-0.NORMALIZE-1 — 08 DIFF CHECK
+Commands (task §32):
+  git diff --check       -> no output (no whitespace errors)
+  git diff --name-only   -> AGENTS.md
+                            docs/roadmap/AndroidAgent_Master_Roadmap.md
+                            upload/AG.UI-TRANSCRIPT-CARDS-1.evidence.txt (D,
+                                pre-existing external deletion, NOT staged)
+                            upload/AG.UI-TRANSCRIPT-CARDS-1.md (D, same)
+  git status --short     -> 2 modified docs + 2 pre-existing deletions +
+                            untracked (audit/evidence/closeout/upload copies)
+
+NON_DOC_PRODUCTION_DIFF = NONE
+  No changes under: ag-core/ ag-runtime/ app/ provider-*/ tool-*/
+  integration-at/ third_party/ ; no *.gradle / *.gradle.kts /
+  settings.gradle* ; no Room schema ; no AAR/JAR.
+
+MODIFIED (tracked):
+  AGENTS.md                                        (live SSOT normalization)
+  docs/roadmap/AndroidAgent_Master_Roadmap.md      (status reconciliation)
+DELETED (tracked, pre-existing external change, NOT part of this Step):
+  upload/AG.UI-TRANSCRIPT-CARDS-1.evidence.txt
+  upload/AG.UI-TRANSCRIPT-CARDS-1.md
+  -> NOT staged, NOT restored, NOT hidden; reported to Controller.
+
+UNTRACKED (to be added with this Step's commit):
+  docs/audit/AG.ARCH-DOC-AUDIT-0.md
+  docs/evidence/ag_arch_doc_audit_0/
+  docs/evidence/ag_arch_doc_audit_0_normalize_1/
+  docs/implementation/AG.UI-TRANSCRIPT-CARDS-1.CLOSEOUT-MERGE-0.md
+  upload/ (11 audit + key-architecture export copies)
+
+LIVE-SECTION STALE-VALUE SCAN (task §32 patterns):
+  AGENTS.md: c9cee21 = 0, AT.AG-CONSUMER-FREEZE-V1 = 0,
+             "no production dependency beyond the Kotlin standard
+             library" = 0, AT_CONTRACT_STATUS=DRAFT = 0,
+             POST_AT_EMULATOR = 0
+  Roadmap live sections: "Session in-memory only" = 0,
+             "storage model NOT frozen" = 0
+  (single remaining occurrence of the old STATE-003 wording = line 752,
+   inside the NEW Update Trail "Old" column — historical by design)
+
+GIT_DIFF_CHECK = PASS
+NON_DOC_DIFF   = NONE
