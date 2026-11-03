@@ -1,0 +1,40 @@
+AG.AT-HISTORICAL-EVIDENCE-RECONCILIATION-0 - 06 FINAL VERDICT
+Date: 2026-11-04
+
+VERDICT = PASS
+
+Lineage established: V1 freeze 13df1db -> V2 baseline c84bf5d (parent EXACT);
+  ADB-Regression = forensic LKG checkout (3aeed33); PreMigration path NOT_FOUND
+  (real artifacts = AT-side archive + in-repo research workspace).
+
+AT consumer lineage: Handoff v0 (0.1.0) -> V3 (c9cee21) -> V4/v0.4.0 (7216d0e)
+  -> candidate v0.4.2 (925e7ac). V4 freeze == v0.4.0 tag target (EXACT).
+
+Execution evolution: ADB one-shot (v0) -> V3 (ADB one-shot + internal PTY)
+  -> V4/v0.4.0 (Local one-shot becomes MODEL DEFAULT; ADB via in-shell CLI).
+  PTY never model-visible.
+
+Stop layers: S1/S2/S3/S8 (product) VERIFIED; S4 PARTIAL (model path only);
+  S5/S6/S7 (AT-native one-shot termination + cleanup) UNKNOWN in ALL baselines.
+  S6 VERIFIED only for PTY-Ctrl-C (different mechanism).
+
+Timeout: T1/T3/T6 VERIFIED/PARTIAL (product); T4/T5 (native stop + orphan) UNKNOWN.
+
+Previous differential UNKNOWNs reclassified:
+  pairing/readiness = HISTORICALLY_VERIFIED
+  session recovery after interrupt = PRODUCT_LEVEL_VERIFIED_ONLY
+  Local Stop/timeout/orphan + ADB cancel/timeout = STILL TRULY UNKNOWN (5)
+
+TRUE remaining gaps (4): G1 Local Stop native+orphan, G2 Local timeout native+orphan,
+  G3 ADB CLI cancel native+orphan, G4 ADB timeout native. All testable,
+  none a regression, none an architecture blocker.
+
+FINAL v0.4.2 regression gates = 7: G-a Local smoke (REDUCED), G-b Stop native (FULL P0),
+  G-c timeout native (FULL P0), G-d local-first Wi-Fi+WD off (FULL),
+  G-e local loss->wireless recovery (REDUCED), G-f pairing/trust-loss (REDUCED),
+  G-g in-shell adb CLI one-shot (FULL).
+
+RELEASE_V040_FIRST = NO_REASON_TO_RELEASE_ON_V040_FIRST
+V042_SYNC_DIRECTION = PROCEED_TO_V042_CONSUMER_SYNC (then narrow 7-gate validation)
+
+Invariants: NO code/dep/AAR/SSOT change; NO commit/tag/push/freeze.

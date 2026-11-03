@@ -1,0 +1,65 @@
+AG.AT-HISTORICAL-EVIDENCE-RECONCILIATION-0 - 04 V0.4.0 MODEL CAPABILITY + PTY PERSISTENCE (excerpts)
+Date: 2026-11-04
+AT baseline: 7216d0e = v0.4.0. Device: HONOR ALI-AN00. AG UID 10370.
+
+======================================================================
+AG.AT-V4-MODEL-CAPABILITY-UPDATE-0 - Phase E direct ground truth
+  | U15_spec_describes_local_shell_and_app_identity | PASS |
+  | U16_spec_describes_adb_cli_availability | PASS |
+  | U17_spec_distinguishes_local_and_adb_shell_principals | PASS |
+  | U18_spec_preserves_result_semantics | PASS |
+  | U19_tool_name_unchanged | PASS |
+  | T8_same_instructions_same_hash (version→V1) | PASS |
+  | T9_redaction_never_emits_fake_sentinels (version→V1) | PASS |
+  | 全量回归 (324 tests) | PASS |
+  | assembleDebug | PASS |
+  | DIRECT_LOCAL_ID | PASS | `uid=10370(u0_a370) ... context=u:r:untrusted_app:s0` |
+  | DIRECT_ADB_CLI | PASS | exit 0, "AndroidTerminal adb CLI (app_process entrypoint, bridge protocol v1)" |
+  | DIRECT_ADB_ID | PASS | `uid=2000(shell) ... context=u:r:shell:s0` |
+  | DIRECT_ADB_DEVICE_QUERY | PASS | `ALI-AN00` |
+  全部通过 AG 生产 Tool 路径：`tool_invoke → ToolRegistry.dispatch → AndroidShellToolImpl → AtExecutionAdapter.executeLocal → Local PTY`
+  **Verdict:** PASS (模型仅 2 步即正确区分两种 principal)
+  **Verdict:** PASS (模型自主选择 ADB 路径，无需任何命令提示)
+  | MODEL_AUTONOMOUS_LOCAL_SELECTION | PASS |
+  | MODEL_AUTONOMOUS_ADB_SELECTION | PASS |
+  | LOCAL_PRINCIPAL_OBSERVED | PASS |
+  | ADB_PRINCIPAL_OBSERVED | PASS |
+  | PRINCIPAL_DISTINCTION_CORRECT | PASS |
+  | OBSERVATION_DEPENDENCY | PASS |
+  | DEVICE_FACT_MATCH | PASS |
+  PASS (uid=10370 u0_a370, untrusted_app)
+  PASS (AT V4 CLI facade, app_process entrypoint, bridge protocol v1)
+  PASS (uid=2000 shell, shell SELinux context)
+  DIRECT_LOCAL_ID_GATE =
+  PASS
+  DIRECT_ADB_CLI_GATE =
+  PASS
+  DIRECT_ADB_ID_GATE =
+  PASS
+  DIRECT_ADB_DEVICE_QUERY_GATE =
+  PASS
+  PASS
+  PASS
+  PASS
+  PASS
+  PASS
+  PASS
+  PASS
+  PASS
+  PASS (ALI-AN00)
+  PASS (324/324 + 5 new U15-U19)
+  PASS
+  PASS
+  PASS — MODEL_AT_V4_SEMANTICS = VERIFIED
+
+======================================================================
+AG.AT-V4-PTY-PERSISTENCE-TEST-0 - Local PTY L1-L5
+  ### L1: 创建与初始化 — PASS
+  ### L2: 连续读写与状态保持 — PASS
+  ### L3: stdin 与原始输出 — PASS
+  ### L4: 异步输出与持续读取 — PASS
+  ### L5: Ctrl-C — PASS
+  ### L6: Resize — PASS
+  ### L7: 自然退出 — PASS
+  ### L8: 显式关闭 — PASS
+  ### A4: Ctrl-C — PASS

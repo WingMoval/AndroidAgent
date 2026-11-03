@@ -1,0 +1,9 @@
+﻿AG.AT-BASELINE-DIFFERENTIAL-AUDIT-0 — 00 GIT BASELINE
+Date: 2026-11-03 (re-run 2026-11-04 for evidence capture)
+
+START_BRANCH = main
+START_HEAD   = c90f6d1bffebf80c16980644073d5057c2a64e70
+WORKTREE     = ?? docs/audit/AG.AT-BASELINE-DIFFERENTIAL-AUDIT-0.md
+
+--- git log -10 --oneline --decorate ---
+c90f6d1 (HEAD -> main) docs: close normalize-1 evidence and exports a79c062 docs: normalize post-UI architecture and roadmap SSOT edfc603 AG.UI-TRANSCRIPT-CARDS-1 + AG.UI-SHELL-1: transcript cards, session browser, provider settings, shell UI b7dbc04 docs: normalize post-freeze live SSOT f640ed0 (tag: AG.POST-I-CORE-FREEZE-V1) freeze: establish post-I pre-UI AG core baseline a6eea61 AG.AT-FULL-SUBSYSTEM-INTEGRATION-0: close complete AT V3 consumer subsystem 4d8aec7 AG.HOST-SESSION-CONTINUITY-0.1: complete session UI rebinding fix c4a58fe AG.HOST-SESSION-CONTINUITY-0: preserve session across config changes 6c4d8f1 AG.AT-FULL-CONSUMER-INTEGRATION-0: restore full AT V3 consumer capability 50211c6 AG.AT-CONSUMER-RECONCILIATION-0.1: normalize audit verdict

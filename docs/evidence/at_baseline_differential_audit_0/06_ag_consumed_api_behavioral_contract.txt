@@ -1,0 +1,46 @@
+AG.AT-BASELINE-DIFFERENTIAL-AUDIT-0 — 06 AG CONSUMED API + BEHAVIORAL CONTRACT (v0.4.0)
+Date: 2026-11-03 (derived from AG source @ c90f6d1 + vendored 4.0.0 bytecode)
+
+AG_V040_CONSUMED_API_SURFACE (14 consumed APIs):
+
+| API | Caller | Purpose | Input | Output | Error | Lifecycle | Cancellation |
+|---|---|---|---|---|---|---|---|
+| ATEngine.execute(request) | AtExecutionAdapter.executeAdb/executeLocal | one-shot command | ATExecutionRequest(command, timeoutMs) | ATExecutionResult(outcome, stdout, stderr, exitCode, hasError, error) | outcome=TRANSPORT_ERROR/UNSUPPORTED + error string | stateless per call | NOT VERIFIED (blocking native call inside withContext(IO)) |
+| ATEngine.openSession(launch) | adapter.openAdbSession/openLocalSession (NOT model path) | persistent PTY | ATSessionLaunch(command, rows, cols[, env]) | ATOpenSessionResult.Success(session)/Failure(reason) | Failure.reason string | session object owned by caller | close(terminateProcess) |
+| ATTerminalSession.write/read/resize/close/setListener/state | adapter session helpers (not model path) | raw PTY I/O | bytes / timeoutMs | Int / ByteArray? / Boolean | — | caller-owned | — |
+| ATAndroid.create(context, config) | ChatCompositionRoot (Host) | composition entry | Context, ATAndroidConfig(identityProfile) | ATAndroidComposition(localEngine, adbEngine, adbControl) | — | process-scoped, once | n/a |
+| ATAndroidAdbControl.bootstrapState() | CompositionAdbSemantic | consumer bootstrap projection | — | ATAdbBootstrapState (PAIRING_REQUIRED/CONNECT_FAILED/READY/USER_ACTION_REQUIRED_WD/ENDPOINT_NOT_FOUND/NOT_READY) | — | stateless read | n/a |
+| ATAndroidAdbControl.readinessState() | CompositionAdbSemantic | ADB readiness | — | ATAdbReadinessState (READY/DISCONNECTED/CONNECTING/else->UNKNOWN) | — | stateless read | n/a |
+| ATAndroidAdbControl.ensureReady(onStatusLine) | ShellConnection.connect (Host action) | readiness gate + auto-WD + discovery + connect | callback | Boolean | status lines via callback | blocking (withContext IO) | NOT VERIFIED |
+| ATAndroidAdbControl.hasIdentity() | CompositionAdbSemantic / CLI execution | identity material present | — | Boolean | — | stateless | n/a |
+| ATAndroidAdbControl.discoverPairing(timeoutMs) | CompositionAdbSemantic | scan pairing service | Long | ATAdbPairingDiscovery(endpoints, serviceNotFound, multiple) | — | blocking | NOT VERIFIED |
+| ATAndroidAdbControl.pair / pairDiscovered | CompositionAdbSemantic (Host pair UI) | pair with code | host, port, code | ATAdbPairingResult(success, outcome enum, deviceGuid, error) | outcome enum | blocking | NOT VERIFIED |
+| ATCliExecution (interface impl by AG adapter) | AtExecutionAdapter -> AdbCliBridgeServer | in-shell adb CLI backend | command | OneShotResult(status, stdout, stderr, error) | status string | bridge thread | NOT VERIFIED |
+| AdbCliBridgeServer(dir, exec).start/stop/socketPath | AtExecutionAdapter (composition init) | UDS CLI bridge | File | Boolean | log | started at init | stop() |
+| LocalCliBootstrap(mainClass).writeScript/sourceLine | AtExecutionAdapter | generate adb shell function | paths | String script/source | null on failure | canonical file owner | n/a |
+
+NOT consumed by AG: completeFirstUseBootstrap, lifecycle listeners, ATSessionEvent
+stream (session path only), ATSessionLaunch.env, ATOpenSessionResult for model path.
+
+AG_V040_BEHAVIORAL_CONTRACT (regression baseline for v0.4.2):
+  BEHAVIOR-001 one-shot returns stdout/stderr/exitCode; COMPLETED = tool success
+               even when exitCode != 0                       [PROVEN: AG.SHELL-1 S1-S5,
+                                                                      AG.AT-V4-INTEGRATION-1,
+                                                                      AGENT-0.LIVE real-device]
+  BEHAVIOR-002 TRANSPORT_ERROR / UNSUPPORTED = tool failure + error string  [PROVEN: same steps]
+  BEHAVIOR-003 timeout owned by AT (ATExecutionRequest.timeoutMs, default 30s);
+               AG has NO independent coroutine timeout        [ASSUMED from source;
+               orphan-execution risk = PRE_EXISTING_UNKNOWN]
+  BEHAVIOR-004 AG Stop -> execution Job.cancel() propagates to AT native
+               execute; no delayed ToolResult after Interrupted [PRE_EXISTING_UNKNOWN:
+               native-boundary propagation never device-verified in EITHER baseline]
+  BEHAVIOR-005 ADB readiness Host-triggered: ShellConnection.connect ->
+               ensureReady; AG never assumes auto-connect       [PROVEN: HOST-STOP-1 D1-D4,
+                                                                      ShellToolRealDeviceTest S1]
+  BEHAVIOR-006 pairing state = structured enum (PAIRING_REQUIRED / CONNECT_FAILED /
+               READY); AG Host pair UI + reconnect action; no string parsing [PROVEN: source + UI]
+  BEHAVIOR-007 in-shell adb CLI one-shot via LocalCliBootstrap + UDS bridge [PROVEN:
+               AG.AT-V4-INTEGRATION-1; CLI path under AdbEngine backend changes in v0.4.2]
+  BEHAVIOR-008 Local one-shot CWD = appFilesDir wrap (cd + bootstrap source) [PROVEN: source]
+  BEHAVIOR-009 session isolation / multi-session: AG max-1 Run/session;
+               AT-side multi-session not consumed by AG v1      [PROVEN: AgentRuntime design]

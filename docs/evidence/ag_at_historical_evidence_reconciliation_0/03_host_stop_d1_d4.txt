@@ -1,0 +1,33 @@
+AG.AT-HISTORICAL-EVIDENCE-RECONCILIATION-0 - 03 HOST-STOP D1-D4 (excerpts)
+Date: 2026-11-04
+Source: docs/implementation/AG.HOST-STOP-1.md (V1 pre-freeze; model-stream Stop target)
+
+--- D1-D4 protocol (section 7) ---
+  The manual acceptance that still needs a connected phone:
+  - **D1** send `测试 Stop 功能`, watch streaming, tap Stop → `Stopping...` →
+  `Stopped`, streaming stops, Stop disables, Send re-enables; fixture logs
+  `CLIENT_DISCONNECTED`.
+  - **D2** send `第二轮测试` → new request reaches the fixture, new stream, UI RUNNING.
+  - **D3** let a run complete naturally → normal completion still works.
+  - **D4** rapid double Stop → no crash, no duplicate `Stopped`, no stuck `Stopping`.
+
+
+--- D1-D4 re-attempt results (section 12.4) ---
+  D1_RUN_1
+  D1_RUN_2
+  D1                = PASS (both runs clean; no residue "Stopping..."; terminal "Stopped.")
+  D2_RUN
+  D2                = PASS (new request reached the fixture, new stream, UI RUNNING,
+  D3_RUN
+  D3                = INCONCLUSIVE (infrastructure timeout, NOT a Stop defect)
+  D4_RUN
+  D4                = PASS (rapid double Stop produced exactly one terminal event;
+  D1                        = PASS (two clean runs; no residue)
+  D2                        = PASS (new instance, new session, clean stop)
+  D3                        = INCONCLUSIVE (infrastructure SocketTimeoutException,
+  D4                        = PASS (rapid double Stop, exactly one terminal)
+  HOST_005                  = VERIFIED (D1/D2/D4 PASS; D3 is an infrastructure issue
+
+--- D3 closeout root cause (V1 commit e30d250) ---
+  D3 root cause = fixture SSE framing (keep-alive vs close, Case E)
+  fix = fixture Connection: close; D3 re-test PASS (2.2s, 12 tokens)

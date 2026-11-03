@@ -1,0 +1,169 @@
+AG.AT-HISTORICAL-EVIDENCE-RECONCILIATION-0 - 07 CONTROLLER CLOSEOUT CORRECTIONS
+Date: 2026-11-04
+Added by: AG.AT-V042-PREFLIGHT-AUDIT-CLOSEOUT-0
+Scope: documentation corrections + gate-definition precision only.
+       No raw historical capture rewritten. No conclusion changed.
+
+======================================================================
+C1 - executeLocal wording corrected (Local one-shot, NOT Local PTY)
+======================================================================
+The Historical Audit described the v0.4.0 Phase E production path twice as
+"executeLocal -> Local PTY". That wording is wrong. The measured path
+(AT V4 / v0.4.0, current source) is:
+
+  tool_invoke
+  -> AndroidShellToolImpl
+  -> AtExecutionAdapter.executeLocal(command, timeoutMs)
+     (wraps: cd <appFilesDir> && <cli-bootstrap-source-line> && command)
+  -> localEngine.execute(ATExecutionRequest(wrapped, timeoutMs))
+  -> LocalOneShotBackend (com.at.backend.local.LocalOneShotBackend,
+     ProcessBuilder /system/bin/sh -c command)
+
+This is Local one-shot. The Local PTY surface is a separate implementation
+(LocalPtySession / LocalPersistentBackend in at-backend-local) and was NOT
+the Phase E path.
+
+Occurrences corrected in the audit doc:
+  - Section 13 (AT V4 / v0.4.0 Integration Evidence, Phase E description)
+  - Section 19 (Limited Historical Source Comparison, LocalOneShotBackend bullet)
+
+NOT changed:
+  - Phase E PASS conclusions (DIRECT_LOCAL_ID / DIRECT_ADB_CLI / DIRECT_ADB_ID /
+    DIRECT_ADB_DEVICE_QUERY all remain PASS).
+  - Local one-shot historical verification status.
+  - PTY evidence: Local PTY L1-L5 (Ctrl-C sleep 30 -> exit 130) and ADB PTY
+    E-gates remain independent PTY-level evidence and are NOT mixed into the
+    one-shot execution path.
+
+Note on raw evidence: 04_v040_model_capability_pty.txt (and the consolidated
+file) contain a verbatim capture line from the historical document
+AG.AT-V4-MODEL-CAPABILITY-UPDATE-0 that reads "... executeLocal -> Local PTY".
+Per the evidence policy (point-in-time raw captures are not rewritten), that
+raw line is left untouched; this correction applies to the audit's
+interpretive statements only.
+
+======================================================================
+C2 - One-shot is the canonical model execution model (clarification)
+======================================================================
+  NORMAL_AGENT_EXECUTION_MODEL = ONE_SHOT
+  LOCAL_ONE_SHOT               = DEFAULT MODEL EXECUTION PATH
+  ADB_ONE_SHOT                 = PRIVILEGED / ANDROID SHELL PATH VIA IN-SHELL ADB CLI
+  PTY                          = OPTIONAL / FUTURE INTERACTIVE CAPABILITY
+  PTY_MODEL_VISIBLE            = NO
+
+This clarifies what the current code (AGENTS.md AG_MODEL_VISIBLE_CAPABILITY =
+ONE_SHOT ONLY; AndroidShellToolImpl default -> executeLocal) and the historical
+evidence already prove. It is NOT a new architecture freeze.
+
+======================================================================
+C3 - G-b (Stop / Interrupt) split into Local + ADB subcases
+======================================================================
+G-b = Stop / Interrupt, FULL P0. PASS requires BOTH subcases PASS:
+
+  G-b1 = Local one-shot Stop
+         User Stop
+         -> AgentRuntime.interruptActiveRun
+         -> execution Job cancellation
+         -> AndroidShellTool Local one-shot
+         -> LocalOneShotBackend ProcessBuilder child terminates
+         -> no orphan
+
+  G-b2 = in-shell ADB CLI one-shot Stop
+         User Stop
+         -> AgentRuntime.interruptActiveRun
+         -> execution Job cancellation
+         -> AndroidShellTool
+         -> Local shell adb CLI
+         -> CLI bridge
+         -> AT ADB one-shot
+         -> underlying ADB shell/native execution terminates
+         -> no orphan
+
+PTY Ctrl-C PASS (V3 E11 / v0.4.0 L5 -> exit 130) is NOT substitute evidence
+for G-b1 or G-b2 (PTY control byte, different mechanism from AG coroutine
+cancellation of a one-shot).
+
+======================================================================
+C4 - G-c (Timeout) split into Local + ADB subcases
+======================================================================
+G-c = Timeout, FULL P0. PASS requires BOTH subcases PASS:
+
+  G-c1 = Local one-shot timeout
+         ATExecutionRequest.timeoutMs in effect
+         -> underlying LocalOneShotBackend child terminates
+         -> Run reaches deterministic terminal state
+         -> no orphan process
+         -> subsequent Run works
+
+  G-c2 = ADB CLI one-shot timeout
+         ADB one-shot timeout reaches underlying ADB execution
+         -> command actually terminates
+         -> no lingering execution
+         -> Run terminal state deterministic
+         -> subsequent execution works
+
+Only G-c1 + G-c2 together close G2 + G4.
+
+======================================================================
+G-g scope clarification
+======================================================================
+G-g = in-shell adb CLI one-shot end-to-end. Scope:
+  - command routing
+  - stdout
+  - stderr
+  - exitCode
+  - shell UID
+  - result mapping
+  - Local/Wireless transport routing compatibility
+
+G-g validates NORMAL ADB CLI execution ONLY.
+G-g does NOT replace G-b2 (cancellation) or G-c2 (timeout):
+three different semantics.
+
+======================================================================
+Final gate register (7 gates)
+======================================================================
+G-a  Local one-shot smoke (basic command + stdout + non-zero exit +
+     basic ToolResult mapping)                          [REDUCED]
+G-b  Stop / Interrupt                                   [FULL, P0]
+     G-b1 Local one-shot Stop / native termination / no orphan
+     G-b2 ADB CLI one-shot Stop / native termination / no orphan
+G-c  Timeout                                            [FULL, P0]
+     G-c1 Local one-shot timeout / no orphan
+     G-c2 ADB CLI one-shot timeout / native termination
+G-d  local-first steady state (Wi-Fi OFF + Wireless
+     Debugging OFF; Local TCP available; AG unchanged;
+     new execution succeeds; AG reads no transport
+     implementation state)                              [FULL]
+G-e  local loss -> wireless recovery (AT owns recovery;
+     AG does not manually reconnect; no duplicate
+     command; result deterministic)                     [REDUCED]
+G-f  pairing-required / trust-loss (deterministic
+     actionable state; no hang; no UI-string parsing;
+     existing AG Host pairing flow compatible)          [REDUCED]
+G-g  in-shell adb CLI one-shot end-to-end (NORMAL
+     execution only; not a substitute for G-b2/G-c2)    [FULL]
+
+Gap-to-gate mapping (evidence sources that close the genuine gaps):
+  G1 (Local Stop)           -> G-b1
+  G2 (Local timeout)        -> G-c1
+  G3 (ADB CLI cancellation) -> G-b2
+  G4 (ADB timeout)          -> G-c2
+
+TRUE_REMAINING_GAP_COUNT = 4 (G1-G4, all TRULY_UNVERIFIED, testable,
+no known regression, no architecture blocker).
+
+======================================================================
+Baseline status (unchanged by this closeout)
+======================================================================
+CURRENT_AG_AT_BASELINE = v0.4.0
+CANDIDATE_AT_BASELINE  = v0.4.2 (candidate only)
+V042_IS_CURRENT_BASELINE = NO
+AG_V1_TARGET_AT_BASELINE = v0.4.2 candidate pending sync + validation
+RELEASE_V040_FIRST_DECISION = NO_REASON_TO_RELEASE_ON_V040_FIRST
+V042_SYNC_DIRECTION = PROCEED_TO_V042_CONSUMER_SYNC
+NEXT = AG.AT-V042-CONSUMER-SYNC-0 (then AG.AT-V042-COMPAT-VALIDATION-1)
+
+NO CODE CONCLUSION CHANGED.
+NO VERSION RECOMMENDATION CHANGED.
+NO HISTORICAL PASS RECLASSIFIED.

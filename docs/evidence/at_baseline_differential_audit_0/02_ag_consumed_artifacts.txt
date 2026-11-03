@@ -1,0 +1,58 @@
+AG.AT-BASELINE-DIFFERENTIAL-AUDIT-0 — 02 AG CONSUMED AT ARTIFACTS (vendored bundle)
+Date: 2026-11-03 (re-run 2026-11-04 for evidence capture)
+
+Bundle: third_party/at-v4-consumer-freeze-v1 (MANIFEST.md: freeze commit 7216d0e, tag AT.V4-CONSUMER-FREEZE-V1, variant debug)
+
+--- m2 coordinates (settings.gradle.kts repo-local Maven) ---
+com.at.engine.api:at-engine-api:4.0.0 (jar, public contract)
+com.at.composition.android:at-composition-android:4.0.0 (aar, consumer entry)
+com.at.cli:at-cli:4.0.0 (aar, optional frontend)
+com.at.engine:at-engine:4.0.0 (aar, internal transitive)
+com.at.engine.spi:at-engine-spi:4.0.0 (jar, internal transitive)
+com.at.backend.local:at-backend-local:4.0.0 (aar, internal transitive)
+com.at.backend.adb:at-backend-adb:4.0.0 (aar, internal transitive)
+com.adb.engine:adb-engine:4.0.0 (aar, internal transitive)
+
+--- at-engine-api-4.0.0.jar fingerprint ---
+size   = 23079 bytes
+sha256 = b6b28fb1a88eb3139d809e2732534d0f2e4254e59abb4ef9e059380e2ddff1f0
+
+--- at-engine-api 4.0.0 class list (extracted from jar) ---
+  com/at/engine/ATEngine$Companion.class
+  com/at/engine/ATEngine.class
+  com/at/engine/ATExecutionOutcome.class
+  com/at/engine/ATExecutionRequest.class
+  com/at/engine/ATExecutionResult.class
+  com/at/engine/ATOpenSessionResult$Failure.class
+  com/at/engine/ATOpenSessionResult$Success.class
+  com/at/engine/ATOpenSessionResult.class
+  com/at/engine/ATSessionEvent$Closed.class
+  com/at/engine/ATSessionEvent$Data.class
+  com/at/engine/ATSessionEvent$Eof.class
+  com/at/engine/ATSessionEvent$Exited.class
+  com/at/engine/ATSessionEvent$Failed.class
+  com/at/engine/ATSessionEvent$Resized.class
+  com/at/engine/ATSessionEvent.class
+  com/at/engine/ATSessionLaunch.class
+  com/at/engine/ATSessionState.class
+  com/at/engine/ATTerminalSession$DefaultImpls.class
+  com/at/engine/ATTerminalSession.class
+
+--- at-engine-api 4.0.0 public API (bytecode signatures) ---
+=== com/at/engine/ATEngine.class
+com/at/engine/ATEngine java/lang/Object execute E(Lcom/at/engine/ATExecutionRequest;)Lcom/at/engine/ATExecutionResult; #Lorg/jetbrains/annotations/NotNull; openSession D(Lcom/at/engine/ATSessionLaunch;)Lcom/at/engine/ATOpenSessionResult; <clinit> ()V  com/at/engine/ATEngine$Companion $$INSTANCE "Lcom/at/engine/ATEngine$Companion; Companion Lkotlin/Metadata; H&J Lcom/at/engine/ATEngine; !Lcom/at/engine/ATExecutionResult; request "Lcom/at/engine/ATExecutionRequest; #Lcom/at/engine/ATOpenSessionResult; launch Lcom/at/engine/ATSessionLaunch; at-engine-api ATEngine.kt RuntimeInvisibleAnnotations $RuntimeInvisibleParameterAnnotations Code InnerClasses SourceFile RuntimeVisibleAnnotations
+
+=== com/at/engine/ATExecutionOutcome.class
+ com/at/engine/ATExecutionOutcome 4Ljava/lang/Enum<Lcom/at/engine/ATExecutionOutcome;>; java/lang/Enum <init> (Ljava/lang/String;I)V ()V this "Lcom/at/engine/ATExecutionOutcome; $enum$name Ljava/lang/String; $enum$ordinal values %()[Lcom/at/engine/ATExecutionOutcome; $VALUES #[Lcom/at/engine/ATExecutionOutcome; [Ljava/lang/Object; clone ()Ljava/lang/Object; valueOf 6(Ljava/lang/String;)Lcom/at/engine/ATExecutionOutcome; 5(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum; value getEntries ()Lkotlin/enums/EnumEntries; @()Lkotlin/enums/EnumEntries<Lcom/at/engine/ATExecutionOutcome;>; #Lorg/jetbrains/annotations/NotNull; $ENTRIES Lkotlin/enums/EnumEntries; $values COMPLETED TRANSPORT_ERROR UNSUPPORTED <clinit> [Ljava/lang/Enum; kotlin/enums/EnumEntriesKt enumEntries -([Ljava/lang/Enum;)Lkotlin/enums/EnumEntries; Lkotlin/Metadata; at-engine-api ATExecution.kt Code LineNumberTable LocalVariableTable Signature RuntimeInvisibleAnnotations SourceFile RuntimeVisibleAnnotations@1 /S* 2S* 5S*
+
+=== com/at/engine/ATExecutionRequest.class
+ com/at/engine/ATExecutionRequest java/lang/Object <init> (Ljava/lang/String;I)V #Lorg/jetbrains/annotations/NotNull; command kotlin/jvm/internal/Intrinsics checkNotNullParameter '(Ljava/lang/Object;Ljava/lang/String;)V ()V Ljava/lang/String; timeoutMs this "Lcom/at/engine/ATExecutionRequest; E(Ljava/lang/String;IILkotlin/jvm/internal/DefaultConstructorMarker;)V getCommand ()Ljava/lang/String; getTimeoutMs ()I component1 component2 copy 7(Ljava/lang/String;I)Lcom/at/engine/ATExecutionRequest; copy$default l(Lcom/at/engine/ATExecutionRequest;Ljava/lang/String;IILjava/lang/Object;)Lcom/at/engine/ATExecutionRequest; toString *ATExecutionRequest(command= , timeoutMs= $java/lang/invoke/StringConcatFactory makeConcatWithConstants (Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite; '(Ljava/lang/String;I)Ljava/lang/String; hashCode java/lang/String java/lang/Integer (I)I result equals (Ljava/lang/Object;)Z $Lorg/jetbrains/annotations/Nullable; areEqual '(Ljava/lang/Object;Ljava/lang/Object;)Z other Ljava/lang/Object; Lkotlin/Metadata; at-engine-api ATExecution.kt RuntimeInvisibleAnnotations Code LineNumberTable LocalVariableTable $RuntimeInvisibleParameterAnnotations StackMapTable SourceFile RuntimeVisibleAnnotations BootstrapMethods =*+ =*+ A`< 4*+
+
+=== com/at/engine/ATExecutionResult.class
+com/at/engine/ATExecutionResult java/lang/Object <init> ](Lcom/at/engine/ATExecutionOutcome;Ljava/lang/String;Ljava/lang/String;IZLjava/lang/String;)V #Lorg/jetbrains/annotations/NotNull; $Lorg/jetbrains/annotations/Nullable; outcome kotlin/jvm/internal/Intrinsics checkNotNullParameter '(Ljava/lang/Object;Ljava/lang/String;)V stdout stderr ()V "Lcom/at/engine/ATExecutionOutcome; Ljava/lang/String; exitCode hasError error this !Lcom/at/engine/ATExecutionResult; getOutcome $()Lcom/at/engine/ATExecutionOutcome; getStdout ()Ljava/lang/String; getStderr getExitCode ()I getHasError ()Z getError getExecutionFailed  com/at/engine/ATExecutionOutcome COMPLETED component1 component2 component3 component4 component5 component6 copy }(Lcom/at/engine/ATExecutionOutcome;Ljava/lang/String;Ljava/lang/String;IZLjava/lang/String;)Lcom/at/engine/ATExecutionResult; copy$default (Lcom/at/engine/ATExecutionResult;Lcom/at/engine/ATExecutionOutcome;Ljava/lang/String;Ljava/lang/String;IZLjava/lang/String;ILjava/lang/Object;)Lcom/at/engine/ATExecutionResult; toString QATExecutionResult(outcome= , stdout= , stderr= , exitCode= , hasError= , error= $java/lang/invoke/StringConcatFactory makeConcatWithConstants (Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite; n(Lcom/at/engine/ATExecutionOutcome;Ljava/lang/String;Ljava/lang/String;IZLjava/lang/String;)Ljava/lang/String; hashCode java/lang/String java/lang/Integer (I)I java/lang/Boolean (Z)I result equals (Ljava/lang/Object;)Z areEqual '(Ljava/lang/Objec
+
+=== com/at/engine/ATSessionLaunch.class
+com/at/engine/ATSessionLaunch java/lang/Object <init> &(Ljava/lang/String;IILjava/util/Map;)V L(Ljava/lang/String;IILjava/util/Map<Ljava/lang/String;Ljava/lang/String;>;)V #Lorg/jetbrains/annotations/NotNull; command kotlin/jvm/internal/Intrinsics checkNotNullParameter '(Ljava/lang/Object;Ljava/lang/String;)V env ()V Ljava/lang/String; initialRows initialCols Ljava/util/Map; this Lcom/at/engine/ATSessionLaunch; U(Ljava/lang/String;IILjava/util/Map;ILkotlin/jvm/internal/DefaultConstructorMarker;)V kotlin/collections/MapsKt emptyMap ()Ljava/util/Map; getCommand ()Ljava/lang/String; getInitialRows ()I getInitialCols getEnv 7()Ljava/util/Map<Ljava/lang/String;Ljava/lang/String;>; component1 component2 component3 component4 copy D(Ljava/lang/String;IILjava/util/Map;)Lcom/at/engine/ATSessionLaunch; j(Ljava/lang/String;IILjava/util/Map<Ljava/lang/String;Ljava/lang/String;>;)Lcom/at/engine/ATSessionLaunch; copy$default v(Lcom/at/engine/ATSessionLaunch;Ljava/lang/String;IILjava/util/Map;ILjava/lang/Object;)Lcom/at/engine/ATSessionLaunch; toString ?ATSessionLaunch(command= , initialRows= , initialCols= , env= $java/lang/invoke/StringConcatFactory makeConcatWithConstants (Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite; 7(Ljava/lang/String;IILjava/util/Map;)Ljava/lang/String; hashCode java/lang/String java/lang/Integer (I)I result equals (Ljava/lang/Object;)Z $Lorg/jetbrains/annotations/Nullable; areEqual '(Ljava/lang/Object;Ljava/lang/Object;)Z other Ljava/lang/Object; 5Ljava/util/M
+
+=== com/at/engine/ATSessionState.class
+com/at/engine/ATSessionState 0Ljava/lang/Enum<Lcom/at/engine/ATSessionState;>; java/lang/Enum <init> (Ljava/lang/String;I)V ()V this Lcom/at/engine/ATSessionState; $enum$name Ljava/lang/String; $enum$ordinal values !()[Lcom/at/engine/ATSessionState; $VALUES [Lcom/at/engine/ATSessionState; [Ljava/lang/Object; clone ()Ljava/lang/Object; valueOf 2(Ljava/lang/String;)Lcom/at/engine/ATSessionState; 5(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum; value getEntries ()Lkotlin/enums/EnumEntries; <()Lkotlin/enums/EnumEntries<Lcom/at/engine/ATSessionState;>; #Lorg/jetbrains/annotations/NotNull; $ENTRIES Lkotlin/enums/EnumEntries; $values OPENING ACTIVE EXITED FAILED CLOSED <clinit> [Ljava/lang/Enum; kotlin/enums/EnumEntriesKt enumEntries -([Ljava/lang/Enum;)Lkotlin/enums/EnumEntries; Lkotlin/Metadata; at-engine-api ATSession.kt Code LineNumberTable LocalVariableTable Signature RuntimeInvisibleAnnotations SourceFile RuntimeVisibleAnnotations@1 /S* 2S* 5S* 8S* ;S*

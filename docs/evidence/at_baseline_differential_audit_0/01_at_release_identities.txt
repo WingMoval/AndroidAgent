@@ -1,0 +1,25 @@
+﻿AG.AT-BASELINE-DIFFERENTIAL-AUDIT-0 — 01 AT RELEASE IDENTITIES
+Date: 2026-11-03 (re-run 2026-11-04 for evidence capture)
+AT_REPO = D:\codebank\AndCode\AndroidTerminal-V4-LOCAL-TCP-042 (feature/local-tcp-v0.4.2)
+
+--- git rev-list -n 1 v0.4.0 ---
+7216d0e8131e92e8914ce7c8443e1668b1d53aca
+--- git rev-list -n 1 v0.4.1 ---
+cbc20985b2154d91e11b29f53823b182322bca72
+--- git rev-list -n 1 v0.4.2 ---
+925e7ac223d19eea7ddb89bf05e55df25ca7a7f2
+
+--- v0.4.0 tag target commit ---
+7216d0e8131e92e8914ce7c8443e1668b1d53aca AT.V4-6: close device parity and freeze V4 consumer boundary 2026-10-22 12:03:42 +0800
+
+--- v0.4.2 tag target commit (expected 925e7ac223d19eea7ddb89bf05e55df25ca7a7f2) ---
+925e7ac223d19eea7ddb89bf05e55df25ca7a7f2 docs: finalize AndroidTerminal v0.4.2 release evidence 2026-11-03 21:15:01 +0800
+
+--- v0.4.0 == AG consumed freeze commit 7216d0e (describe) ---
+v0.4.0
+
+--- rev-list --count v0.4.0..v0.4.2 ---
+46
+
+--- v0.4.2 version identity ---
+        versionCode = 4         versionName = "0.4.2"

@@ -1,0 +1,12 @@
+AG.AT-HISTORICAL-EVIDENCE-RECONCILIATION-0 - 05 EXECUTION PATH EVOLUTION (git -S milestones)
+Date: 2026-11-04
+
+AndroidShellToolImpl first appeared      : c76058f feat: integrate Android shell tool with AT Engine
+AtExecutionAdapter first appeared         : 1410d5f AG.V2-2: integrate full AndroidTerminal V3 execution engine
+executeAdb first appeared                 : 1410d5f AG.V2-2: integrate full AndroidTerminal V3 execution engine
+LocalCliBootstrap first appeared          : f640ed0 freeze: establish post-I pre-UI AG core baseline
+adapter.executeLocal (Local default) first: f640ed0 freeze: establish post-I pre-UI AG core baseline
+
+NOTE: executeLocal-as-default lands in the uncommitted V4 migration, frozen at
+f640ed0 (POST-I CORE FREEZE). Before that the production tool path was ADB-only.
+PTY was NEVER model-visible (AG_MODEL_VISIBLE_CAPABILITY = ONE_SHOT ONLY).

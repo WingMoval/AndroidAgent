@@ -1,0 +1,56 @@
+AG.AT-BASELINE-DIFFERENTIAL-AUDIT-0 — 07 FINAL VERDICT
+Date: 2026-11-03
+
+VERDICT = PASS_WITH_GAPS
+  (audit complete and clean; gaps = pre-existing, test-only; no regression, no blocker)
+MODE = READ_ONLY (no SSOT modified, no commit, no code/dep/AAR change)
+
+Baseline identity (all VERIFIED on-site):
+  AG = main @ c90f6d1bffebf80c16980644073d5057c2a64e70, CLEAN
+  CURRENT_AT = v0.4.0 tag target 7216d0e8131e92e8914ce7c8443e1668b1d53aca
+               == AG consumed freeze commit (EXACT match)
+  CANDIDATE_AT = v0.4.2 tag target 925e7ac223d19eea7ddb89bf05e55df25ca7a7f2
+               (== Controller-expected SHA, EXACT match)
+
+Core findings:
+  1. Public API surface AG consumes (at-engine-api jar + at-cli main) UNCHANGED
+     between v0.4.0 and v0.4.2 (git diff empty; facade additive-only).
+  2. ZERO regressions in any AG-relevant behavior.
+  3. v0.4.1 lazy readiness + PAIRING_REQUIRED / v0.4.2 local-first + recovery
+     map onto existing AG Host flow without adapter change.
+  4. Transport transparency PASS: no LOCAL/WIRELESS/38800 leak; 0 forbidden imports.
+  5. Two MAJOR gaps are PRE-EXISTING in v0.4.0 (identical in v0.4.2), test-only:
+     GAP-1 interrupt last-hop (coroutine cancel -> AT native execute)
+     GAP-2 orphan-execution (no independent AG-side timeout)
+
+Gap register: BLOCKER=0, MAJOR=2 (GAP-1, GAP-2), MINOR=3 (GAP-3 0.4.2 bundle
+not yet built, GAP-4 device legacy-TCP precondition, GAP-5 lazy-readiness re-val),
+DEFERRED=0. V042_REGRESSION_COUNT=0. V042_BENEFIT_COUNT=5.
+
+Blocker origin:  BLOCKED_BY_AT=NO, BLOCKED_BY_AG=NO,
+                 BLOCKED_ONLY_BY_MISSING_EVIDENCE=YES
+
+Readiness:       AT_V042_AG_INTEGRATION_READINESS = READY_AFTER_DEVICE_VALIDATION
+
+Recommendation:  AG_V1_AT_RECOMMENDATION = VALIDATE_AND_MOVE_TO_V0.4.2
+
+Controller candidate review: D1 KEEP, D2 KEEP (add-on to D1), D3 KEEP (P0),
+  D4 KEEP (P0), D5 KEEP, D6 KEEP, D7 KEEP, D8 DROP/DEFER, D9 KEEP (reduced).
+AG-discovered: GATE-1 in-shell adb CLI one-shot regression; GATE-2 AG-side
+  timeout measurement discipline (folded into D3).
+
+FINAL_MINIMUM_DEVICE_GATES = 7 (AG.AT-V042-COMPAT-VALIDATION-1):
+  1. D1+D2 basic one-shot + non-zero exit
+  2. D4 Stop/interrupt full chain (P0, v0.4.0 comparison)
+  3. D3 timeout -> no orphan -> terminal -> session reusable
+  4. D5 local-first steady state (Wi-Fi OFF + WD OFF)
+  5. D6 local loss -> wireless recovery (AT-owned, no dup)
+  6. D7 pairing-required -> deterministic actionable AG state
+  7. AG_DISCOVERED_GATE-1 in-shell adb CLI one-shot regression
+
+Invariants: PRODUCT/AG/AT CODE CHANGED = NO; DEPENDENCY/AAR CHANGED = NO;
+  COMMIT = NO; TAG = NO; PUSH = NO; FREEZE = NO; SSOT UNTOUCHED.
+
+NEXT = CONTROLLER_REVIEW -> (if approved) formal 0.4.2 sync Step +
+       AG.AT-V042-COMPAT-VALIDATION-1
+STOP = YES

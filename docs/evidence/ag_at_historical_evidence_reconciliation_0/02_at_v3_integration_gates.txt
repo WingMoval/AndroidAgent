@@ -1,0 +1,78 @@
+AG.AT-HISTORICAL-EVIDENCE-RECONCILIATION-0 - 02 AT V3 INTEGRATION GATES (at 1410d5f)
+Date: 2026-11-04
+Source: docs/integration/AG.V2-2.AT-INTEGRATION.md @ 1410d5f (AT V3 full engine)
+
+ One-Shot D1-D4 (Regression)
+
+```text
+D1  id                      = PASS (uid=2000(shell), exitCode=0)
+D2  echo AG_AT_V3_OK        = PASS
+D3  stdout/stderr/exit      = PASS (stdout=OUT, stderr=ERR, exitCode=7)
+D4  nonexistent command     = PASS (exitCode=127, outcome=COMPLETED)
+```
+
+## 12. Persistent E Gates
+
+```text
+E1   ADB one-shot              = PASS
+E2   Local one-shot            = N/A (not model-visible; internal only)
+E3   Local persistent open     = PASS
+E4   Local raw I/O             = PASS
+E5   Local cwd/env continuity  = PASS
+E6   ADB persistent open       = PASS
+E7   ADB remote uid=2000       = PASS
+E8   ADB raw output            = PASS
+E9   ADB write/stdin           = PASS
+E10  ADB cwd/env continuity    = PASS
+E11  ADB Ctrl-C                = PASS
+E12  ADB resize                = PASS (24x80 -> 30x100)
+E13  ADB natural exit          = PASS (EOF detected)
+E14  ADB explicit close        = PASS
+E15  multi-session isolation   = PASS
+E16  Local+ADB same Adapter    = PASS
+E17  one-shot D1-D4 regression = PASS
+E18  AG-owned identity         = PARTIAL (UNSAFE_KEY_COPY; see §9)
+E19  app restart identity reuse= PASS
+E20  no hybrid runtime         = PASS
+```
+
+## 13. Canonical Regression
+
+```text
+PREVIOUS_TEST_TOTAL = 714
+NEW_TEST_TOTAL      = 726 (+12: new session protocol tests in :app,
+                          T12 updated for integration-at)
+TEST_FAILURES       = 0
+TEST_SKIPPED        = 6 (tool-file symlink tests, Linux-gated)
+DELTA               = +12
+```
+
+Per-module:
+```text
+ag-core                       41
+ag-runtime                    26
+provider-openai-compatible    59
+provider-openai-compatible-jdk 26
+tool-android-shell            30
+tool-network                 156
+tool-file                    110 (6 skipped)
+integration-at                  0 (no unit tests; device-verified)
+app                          218
+```
+
+## 14. Full Build
+
+```text
+ASSEMBLE_DEBUG = PASS
+FULL_BUILD     = PASS (after clean rebuild; lint CoarseFineLocation fixed)
+```
+
+The pre-existing legacy AT AAR lint blocker is GONE (legacy AAR no longer in
+dependency graph).
+
+## 15. Contract Draft Isolation
+
+```text
+AT_CONTRACT_STATUS = DRAFT
+FINAL_AT_API_BINDING = NO
+HANDOFF_V1_PROVISIONAL_B

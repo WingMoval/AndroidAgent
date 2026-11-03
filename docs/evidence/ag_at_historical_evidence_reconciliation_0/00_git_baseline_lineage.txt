@@ -1,0 +1,30 @@
+AG.AT-HISTORICAL-EVIDENCE-RECONCILIATION-0 - 00 GIT BASELINE + LINEAGE
+Date: 2026-11-04
+
+--- V2 (current) ---
+branch = main
+HEAD   = c90f6d1bffebf80c16980644073d5057c2a64e70
+status = ?? docs/audit/AG.AT-BASELINE-DIFFERENTIAL-AUDIT-0.md | ?? docs/audit/AG.AT-HISTORICAL-EVIDENCE-RECONCILIATION-0.md | ?? docs/evidence/at_baseline_differential_audit_0/ | ?? upload/AG.AT-BASELINE-DIFFERENTIAL-AUDIT-0.evidence.txt | ?? upload/AG.AT-BASELINE-DIFFERENTIAL-AUDIT-0.md
+
+--- V1 (frozen) ---
+branch = main
+HEAD   = 13df1dbd892c02ff25ce5d8317095bc1deaaaf71
+freeze tag target = 13df1dbd892c02ff25ce5d8317095bc1deaaaf71
+
+--- ADB-Regression (forensic) ---
+branch = (detached)
+HEAD   = 3aeed330169c724c42c4b2e8537b20361468aa49
+
+--- V2 baseline parent check ---
+13df1db is ancestor of c84bf5d (V2 baseline parent): exit 0
+3aeed33 (LKG) is ancestor of V1 freeze: exit 0
+
+--- V2 key commits ---
+  c84bf5d 2026-10-18 16:19:40 +0800 AG.V2-1: establish V2 baseline from frozen V1
+  be9e619 2026-10-18 17:56:56 +0800 AG.ADB-LKG-REGRESSION: identify root cause (AT native lib loopback rewrite missing)
+  1410d5f 2026-10-18 21:10:45 +0800 AG.V2-2: integrate full AndroidTerminal V3 execution engine
+  22e3f28 2026-10-20 01:47:35 +0800 AG.V2-2: integrate AT consumer freeze V1
+  6c4d8f1 2026-10-20 15:44:24 +0800 AG.AT-FULL-CONSUMER-INTEGRATION-0: restore full AT V3 consumer capability
+  a6eea61 2026-10-20 21:45:37 +0800 AG.AT-FULL-SUBSYSTEM-INTEGRATION-0: close complete AT V3 consumer subsystem
+  f640ed0 2026-10-27 00:54:05 +0800 freeze: establish post-I pre-UI AG core baseline
+  c90f6d1 2026-10-28 21:52:01 +0800 docs: close normalize-1 evidence and exports

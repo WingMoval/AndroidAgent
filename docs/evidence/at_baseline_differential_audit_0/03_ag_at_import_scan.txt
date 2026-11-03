@@ -1,0 +1,68 @@
+AG.AT-BASELINE-DIFFERENTIAL-AUDIT-0 — 03 AG AT IMPORT SCAN (measured)
+Date: 2026-11-03 (re-run 2026-11-04 for evidence capture)
+
+All lines containing com.at.* or com.adb.* in AG source (excl. third_party/build):
+TOTAL = 50
+
+app/build.gradle.kts:84 implementation("com.at.composition.android:at-composition-android:4.0.0")
+app/src/main/java/com/androidagent/app/ChatCompositionRoot.kt:25 import com.at.composition.android.ATAndroid
+app/src/main/java/com/androidagent/app/ChatCompositionRoot.kt:26 import com.at.composition.android.ATAndroidConfig
+app/src/main/java/com/androidagent/app/ChatCompositionRoot.kt:91 * injection and never imports com.at.composition.android.* types.
+app/src/main/java/com/androidagent/app/CompositionAdbSemantic.kt:8 import com.at.composition.android.ATAndroidAdbControl
+app/src/main/java/com/androidagent/app/CompositionAdbSemantic.kt:9 import com.at.composition.android.ATAdbBootstrapState
+app/src/main/java/com/androidagent/app/CompositionAdbSemantic.kt:10 import com.at.composition.android.ATAdbReadinessState
+app/src/main/java/com/androidagent/app/CompositionAdbSemantic.kt:11 import com.at.composition.android.ATAdbPairingDiscovery
+app/src/main/java/com/androidagent/app/CompositionAdbSemantic.kt:12 import com.at.composition.android.ATAdbPairingResult
+app/src/main/java/com/androidagent/app/CompositionAdbSemantic.kt:20 * `com.at.composition.android.*` types.
+app/src/main/java/com/androidagent/app/debug/DebugBridge.kt:13 import com.at.engine.ATTerminalSession
+app/src/test/java/com/androidagent/app/AgentPreflightTest.kt:262 // AG.V2-2: AT V3 uses packages com.at.engine / com.adb.engine /
+app/src/test/java/com/androidagent/app/AgentPreflightTest.kt:263 // com.at.backend.adb (legacy v0 used com.androidterminal.*).
+app/src/test/java/com/androidagent/app/AgentPreflightTest.kt:271 "import com.at.engine",        // V3 AT Engine
+app/src/test/java/com/androidagent/app/AgentPreflightTest.kt:272 "import com.at.backend",       // V3 AT Backend
+app/src/test/java/com/androidagent/app/AgentPreflightTest.kt:273 "import com.adb.engine",       // V3 ADB Engine
+integration-at/build.gradle.kts:58 api("com.at.engine.api:at-engine-api:4.0.0")
+integration-at/build.gradle.kts:59 api("com.at.cli:at-cli:4.0.0")
+integration-at/src/main/java/com/androidagent/integration/at/AdbSemantic.kt:9 * imports `com.at.composition.android.*` types.
+integration-at/src/main/java/com/androidagent/integration/at/AtAdbBootstrap.kt:7 * the adapter and tool layers never import `com.at.composition.android.*`.
+integration-at/src/main/java/com/androidagent/integration/at/AtAdbReadiness.kt:7 * the adapter and tool layers never import `com.at.composition.android.*`.
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:10 //   - This adapter ONLY imports com.at.engine.* (public contract) +
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:11 //     com.at.cli.* (optional frontend).
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:12 //   - It does NOT import com.at.composition.android.* (Host's responsibility).
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:13 //   - It does NOT import com.adb.engine.* (AdbRuntime / AdbConsumerBootstrap / backends).
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:14 //   - It does NOT import com.at.backend.* (backend implementations).
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:25 import com.at.cli.AdbCliBridgeServer
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:26 import com.at.cli.ATCliExecution
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:27 import com.at.cli.ATCliPairingResult
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:28 import com.at.cli.ATCliPairingState
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:29 import com.at.cli.LocalCliBootstrap
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:30 import com.at.engine.ATEngine
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:31 import com.at.engine.ATExecutionRequest
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:32 import com.at.engine.ATExecutionResult
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:33 import com.at.engine.ATOpenSessionResult
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:34 import com.at.engine.ATSessionEvent
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:35 import com.at.engine.ATSessionLaunch
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:36 import com.at.engine.ATTerminalSession
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:69 *                     com.at.composition.android.* types.
+integration-at/src/main/java/com/androidagent/integration/at/AtExecutionAdapter.kt:439 const val CLI_MAIN_CLASS: String = "com.at.cli.AtCliMain"
+integration-at/src/main/java/com/androidagent/integration/at/AtPairingResult.kt:7 * the adapter and tool layers never import `com.at.composition.android.*`.
+integration-at/src/test/java/com/androidagent/integration/at/CliBootstrapLifecycleTest.kt:3 import com.at.cli.LocalCliBootstrap
+integration-at/src/test/java/com/androidagent/integration/at/CliBootstrapLifecycleTest.kt:26 private val mainClass = "com.at.cli.AtCliMain"
+tool-android-shell/src/main/java/com/androidagent/tool/androidshell/AndroidShellToolImpl.kt:8 import com.at.engine.ATExecutionResult
+tool-android-shell/src/main/java/com/androidagent/tool/androidshell/AndroidShellToolImpl.kt:17 * instead of directly constructing an [com.at.engine.ATEngine]. The adapter is
+tool-android-shell/src/main/java/com/androidagent/tool/androidshell/ShellResultMapper.kt:4 import com.at.engine.ATExecutionOutcome
+tool-android-shell/src/main/java/com/androidagent/tool/androidshell/ShellResultMapper.kt:5 import com.at.engine.ATExecutionResult
+tool-android-shell/src/main/java/com/androidagent/tool/androidshell/ShellResultPayload.kt:3 import com.at.engine.ATExecutionResult
+tool-android-shell/src/test/java/com/androidagent/tool/androidshell/AndroidShellToolImplTest.kt:4 import com.at.engine.ATExecutionOutcome
+tool-android-shell/src/test/java/com/androidagent/tool/androidshell/AndroidShellToolImplTest.kt:5 import com.at.engine.ATExecutionResult
+
+Classification:
+  :integration-at  -> com.at.engine.* (public contract) + com.at.cli.* (allowed)
+  :tool-android-shell -> com.at.engine.ATExecutionResult / ATExecutionOutcome only
+  :app (composition root) -> com.at.composition.android.* (Host facade, allowed)
+  :app DebugBridge -> com.at.engine.ATTerminalSession (debug-only)
+  ag-core  -> 0 AT imports (measured)
+  ag-runtime -> 0 AT imports (measured)
+  com.adb.engine.* imports in AG -> 0 (verified)
+  com.at.backend.* imports in AG -> 0 (verified)
+
+ARCHITECTURE_BLOCKER = NO
