@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.adb.engine</groupId>
+  <artifactId>adb-engine</artifactId>
+  <version>4.0.0</version>
+  <packaging>aar</packaging>
+  <description>ADB Engine (V4, internal, v0.4.2 Local TCP).</description>
+  <dependencies>
+    <dependency>
+      <groupId>com.at.engine.api</groupId>
+      <artifactId>at-engine-api</artifactId>
+      <version>4.0.0</version>
+    </dependency>
+  </dependencies>
+</project>

@@ -1,0 +1,22 @@
+AG.AT-V042-CONSUMER-SYNC-0 SHA256SUMS
+Date: 2026-11-04
+Source: AT v0.4.2 tag target 925e7ac223d19eea7ddb89bf05e55df25ca7a7f2
+Variant: debug
+Maven version: 4.0.0 (preserved from upstream AT publication coordinate)
+
+714170fae82b1e2e718843b668a92eed9f677c06c5717da604d92d8f47bb9dca  com/adb/engine/adb-engine/4.0.0/adb-engine-4.0.0.aar
+7beb245c53b1dd1a6b467212d1c1c4792f73e896c7a70e0e21c4d1e7e0933d73  com/adb/engine/adb-engine/4.0.0/adb-engine-4.0.0.pom
+15895a5b6fe4b69923b79c100eb484c3f2d221addeb2989916741f861ab27138  com/at/backend/adb/at-backend-adb/4.0.0/at-backend-adb-4.0.0.aar
+837b9b1f896ee95623f80bc8db214db0b3d1ddf531a210ae64da7c591767d5eb  com/at/backend/adb/at-backend-adb/4.0.0/at-backend-adb-4.0.0.pom
+6728101df6599ed88b6e872b893b7624b8a4d29dda8e78d94587edc5b24d9a2f  com/at/backend/local/at-backend-local/4.0.0/at-backend-local-4.0.0.aar
+6bfa7056d5de6072db22a440e372b43ce85fd333c3e54bff4d0248292f992c22  com/at/backend/local/at-backend-local/4.0.0/at-backend-local-4.0.0.pom
+ef3266a30f5f154f05a9db342072844ecc2db5198ab369efad13189e73c7a499  com/at/cli/at-cli/4.0.0/at-cli-4.0.0.aar
+21d6c08a521c9115794cf73d788e75e3d693644a56375bd9f337fd3825f17ae0  com/at/cli/at-cli/4.0.0/at-cli-4.0.0.pom
+c195b7666e203799f108493e59d9182427e12f2ddffbe7bdc67e3af064a97434  com/at/composition/android/at-composition-android/4.0.0/at-composition-android-4.0.0.aar
+5a902aa5480c60aec663c16e549a49b9d2019b9c3041f7c090c03096fc90d742  com/at/composition/android/at-composition-android/4.0.0/at-composition-android-4.0.0.pom
+5b7034467db84c2eadc434929368a90326ba6c2f3947e4763e354608fe9cdec5  com/at/engine/api/at-engine-api/4.0.0/at-engine-api-4.0.0.jar
+47df45cd09feb4046fc009a3ce874381210307a7cc9b889b75f6eca0be8efa15  com/at/engine/api/at-engine-api/4.0.0/at-engine-api-4.0.0.pom
+bb46d47d5e04159e4977f00c7ad3adf2eac884507812650bf638ca2a5bfecbc5  com/at/engine/at-engine/4.0.0/at-engine-4.0.0.aar
+ee927eb270856dbf786aa9b80bfa185c717ff49b4a700a944448f346757a3a58  com/at/engine/at-engine/4.0.0/at-engine-4.0.0.pom
+96cdec5b95d34df2d81cca6051739f69ceb6eb970839705d423c1cd6f0d3202f  com/at/engine/spi/at-engine-spi/4.0.0/at-engine-spi-4.0.0.jar
+ec1140bfebf7d95de1aa60d1b31f0f12f39423cc5e03ddde973bb326fd3ac783  com/at/engine/spi/at-engine-spi/4.0.0/at-engine-spi-4.0.0.pom

@@ -24,9 +24,18 @@ dependencyResolutionManagement {
     repositories {
         mavenCentral()
         google()
+        // AG.AT-V042-CONSUMER-SYNC-0: v0.4.2 CANDIDATE repo-local Maven.
+        // AARs/JARs from AT v0.4.2 tag target 925e7ac (CANDIDATE, validation pending).
+        // See third_party/at-v042-consumer-candidate/MANIFEST.md.
+        // MUST be listed BEFORE the v0.4.0 repo so Gradle resolves the candidate
+        // bytes for the same 4.0.0 GAV (cache-collision avoidance).
+        maven {
+            url = uri("third_party/at-v042-consumer-candidate/m2")
+        }
         // AG.AT-V4-INTEGRATION-1: repo-local Maven for the AT V4 Consumer Freeze bundle.
         // AARs/JARs from AT V4 freeze commit 7216d0e (AT.V4-CONSUMER-FREEZE-V1).
         // See third_party/at-v4-consumer-freeze-v1/MANIFEST.md.
+        // Retained for rollback reference; candidate repo takes resolution priority.
         maven {
             url = uri("third_party/at-v4-consumer-freeze-v1/m2")
         }
