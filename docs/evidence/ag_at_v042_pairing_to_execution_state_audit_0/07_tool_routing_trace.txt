@@ -1,0 +1,61 @@
+AG.AT-V042-PAIRING-TO-EXECUTION-STATE-AUDIT-0 - 07 TOOL ROUTING TRACE
+Date: 2026-11-04
+
+=== COMPLETE EXECUTION PATH ===
+
+DebugBridge (PC → device:45678)
+  → AdbCliBridgeServer.onOneShot() [at-cli, Kotlin]
+    → cliExecution.ensureReady(sessionId, onStatusLine)
+      → AtExecutionAdapter.cliExecution.ensureReady() [integration-at]
+        → isAdbReady() = adbSemantic.readinessState() == READY
+          → CompositionAdbSemantic.readinessState() [app]
+            → adbControl.readinessState() = AdbRuntime.state
+            → IF READY: return true (fast path, NO connectLocalhost)
+    → execution.adbEngine().execute(ATExecutionRequest(command=cmd))
+      → AtExecutionAdapter.adbEngine() = adbEngine (ATEngine)
+        → DefaultATEngine.execute() [at-engine]
+          → AdbOneShotBackend.execute() [at-backend-adb]
+            → ensureConnected():
+              → AdbRuntime.activeTransport == LOCAL? [READ, CLI bridge thread]
+              → AdbEngine.localhostConnected()? [JNI, mutex]
+              → IF true: return true
+              → IF false: AdbEngine.connectionState().isOnline?
+              → IF false: connection.port==0 → return false
+            → AdbEngine.executeShell(command, timeoutMs) [WIRELESS JNI]
+              → AdbNative.executeShell() [native]
+              → "client not initialized" → TRANSPORT_ERROR
+            → AdbRuntime.onOperationResult(transportLost=true) [SITE 4]
+              → activeTransport = WIRELESS
+              → state = TRANSPORT_LOST
+              → "local transport loss; activeTransport -> WIRELESS"
+            → return ATExecutionResult(TRANSPORT_ERROR)
+
+=== ROUTING DECISION POINT ===
+
+The FIRST routing decision is in AdbOneShotBackend.ensureConnected() line 64:
+  if (AdbRuntime.activeTransport == AdbTransportMode.LOCAL && AdbEngine.localhostConnected())
+
+This reads:
+  1. AdbRuntime.activeTransport (Kotlin var, NO @Volatile)
+  2. AdbEngine.localhostConnected() (JNI, g_local_mutex)
+
+If BOTH true → LOCAL path (executeShellLocalhost)
+If EITHER false → falls through to Wireless path (executeShell)
+
+=== IN OUR TRACES ===
+
+The log shows "AdbNative.executeShell" (Wireless JNI), NOT "executeShellLocalhost".
+This means ensureConnected() returned false (or the code took the Wireless path).
+
+The "local transport loss" log at T17 confirms onOperationResult was called,
+which means executeShell (Wireless) was called and failed.
+
+=== WHY ensureConnected() RETURNED FALSE ===
+
+Two possibilities:
+  A. activeTransport was read as WIRELESS (stale, cross-thread visibility)
+  B. localhostConnected() returned false (unexpected, since isOnline() should be true)
+
+Possibility A is the most likely: the CLI bridge worker thread (10602)
+read the initial value (WIRELESS) instead of the updated value (LOCAL)
+written by the IO thread (9047).

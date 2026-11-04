@@ -1,0 +1,86 @@
+AG.AT-V042-PAIRING-TO-EXECUTION-STATE-AUDIT-0 - 14 FIRST DIVERGENCE
+Date: 2026-11-04
+
+=== FIVE-LAYER STATE CONSISTENCY CHECK ===
+
+LAYER 1: PAIRING_COMPLETE
+  STATUS = YES
+  EVIDENCE = pairing_meta valid, key loaded (6b1949b4), AUTH passes
+  PAIRING_COMPLETION_CORRECT = YES
+
+LAYER 2: IDENTITY_TRUSTED
+  STATUS = YES
+  EVIDENCE = adbd "adb client authorized", authPass 0
+  PAIRING_KEY_TRUST = PASS
+
+LAYER 3: LOCAL_READY
+  STATUS = YES (at birth)
+  EVIDENCE = connectLocalhost SUCCESS, ONLINE, HUB STARTED,
+             "local-first probe: LOCAL active on :38800"
+  READINESS_STATE_CORRECT = YES
+
+LAYER 4: ACTIVE_TRANSPORT_LOCAL
+  STATUS = YES (at birth) → UNKNOWN (at command time)
+  EVIDENCE = probeLocalFirst wrote LOCAL (thread 9047),
+             but command took WIRELESS path (thread 10602)
+  ACTIVE_TRANSPORT_CORRECT = YES at write time,
+                            UNCERTAIN at read time (cross-thread)
+
+LAYER 5: EXECUTION_ROUTE_LOCAL
+  STATUS = NO
+  EVIDENCE = AdbNative.executeShell (Wireless JNI) called,
+             NOT executeShellLocalhost
+  EXECUTION_ROUTE_CORRECT = NO
+
+=== FIRST DIVERGENCE ===
+
+FIRST_PAIRING_TO_EXECUTION_DIVERGENCE =
+  LAYER 4 → LAYER 5 transition
+
+  At birth (T12): activeTransport = LOCAL (written by IO thread 9047)
+  At command (T16): execution routed to WIRELESS (read by CLI bridge thread 10602)
+
+  The divergence is in the READ of activeTransport at command time.
+  The write was correct (LOCAL). The read may have been stale (WIRELESS)
+  due to lack of happens-before between the writer and reader threads.
+
+  Alternatively, localhostConnected() may have returned false at T16,
+  causing ensureConnected() to fall through to the Wireless path.
+
+=== ROOT CAUSE ===
+
+ROOT_CAUSE_CLASS = ACTIVE_TRANSPORT_CROSS_THREAD_VISIBILITY
+
+ROOT_CAUSE =
+  AdbRuntime.activeTransport is a plain Kotlin var (no @Volatile).
+  It is written by the IO thread (probeLocalFirst) and read by the
+  CLI bridge worker thread (AdbBackend.ensureConnected) without any
+  happens-before guarantee. The read at command time may return the
+  stale initial value (WIRELESS) instead of the updated value (LOCAL),
+  causing the execution to route to the Wireless path, which fails
+  because no Wireless connection exists.
+
+ROOT_CAUSE_CONFIDENCE = MEDIUM
+
+  Evidence FOR:
+    - activeTransport is a plain var (confirmed in source)
+    - Writer and reader are on different threads (confirmed in log)
+    - Command took Wireless path despite LOCAL being set at birth (confirmed)
+    - No @Volatile, no synchronization (confirmed in source)
+
+  Evidence AGAINST:
+    - 5.2 second gap makes stale read unlikely in practice (ARM64 cache
+      coherence should have propagated)
+    - The "local transport loss" log is consistent with BOTH a stale read
+      AND a localhostConnected() returning false
+    - No direct log of the activeTransport value at read time
+
+  Alternative: localhostConnected() returned false at T16, which would
+  also cause the Wireless path. This is not directly testable without
+  adding a log line (forbidden in this audit).
+
+=== PAIRING_IS_ROOT_CAUSE = NO ===
+
+Pairing is NOT the root cause. The pairing state is correct (key trusted,
+metadata valid, identity present). The divergence is in the transport
+selection at execution time, which is a cross-thread visibility issue.

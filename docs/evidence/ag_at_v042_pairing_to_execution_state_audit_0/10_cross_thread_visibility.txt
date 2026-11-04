@@ -1,0 +1,87 @@
+AG.AT-V042-PAIRING-TO-EXECUTION-STATE-AUDIT-0 - 10 CROSS THREAD VISIBILITY
+Date: 2026-11-04
+
+=== activeTransport DECLARATION ===
+
+FILE = AdbRuntime.kt:84
+CODE = var activeTransport: AdbTransportMode = AdbTransportMode.WIRELESS
+
+TYPE = plain Kotlin var (compiles to JVM field)
+VOLATILE = NO
+ATOMIC = NO
+SYNCHRONIZED = NO
+MUTEX = NO
+STATEFLOW = NO
+HAPPENS_BEFORE_MECHANISM = NONE
+
+=== WRITE THREAD ===
+
+probeLocalFirst() runs on IO thread (Dispatchers.IO):
+  Thread 9047 (decisive test) / 6598 (previous test) / 13023 (RUN 1)
+  Writes: activeTransport = LOCAL (line 982)
+  Also writes: state = READY (line 983)
+
+=== READ THREAD ===
+
+AdbCliBridgeServer.onOneShot() runs on CLI bridge worker thread:
+  Thread 10602 (decisive test) / 7786 (previous test) / 18894 (RUN 1)
+  Reads: AdbRuntime.activeTransport (AdbBackend.kt:64)
+  Reads: AdbRuntime.state (ensureReady fast path, AdbRuntime.kt:344)
+
+=== HAPPENS_BEFORE_ANALYSIS ===
+
+Writer: thread 9047 (IO), at T12 (~21:16:41.5)
+Reader: thread 10602 (CLI bridge worker), at T15 (21:16:46.712)
+GAP: ~5.2 seconds
+
+Is there a happens-before edge between T12 and T15?
+
+1. Direct: NO. No lock, no volatile, no atomic between the two threads.
+
+2. Indirect via HUB RX thread (9090):
+   - HUB RX thread (9090) calls conn_->readPacket() (JNI)
+   - JNI call creates a native↔JVM synchronization point
+   - But the HUB RX thread does NOT read or write activeTransport
+   - The HUB RX thread and the CLI bridge worker thread (10602) have NO
+     direct synchronization
+
+3. Indirect via AdbEngine.localhostConnected() (JNI):
+   - AdbBackend.ensureConnected() calls AdbEngine.localhostConnected()
+   - This acquires g_local_mutex (native mutex)
+   - The probeLocalhost() also acquired g_local_mutex
+   - BUT: g_local_mutex protects g_local, NOT activeTransport
+   - The mutex does NOT create a happens-before for the Kotlin var activeTransport
+
+4. Indirect via AdbRuntime.state:
+   - ensureReady() reads state (same thread as activeTransport read)
+   - state was written by the same IO thread as activeTransport
+   - If state is visible (READY), activeTransport SHOULD also be visible
+   - BUT: no formal guarantee (both are plain vars)
+
+5. In practice:
+   - 5.2 seconds is a LONG time for cache coherence
+   - On ARM64 (Cortex-A76+), cache coherence is hardware-managed
+   - The read SHOULD see the updated value after 5 seconds
+   - But the JVM may have cached the value in a register or CPU cache
+
+=== VERDICT ===
+
+HAPPENS_BEFORE_PROVEN = NO
+CROSS_THREAD_STALE_READ_POSSIBLE = YES (theoretically)
+CROSS_THREAD_STALE_READ_LIKELY = UNKNOWN (5s gap makes it unlikely in practice,
+  but the log evidence shows the Wireless path was taken, which is consistent
+  with a stale read of activeTransport)
+
+=== ALTERNATIVE EXPLANATION ===
+
+If activeTransport was correctly read as LOCAL, then localhostConnected()
+must have returned false. This would mean isOnline() returned false at T16,
+which contradicts the HUB08 EAGAIN loop (which implies the socket is still
+open and the transport is "alive").
+
+However, there is a subtle possibility: the HUB RX thread (9090) and the
+CLI bridge worker thread (10602) may see different states of the native
+transport. The HUB RX thread is in a JNI read loop, while the CLI bridge
+worker thread makes a fresh JNI call to localhostConnected(). If the native
+transport state changed between the HUB's last read and the CLI bridge's
+localhostConnected() call, the two threads could see different results.

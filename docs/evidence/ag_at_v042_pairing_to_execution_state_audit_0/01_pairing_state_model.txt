@@ -1,0 +1,54 @@
+AG.AT-V042-PAIRING-TO-EXECUTION-STATE-AUDIT-0 - 01 PAIRING STATE MODEL
+Date: 2026-11-04
+
+=== PAIRING → BOOTSTRAP → READINESS → EXECUTION FLOW ===
+
+LAYER 1: PAIRING
+  OWNER = AdbRuntime (AT-internal) + ATAndroidAdbControl (facade)
+  STATE = pairing metadata (adbkey, adbkey.pub, adb_cert.pem, pairing_meta)
+  WRITE = pairDiscovered() / pair() -> AdbKeyStore persistence
+  READ = hasIdentity() -> AdbKeyStore existence check
+  THREAD = IO thread
+  PERSISTED = YES (files/at-consumer/identity/)
+
+LAYER 2: BOOTSTRAP
+  OWNER = AdbRuntime
+  STATE = bootstrapState (PAIRING_REQUIRED / CONNECT_FAILED / READY)
+  WRITE = AdbRuntime.initialize() -> initial classification
+  READ = CompositionAdbSemantic.bootstrapState() -> read-only projection
+  THREAD = main/IO
+  PERSISTED = NO (memory, derived from identity + connection state)
+
+LAYER 3: READINESS
+  OWNER = AdbRuntime
+  STATE = state (READY / CONNECTING / TRANSPORT_LOST / etc)
+  WRITE = probeLocalFirst() -> READY, onOperationResult() -> TRANSPORT_LOST
+  READ = ensureReady() fast path, isAdbReady()
+  THREAD = IO (probeLocalFirst), CLI bridge worker (onOperationResult)
+  PERSISTED = NO (memory)
+
+LAYER 4: ACTIVE TRANSPORT
+  OWNER = AdbRuntime
+  STATE = activeTransport (LOCAL / WIRELESS)
+  WRITE = probeLocalFirst() -> LOCAL, onOperationResult() -> WIRELESS
+  READ = AdbBackend.ensureConnected(), AdbRuntime.executeShell(), activeTransportOnline()
+  THREAD = IO (write), CLI bridge worker (read)
+  PERSISTED = NO (memory, initial = WIRELESS)
+  VISIBILITY = var (NOT @Volatile, NOT synchronized)
+
+LAYER 5: EXECUTION ROUTE
+  OWNER = AdbOneShotBackend / AdbRuntime
+  STATE = which executeShell is called (Localhost vs Wireless)
+  WRITE = N/A (routing decision, not a state write)
+  READ = AdbBackend.execute() -> ensureConnected() -> AdbEngine.executeShell()
+  THREAD = CLI bridge worker
+  PERSISTED = NO
+
+=== CRITICAL OBSERVATION ===
+
+LAYER 4 (activeTransport) is the PIVOT.
+- Written by IO thread (6598) at birth: LOCAL
+- Read by CLI bridge worker thread (7786) at command time
+- var without @Volatile -> NO happens-before guarantee
+- If reader sees stale WIRELESS (initial value): Wireless path taken
+- Wireless path fails (no connection) -> onOperationResult -> activeTransport = WIRELESS (redundant)

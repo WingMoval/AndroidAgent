@@ -1,0 +1,158 @@
+AG.AT-V042-PAIRING-TO-EXECUTION-STATE-AUDIT-0 - 15 FINAL VERDICT
+Date: 2026-11-04
+
+=== VERDICT ===
+
+VERDICT = PASS_FIRST_DIVERGENCE_FOUND
+PAIRING_EXCLUDED = YES
+
+=== CONFIRMED ===
+
+1. PAIRING_COMPLETION_CORRECT = YES
+   Key trusted, metadata valid, AUTH passes.
+
+2. BOOTSTRAP_STATE_CORRECT = YES
+   Bootstrap state correctly reflects READY after local connect.
+
+3. READINESS_STATE_CORRECT = YES
+   state=READY after probeLocalFirst.
+
+4. ACTIVE_TRANSPORT_CORRECT (at write time) = YES
+   probeLocalFirst correctly writes LOCAL.
+
+5. EXECUTION_ROUTE_CORRECT = NO
+   Command took WIRELESS path, not LOCAL.
+
+6. REAL_LOCAL_TO_WIRELESS_WRITE_OBSERVED = YES
+   SITE 4 (onOperationResult, line 800) wrote WIRELESS after command failure.
+   But this is a CONSEQUENCE of the wrong route, not the cause.
+
+7. activeTransport is a plain var (no @Volatile).
+   Writer: IO thread. Reader: CLI bridge worker thread.
+   NO happens-before guarantee.
+
+8. Restart does NOT fix the issue (RESTART_AFTER_PAIR_RESULT = FAIL).
+   Same-key re-pair does NOT fix the issue (SAME_KEY_REPAIR_RESULT = FAIL).
+   → NOT a pairing state issue.
+
+9. Command immediately after ONLINE also FAILS (decisive test).
+   → NOT a timing issue.
+
+=== EXCLUDED ===
+
+1. PAIRING_POST_STATE_NOT_PROPAGATED = EXCLUDED
+   (pairing state is correct; restart doesn't help)
+
+2. BOOTSTRAP_STATE_PROJECTION_BUG = EXCLUDED
+   (bootstrap correctly projects READY)
+
+3. PAIRING_CALLBACK_TRANSPORT_OVERRIDE = EXCLUDED
+   (no pairing callback writes activeTransport)
+
+4. ACTIVE_TRANSPORT_REAL_WRITEBACK = PARTIALLY CONFIRMED
+   (SITE 4 writes WIRELESS, but as a consequence, not a cause)
+
+5. READINESS_ROUTING_MISMATCH = EXCLUDED
+   (readiness is correct; routing is the issue)
+
+6. CLI_BRIDGE_STATE_SNAPSHOT_STALE = UNKNOWN
+   (no evidence of snapshot staleness)
+
+7. PAIR_STATE_RESTORE_BUG = EXCLUDED
+   (restart with valid pairing still fails)
+
+8. adbd "already offline" = EXCLUDED as root cause
+   (appears in both AT working and AG failing traces; non-discriminating)
+
+=== INFERENCE ===
+
+1. The execution route divergence (LAYER 4→5) is caused by either:
+   a. Cross-thread stale read of activeTransport (WIRELESS instead of LOCAL)
+   b. localhostConnected() returning false at command time
+
+2. If (a): the fix is to make activeTransport @Volatile or use AtomicReference.
+
+3. If (b): the fix is to investigate why isOnline() returns false at command
+   time despite the HUB being in an EAGAIN loop (transport "alive").
+
+4. Both (a) and (b) point to the SAME underlying issue: the LOCAL transport
+   state is not reliably visible/usable at command execution time.
+
+=== UNKNOWN ===
+
+1. The EXACT value of activeTransport at the moment of the read (T16).
+   No log line records this value.
+
+2. The EXACT return value of localhostConnected() at T16.
+   No log line records this value.
+
+3. Whether the cross-thread stale read or the localhostConnected() false
+   return is the primary cause. Both are consistent with the observed behavior.
+
+=== MINIMUM_FIX_DIRECTION ===
+
+1. Make AdbRuntime.activeTransport @Volatile (or AtomicReference).
+   This ensures the CLI bridge worker thread sees the latest value.
+
+2. Add a diagnostic log in AdbBackend.ensureConnected() recording:
+   - activeTransport value
+   - localhostConnected() result
+   - connectionState().isOnline result
+   This would definitively distinguish (a) from (b).
+
+3. If localhostConnected() returns false despite isOnline() being true in
+   the HUB thread, investigate the native transport state visibility.
+
+=== REQUIRED_FINAL_REPORT ===
+
+STEP = AG.AT-V042-PAIRING-TO-EXECUTION-STATE-AUDIT-0
+VERDICT = PASS_FIRST_DIVERGENCE_FOUND
+AG_START_HEAD = 994037e
+PAIRING_SUCCESS = YES
+PAIRING_KEY_TRUST = PASS
+PAIRING_METADATA_VALID = YES
+BOOTSTRAP_STATE_AFTER_PAIR = READY
+RUNTIME_STATE_AFTER_PAIR = READY
+ACTIVE_TRANSPORT_AFTER_PAIR = LOCAL
+LOCALHOST_CONNECTED_AFTER_PAIR = YES
+WIRELESS_CONNECTED_AFTER_PAIR = NO
+FIRST_ENSURE_READY_CALLER = AdbRuntime.initialize() (auto at startup)
+FIRST_LOCAL_READY_AT = birth (T12)
+FIRST_ACTIVE_TRANSPORT_LOCAL_AT = birth (T12)
+ACTIVE_TRANSPORT_WRITE_SITES = 9 (see 04_active_transport_write_sites.txt)
+REAL_LOCAL_TO_WIRELESS_WRITE_OBSERVED = YES
+LOCAL_TO_WIRELESS_WRITE_SITE = AdbRuntime.kt:800
+LOCAL_TO_WIRELESS_WRITE_CALLER = AdbOneShotBackend.execute()
+LOCAL_TO_WIRELESS_WRITE_THREAD = CLI bridge worker (7786/10602)
+LOCAL_TO_WIRELESS_WRITE_REASON = executeShell (Wireless) failed
+PRE_TOOL_RUNTIME_STATE = READY
+PRE_TOOL_ACTIVE_TRANSPORT = LOCAL (written) / WIRELESS (possibly read)
+EXECUTE_SHELL_ACTIVE_TRANSPORT = WIRELESS (evidenced by AdbNative.executeShell log)
+EXECUTION_ROUTE = WIRELESS
+PAIRING_CALLBACK_MUTATES_TRANSPORT = NO
+BOOTSTRAP_MUTATES_TRANSPORT = NO
+HAPPENS_BEFORE_PROVEN = NO
+CROSS_THREAD_STALE_READ_POSSIBLE = YES
+SAME_KEY_REPAIR_RESULT = FAIL
+RESTART_AFTER_PAIR_RESULT = FAIL
+AT_CONTROL_RESULT = PASS (AT works with same native code)
+FIRST_PAIRING_TO_EXECUTION_DIVERGENCE = LAYER 4→5 (activeTransport read)
+ROOT_CAUSE_CLASS = ACTIVE_TRANSPORT_CROSS_THREAD_VISIBILITY
+ROOT_CAUSE = activeTransport is a plain var without @Volatile; cross-thread read may return stale WIRELESS
+ROOT_CAUSE_CONFIDENCE = MEDIUM
+PAIRING_IS_ROOT_CAUSE = NO
+AG_HOST_CHANGE_REQUIRED = NO
+INTEGRATION_AT_CHANGE_REQUIRED = NO
+AT_RUNTIME_CHANGE_REQUIRED = YES (AdbRuntime.kt: activeTransport @Volatile)
+AT_NATIVE_CHANGE_REQUIRED = NO
+AG_CORE_CHANGE_REQUIRED = NO
+PRODUCTION_SOURCE_CHANGED = NO
+GRADLE_CHANGED = NO
+AAR_JAR_CHANGED = NO
+COMMIT = YES
+COMMIT_SHA = (to be filled)
+TAG = NO
+PUSH = NO
+FREEZE = NO
+NEXT = ROOT_CAUSE_SPECIFIC_FIX (make activeTransport @Volatile + add diagnostic log)
+STOP = YES

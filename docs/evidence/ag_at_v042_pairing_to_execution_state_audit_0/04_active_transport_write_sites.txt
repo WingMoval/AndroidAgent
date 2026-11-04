@@ -1,0 +1,110 @@
+AG.AT-V042-PAIRING-TO-EXECUTION-STATE-AUDIT-0 - 04 ACTIVE TRANSPORT WRITE SITES
+Date: 2026-11-04
+
+=== ALL activeTransport WRITE SITES ===
+
+SITE 1: Declaration (initial value)
+  FILE = AdbRuntime.kt:84
+  CODE = var activeTransport: AdbTransportMode = AdbTransportMode.WIRELESS
+  VALUE = WIRELESS
+  CONTEXT = field initialization (constructor)
+  THREAD = main (object creation)
+  PAIRING_RELATED = NO
+  READINESS_RELATED = NO
+  FAILURE_RELATED = NO
+  OBSERVER_RELATED = NO
+
+SITE 2: probeLocalFirst success
+  FILE = AdbRuntime.kt:982
+  CODE = activeTransport = AdbTransportMode.LOCAL
+  CONDITION = connectLocalhost() returned true (full handshake complete)
+  CALLER = ensureReady() -> probeLocalFirst()
+  THREAD = IO thread (6598 in our trace)
+  PAIRING_RELATED = YES (requires valid identity)
+  READINESS_RELATED = YES (sets state=READY)
+  FAILURE_RELATED = NO
+  OBSERVER_RELATED = NO
+
+SITE 3: onOperationResult (not previously READY)
+  FILE = AdbRuntime.kt:789
+  CODE = activeTransport = AdbTransportMode.WIRELESS
+  CONDITION = transportLost=true AND !wasReady AND activeTransport==LOCAL
+  CALLER = onObservedTransportLost() or AdbBackend.execute() failure
+  THREAD = CLI bridge worker (7786) or observer thread
+  PAIRING_RELATED = NO
+  READINESS_RELATED = NO
+  FAILURE_RELATED = YES
+  OBSERVER_RELATED = MAYBE
+
+SITE 4: onOperationResult (previously READY, Local intent)
+  FILE = AdbRuntime.kt:800
+  CODE = activeTransport = AdbTransportMode.WIRELESS
+  CONDITION = transportLost=true AND wasReady AND intent is Local
+  LOG = "local transport loss; activeTransport -> WIRELESS"
+  CALLER = AdbBackend.execute() -> onOperationResult(transportLost=true)
+  THREAD = CLI bridge worker (7786)
+  PAIRING_RELATED = NO
+  READINESS_RELATED = NO
+  FAILURE_RELATED = YES
+  OBSERVER_RELATED = NO
+
+SITE 5: disconnect()
+  FILE = AdbRuntime.kt:751
+  CODE = activeTransport = AdbTransportMode.WIRELESS
+  CONDITION = manual disconnect
+  THREAD = caller thread
+  PAIRING_RELATED = NO
+  READINESS_RELATED = NO
+  FAILURE_RELATED = NO
+  OBSERVER_RELATED = NO (stops observer)
+
+SITE 6: resetForTest()
+  FILE = AdbRuntime.kt:907
+  CODE = activeTransport = AdbTransportMode.WIRELESS
+  CONDITION = test reset
+  THREAD = test thread
+  PAIRING_RELATED = NO
+  READINESS_RELATED = NO
+  FAILURE_RELATED = NO
+  OBSERVER_RELATED = NO
+
+SITE 7: enableLocalTcp failure recovery
+  FILE = AdbRuntime.kt:1156
+  CODE = activeTransport = AdbTransportMode.WIRELESS
+  CONDITION = Local promotion failed, re-establishing Wireless
+  THREAD = ensureReady IO thread
+  PAIRING_RELATED = NO
+  READINESS_RELATED = YES
+  FAILURE_RELATED = YES
+  OBSERVER_RELATED = NO
+
+SITE 8: enableLocalTcp success
+  FILE = AdbRuntime.kt:1207
+  CODE = activeTransport = AdbTransportMode.LOCAL
+  CONDITION = Local promotion succeeded
+  THREAD = ensureReady IO thread
+  PAIRING_RELATED = NO
+  READINESS_RELATED = YES
+  FAILURE_RELATED = NO
+  OBSERVER_RELATED = NO
+
+SITE 9: disableLocalTcp
+  FILE = AdbRuntime.kt:1258
+  CODE = activeTransport = AdbTransportMode.WIRELESS
+  CONDITION = explicit Local TCP disable
+  THREAD = caller thread
+  PAIRING_RELATED = NO
+  READINESS_RELATED = NO
+  FAILURE_RELATED = NO
+  OBSERVER_RELATED = NO
+
+=== IN OUR TRACES ===
+
+Only SITE 2 (birth, LOCAL) and SITE 4 (command failure, WIRELESS) are exercised.
+No other write sites are triggered.
+
+REAL_LOCAL_TO_WIRELESS_WRITE_OBSERVED = YES
+LOCAL_TO_WIRELESS_WRITE_SITE = AdbRuntime.kt:800 (onOperationResult, line 800)
+LOCAL_TO_WIRELESS_WRITE_CALLER = AdbOneShotBackend.execute() -> AdbRuntime.onOperationResult(transportLost=true)
+LOCAL_TO_WIRELESS_WRITE_THREAD = CLI bridge worker (7786)
+LOCAL_TO_WIRELESS_WRITE_REASON = AdbEngine.executeShell() returned TRANSPORT_ERROR (Wireless path, no connection)

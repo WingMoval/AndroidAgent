@@ -1,0 +1,65 @@
+AG.AT-V042-PAIRING-TO-EXECUTION-STATE-AUDIT-0 - 05 PROCESS BIRTH STATE TIMELINE
+Date: 2026-11-04
+AG_PID = 10328 (decisive test run)
+
+=== BIRTH TIMELINE ===
+
+T1 21:16:41.??? [main] AdbRuntime: transport observer started
+T2 21:16:41.??? [main] AdbRuntime: initialize: readiness+discovery backends wired
+T3 21:16:41.??? [main] AdbCliBridge: nativeStart OK listen_fd=132
+T4 21:16:41.??? [6602] AdbCliBridge: accept_thread started
+T5 21:16:41.??? [9047] AdbEngineJNI: connectLocalhost port=38800
+T6 21:16:41.??? [9047] PlainTcpADB: TCP_CONNECTED (fd=134)
+T7 21:16:41.??? [9047] PlainTcpADB: TX_CNXN
+T8 21:16:41.??? [9047] PlainTcpADB: RX_AUTH -> TX_AUTH -> RX_CNXN
+T9 21:16:41.??? [9047] PlainTcpADB: ONLINE
+T10 21:16:41.??? [9047] [HUB01] RX_OWNER_START
+T11 21:16:41.??? [9047] connectLocalhost: ONLINE + SHARED HUB STARTED
+T12 21:16:41.??? [9047] AdbRuntime: local-first probe: LOCAL active
+    → activeTransport = LOCAL (SITE 2, thread 9047)
+    → state = READY
+T13 21:16:41.??? [9090] [HUB01] RX_LOOP_ENTER
+
+T14 21:16:46.238 [9090] [HUB08] RX_IDLE_TIMEOUT (first EAGAIN, ~5s after ONLINE)
+    → online_ stays true
+    → activeTransport stays LOCAL
+    → state stays READY
+    → transport observer: isOnline()=true, no edge detected
+
+T15 21:16:46.712 [10602] AdbCliBridge: onOneShot: ensureReady for ['id']
+    → ensureReady fast path: state==READY → return READY
+    → (no connectLocalhost call)
+
+T16 21:16:46.713 [10602] AdbEngineJNI: AdbNative.executeShell: "'id'" timeout_ms=0
+    → AdbBackend.ensureConnected():
+      → AdbRuntime.activeTransport == LOCAL? (READ, thread 10602)
+      → AdbEngine.localhostConnected()? (JNI, mutex)
+      → IF true: return true → executeShellLocalhost (LOCAL)
+      → IF false: AdbEngine.connectionState().isOnline?
+      → IF false: port==0 → return false
+    → AdbEngine.executeShell() [WIRELESS JNI]
+    → "client not initialized" → TRANSPORT_ERROR
+
+T17 21:16:46.713 [10602] AdbRuntime: local transport loss; activeTransport -> WIRELESS
+    → SITE 4: activeTransport = WIRELESS
+    → state = TRANSPORT_LOST
+
+T18 21:16:46.713 [10602] AdbCliBridge: result outcome=TRANSPORT_ERROR
+
+=== KEY OBSERVATION ===
+
+T12 (activeTransport=LOCAL) is at 21:16:41.???
+T15 (command) is at 21:16:46.712
+GAP = ~5.7 seconds
+
+The write (T12) and read (T15) are on DIFFERENT threads:
+  Write: thread 9047 (IO)
+  Read: thread 10602 (CLI bridge worker)
+
+activeTransport is a plain `var` (no @Volatile, no synchronization).
+There is NO happens-before relationship between T12 and T15.
+
+However: T14 (HUB08 EAGAIN at 21:16:46.238) occurs BEFORE T15 (command at 21:16:46.712).
+The EAGAIN loop involves JNI calls (readPacket → native read → return to Kotlin),
+which create a native↔JVM synchronization point. This MAY provide an indirect
+happens-before, but it is NOT guaranteed by the Java Memory Model.
