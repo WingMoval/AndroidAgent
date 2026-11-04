@@ -1,0 +1,59 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 04 AG CALLSITE INVENTORY
+Date: 2026-11-04
+
+=== AG_LOCAL_CONNECT_CALLERS ===
+
+CALLER 1: AdbRuntime.initialize() -> startTransportObserver()
+  FILE = AdbRuntime.kt:307
+  TRIGGER = AG app startup (ChatActivity -> CompositionRoot -> AdbRuntime.initialize)
+  THREAD = main thread
+  ACTION = starts transport observer daemon (polls every 1500ms)
+  CONNECTS = NO (observer only reads state)
+
+CALLER 2: AdbRuntime.ensureReady() -> probeLocalFirst()
+  FILE = AdbRuntime.kt:352, 977-986
+  TRIGGER = First ensureReady call (at app startup, via AdbCliBridge or UI)
+  THREAD = IO thread (Dispatchers.IO)
+  ACTION = connectLocalhost(38800, keyDir)
+  CONNECTS = YES (first and only connect at birth)
+
+CALLER 3: AdbCliBridge onOneShot -> ensureAdbReady()
+  FILE = AtExecutionAdapter.kt:90-92
+  TRIGGER = DebugBridge tool_invoke (adb shell command)
+  THREAD = CLI bridge worker thread
+  ACTION = adbSemantic.ensureReady() -> AdbRuntime.ensureReady()
+  CONNECTS = MAYBE (fast path if READY, probeLocalFirst if not)
+
+CALLER 4: AdbRuntime.ensureReady() -> probeLocalFirst() [re-entry]
+  FILE = AdbRuntime.kt:352
+  TRIGGER = ensureReady when state != READY
+  ACTION = connectLocalhost (teardown stale + fresh connect)
+  CONNECTS = YES (if state != READY)
+
+=== UNEXPECTED STARTUP READINESS TRIGGERS ===
+
+The AdbCliBridge nativeStart is called at app initialization:
+  "AdbCliBridge: nativeStart OK listen_fd=132" (20:19:48.238)
+  "AdbCliBridge: accept_thread started" (20:19:48.248)
+
+This is BEFORE the first connectLocalhost (20:19:48.260).
+The CLI bridge starts listening for DebugBridge connections immediately.
+
+The first connectLocalhost (20:19:48.260) is triggered by:
+  AdbRuntime.initialize() -> ensureReady() -> probeLocalFirst()
+  This is the AUTOMATIC startup connect.
+
+NO MULTIPLE ensureReady CALLERS DETECTED at birth.
+Only ONE connectLocalhost per process lifetime (at birth).
+
+=== COMMAND EXECUTION PATH ===
+
+DebugBridge tool_invoke -> AdbCliBridge onOneShot
+  -> AtExecutionAdapter.ensureAdbReady()
+    -> AdbRuntime.ensureReady()
+      -> fast path: state == READY -> return READY
+      -> (OR) probeLocalFirst() -> connectLocalhost()
+  -> AtExecutionAdapter.executeCommand()
+    -> AdbRuntime.executeShell()
+      -> activeTransport == LOCAL? executeShellLocalhost() : Wireless
+      -> In our case: Wireless (activeTransport was switched to WIRELESS)

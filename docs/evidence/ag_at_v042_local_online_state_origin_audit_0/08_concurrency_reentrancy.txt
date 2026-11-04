@@ -1,0 +1,42 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 08 CONCURRENCY REENTRANCY
+Date: 2026-11-04
+
+=== CONCURRENT_CONNECT_DETECTED ===
+
+NO.
+
+In all 3 runs, there is exactly ONE connectLocalhost call per process:
+  - Triggered by AdbRuntime.initialize() -> ensureReady() -> probeLocalFirst()
+  - Thread: IO thread (13023 in RUN 1, 21354 in RUN 2, 21955 in RUN 3)
+  - No second connectLocalhost call observed
+
+The command execution (AdbCliBridge onOneShot) does NOT call connectLocalhost.
+It calls AdbRuntime.ensureReady() which takes the fast path (state == READY).
+
+=== REENTRANCY_DETECTED ===
+
+NO.
+
+No reentrant connectLocalhost calls. The g_local_mutex is held only once
+per connectLocalhost call. No evidence of thread A and thread B both
+entering connectLocalhost simultaneously.
+
+=== TIMELINE (RUN 1) ===
+
+T0 20:19:48.260 thread 13023 -> connectLocalhost entry
+T1 20:19:48.316 thread 13023 -> TCP connected (fd=134)
+T2 20:19:48.316 thread 13023 -> TX_CNXN sent
+T3 20:19:48.522 thread 13023 -> RX_AUTH received
+T4 20:19:48.535 thread 13023 -> TX_AUTH sent
+T5 20:19:48.556 thread 13023 -> RX_CNXN received
+T6 20:19:48.556 thread 13023 -> online_ = true
+T7 20:19:48.557 thread 13023 -> HUB started
+T8 20:19:48.558 thread 13023 -> probeLocalFirst returns true
+T9 20:19:48.562 thread 13090 -> RX_LOOP_ENTER
+T10 20:19:53.756 thread 13090 -> first EAGAIN (5.2s after ONLINE)
+...
+T20 20:20:58.690 thread 18894 -> onOneShot: ensureReady
+T21 20:20:58.691 thread 18894 -> executeShell (WIRELESS path)
+T22 20:20:58.692 thread 18894 -> TRANSPORT_ERROR
+
+No concurrent threads touching g_local or the transport state.

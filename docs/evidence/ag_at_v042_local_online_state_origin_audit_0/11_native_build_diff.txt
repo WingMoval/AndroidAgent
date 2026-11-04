@@ -1,0 +1,52 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 11 NATIVE BUILD DIFF
+Date: 2026-11-04
+
+=== SOURCE DIFF ===
+
+SOURCE_DIFF = NONE (confirmed)
+
+v0.4.2 tag (04f9c30) to HEAD (64384ab): only docs commits.
+No changes to adb-engine/src/main/cpp/ or any native code.
+
+=== BINARY SHA COMPARISON ===
+
+AT_DEBUG (working on device):
+  SHA256 = AE55F4172CA88B5E989312939D7CACC433EEDAFEEF07658BBD4D374AD7FEA757
+  Built from: AT repo HEAD (64384ab), debug variant
+  Build: app/build/outputs/apk/debug/app-debug.apk
+
+AG_CANDIDATE (failing on device):
+  SHA256 = 804E547FA57A5972F263DF9052D3D55FEFFFEC744CDB41E6FDA79DEE0B0B67D7
+  Built from: AG candidate AAR (MANIFEST: debug variant, detached worktree at v0.4.2)
+  Build: third_party/at-v042-consumer-candidate/
+
+=== BUILD CONFIGURATION ===
+
+Both are debug variant builds. The SHA difference is due to:
+  - Different build environment (Gradle cache, timestamps, machine)
+  - NOT a code difference (source is identical)
+
+=== NATIVE_BUILD_SEMANTIC_DIVERGENCE ===
+
+NATIVE_BUILD_SEMANTIC_DIVERGENCE = NO_EVIDENCE
+
+The SHA difference alone does NOT indicate a semantic difference.
+Both binaries exhibit IDENTICAL behavior:
+  - Same handshake sequence (TX_CNXN -> RX_AUTH -> TX_AUTH -> RX_CNXN)
+  - Same ONLINE state transition
+  - Same HUB start
+  - Same EAGAIN loop after adbd goes silent
+  - Same "already offline" adbd log
+
+The difference in outcome (AT works, AG fails) is NOT due to binary
+difference. It is due to the adbd session state and the AG command
+execution path (Wireless vs Local).
+
+=== KEY EVIDENCE ===
+
+AT and AG use the SAME native code and produce IDENTICAL log sequences.
+The only difference is:
+  1. adbd session state (host-N "already offline" for AG's connection)
+  2. AG's command execution path (Wireless instead of Local)
+
+This EXCLUDES build/binary divergence as the root cause.

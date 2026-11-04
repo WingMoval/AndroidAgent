@@ -1,0 +1,67 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 10 FAILURE CLEANUP PATHS
+Date: 2026-11-04
+
+=== ALL FAILURE PATHS IN connectLocalhost() ===
+
+PATH 1: key loadOrCreate fails (line 414-418)
+  -> g_local_last_error = "key loadOrCreate failed"
+  -> g_local.reset()
+  -> return FALSE
+  CLEANUP = CORRECT
+
+PATH 2: TCP connect fails (line 424-430)
+  -> g_local_last_error = "PlainTcp: ..."
+  -> delete conn, delete keys
+  -> g_local.reset()
+  -> return FALSE
+  CLEANUP = CORRECT
+
+PATH 3: hub start fails (line 440-446)
+  -> g_local->hub.reset()
+  -> delete conn, delete keys
+  -> g_local.reset()
+  -> return FALSE
+  CLEANUP = CORRECT
+
+PATH 4: connect() fails internally (plain_tcp_connection.cpp)
+  -> transport_->close()
+  -> return false
+  -> connectLocalhost catches: delete conn, delete keys, g_local.reset()
+  CLEANUP = CORRECT
+
+PATH 5: handleAuth fails (AUTH timeout, bad packet, etc.)
+  -> transport_->close()
+  -> return false
+  -> same as PATH 4
+  CLEANUP = CORRECT
+
+=== STALE_STATE_LEAK_PATH ===
+
+NONE FOUND in connectLocalhost().
+
+Every failure path properly cleans up:
+  - socket closed
+  - conn deleted (destructor calls disconnect() -> online_=false)
+  - keys deleted
+  - g_local reset to nullptr
+
+=== RUNTIME TRANSPORT LOSS (NOT A CONNECT FAILURE) ===
+
+When the transport dies AFTER successful connect (e.g., adbd closes session):
+
+  rxLoop() readPacket() fails
+  -> if EAGAIN: continue (online_ NOT cleared, g_local NOT reset)
+  -> if real failure: markTransportLost() + failAll + break
+     -> online_ = false, but g_local still non-null
+     -> HUB exits, but g_local not reset until next connectLocalhost
+
+This is NOT a "stale state leak" in the traditional sense:
+  - online_ is correctly set to false on real failure
+  - g_local is torn down by the next connectLocalhost (teardown at line 401-406)
+
+The EAGAIN case is the PROBLEM:
+  - online_ stays true (EAGAIN treated as "alive")
+  - g_local stays non-null
+  - HUB keeps running (EAGAIN loop)
+  - But adbd is no longer sending data (session "offline")
+  - isOnline() returns true (incorrectly, from a functional standpoint)

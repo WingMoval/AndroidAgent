@@ -1,0 +1,80 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 13 FIRST BAD STATE TRANSITION
+Date: 2026-11-04
+
+=== THE CRITICAL QUESTION ===
+
+"AG 为什么第一次认为 Local ADB 已经 ONLINE？"
+
+ANSWER: AG's native code CORRECTLY reaches ONLINE after the full handshake.
+The FIRST_BAD_STATE_WRITE does NOT exist in the native code.
+
+The online_ flag is set to true ONLY after RX_CNXN is received (line 90).
+This is CORRECT behavior. The handshake completes successfully in all 3 runs.
+
+=== THE ACTUAL PROBLEM ===
+
+The problem is NOT a bad state write. The problem is:
+
+1. adbd creates a host session for AG's connection
+2. adbd logs "host-N: already offline" (session is in offline state)
+3. adbd authorizes the key (authPass 0, "adb client authorized")
+4. adbd does NOT send any data (no prompt, no response to OPEN)
+5. AG's HUB08 waits for data -> EAGAIN loop (treats as "alive")
+6. AG's online_ stays true (EAGAIN doesn't clear it)
+7. AG's AdbRuntime state stays READY (transport observer sees isOnline()=true)
+8. When command executes:
+   - ensureReady() fast path: state == READY -> return READY
+   - executeShell() uses WIRELESS path (not Local)
+   - Wireless connection doesn't exist -> TRANSPORT_ERROR
+
+=== WHY THE COMMAND USES WIRELESS NOT LOCAL ===
+
+The log shows:
+  "AdbNative.executeShell: 'id' timeout_ms=0" = WIRELESS path
+  "local transport loss; activeTransport -> WIRELESS" = fallback
+
+This means activeTransport was switched from LOCAL to WIRELESS
+BETWEEN the birth (probeLocalFirst set LOCAL) and the command execution.
+
+The switch happens via:
+  AdbRuntime.onOperationResult(transportLost=true)
+  -> activeTransport = WIRELESS
+  -> "local transport loss; activeTransport -> WIRELESS"
+
+This is triggered by the CLI bridge when executeShell fails.
+But WHY does executeShell fail? Because it's using the WIRELESS path,
+which has no connection.
+
+=== THE CHICKEN-AND-EGG ===
+
+1. probeLocalFirst sets activeTransport = LOCAL
+2. Something switches activeTransport to WIRELESS (transport observer or onOperationResult)
+3. executeShell uses WIRELESS path -> fails (no Wireless connection)
+4. onOperationResult(transportLost=true) -> "local transport loss" -> activeTransport = WIRELESS
+
+The question is: what triggers the FIRST switch from LOCAL to WIRELESS?
+
+Looking at the transport observer:
+  - Polls every 1500ms
+  - Checks activeTransportOnline() = isOnline() (for LOCAL)
+  - isOnline() returns true (EAGAIN doesn't clear it)
+  - So the observer should NOT trigger
+
+Looking at onOperationResult:
+  - Called when an operation fails with transportLost=true
+  - But what operation fails BEFORE the command?
+
+The answer: the AdbCliBridge's initial connection or readiness check
+may trigger an operation that fails, causing the first switch.
+
+=== FIRST_BAD_STATE_WRITE ===
+
+FOUND_FIRST_BAD_STATE_WRITE = NO (in native code)
+
+The native code correctly sets online_ after handshake.
+The problem is in the INTERACTION between:
+  1. adbd session state ("already offline" -> no data sent)
+  2. EAGAIN survival logic (online_ never cleared)
+  3. AdbRuntime transport selection (WIRELESS fallback)
+
+This is a SYSTEM-LEVEL problem, not a single bad state write.

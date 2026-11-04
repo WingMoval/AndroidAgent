@@ -1,0 +1,65 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 12 WORKING AT TRACE
+Date: 2026-11-04
+AT_PID = 24987 (clean state test)
+AG_PID = (stopped)
+38800 = clean (no prior connections)
+
+=== AT BIRTH + CONNECT ===
+
+20:35:29.999 [24987/24987] AdbCliStatusHub: started
+20:35:37.910 [24987/25113] PlainTcpADB: CONNECT_START 127.0.0.1:38800
+20:35:37.912 [24987/25113] TCP_CONNECTED (fd=155)
+20:35:37.912 [24987/25113] TX_CNXN banner="host::A35"
+20:35:38.113 [24987/25113] RX_AUTH (round 1)
+20:35:38.116 [24987/25113] TX_AUTH signature
+20:35:38.121 [24987/25113] RX_CNXN banner="device::..."
+20:35:38.121 [24987/25113] ONLINE
+20:35:38.121 [24987/25113] [HUB01] RX_OWNER_START
+20:35:38.121 [24987/25113] connectLocalhost: ONLINE + SHARED HUB STARTED
+20:35:38.121 [24987/25117] [HUB01] RX_LOOP_ENTER
+20:35:38.122 [24987/25113] AdbCliStatusHub: transition DISCONNECTED -> READY
+20:35:38.126 [24987/25113] local-first probe: LOCAL active
+
+ADBD:
+  host-27: already offline
+  authPass 0
+  adb client authorized
+
+=== AT COMMAND EXECUTION (user typed "id" and "pwd") ===
+
+20:33:22.340 [22311/22549] [HUB07] RX_WRTE local=1 remote=316 bytes=17 (prompt)
+20:33:46.745 [22311/23646] [HUB02] TX WRTE local=1 remote=316 bytes=8 ("id\n")
+20:33:46.753 [22311/22549] ReadPacket OK: OKAY
+20:33:46.754 [22311/22549] [HUB07] RX_WRTE local=1 remote=316 bytes=10
+20:33:46.771 [22311/22549] [HUB07] RX_WRTE local=1 remote=316 bytes=282 (output)
+20:33:46.773 [22311/22549] [HUB07] RX_WRTE local=1 remote=316 bytes=17 (prompt)
+20:33:49.693 [22311/23646] [HUB02] TX WRTE local=1 remote=316 bytes=9 ("pwd\n")
+20:33:49.698 [22311/22549] [HUB07] RX_WRTE local=1 remote=316 bytes=26 (output)
+
+=== COMPARISON: AT vs AG ===
+
+| Event | AG (FAILING) | AT (WORKING) |
+|-------|-------------|-------------|
+| TX_CNXN | YES | YES |
+| RX_AUTH | YES | YES |
+| TX_AUTH | YES | YES |
+| RX_CNXN | YES | YES |
+| ONLINE | YES | YES |
+| HUB START | YES | YES |
+| adbd "already offline" | YES | YES |
+| adbd "authorized" | YES | YES |
+| HUB08 EAGAIN loop | YES | YES (between commands) |
+| RX_WRTE data received | NO | YES |
+| TX WRTE command sent | NO | YES |
+| Command output | NO | YES |
+
+KEY DIFFERENCE:
+  AT receives RX_WRTE data from adbd. AG does not.
+  AT sends TX WRTE commands. AG does not.
+  Both have the SAME handshake, SAME adbd "already offline" log.
+  The difference is in the adbd SESSION STATE, not the client.
+
+WORKING_AT_ORDER = TCP > CNXN > AUTH > CNXN > ONLINE > HUB
+AG_ORDER = TCP > CNXN > AUTH > CNXN > ONLINE > HUB (IDENTICAL)
+FIRST_ORDERING_DIVERGENCE = NONE in handshake
+DIVERGENCE = adbd stops sending data to AG's session (host-23) but not AT's (host-27)

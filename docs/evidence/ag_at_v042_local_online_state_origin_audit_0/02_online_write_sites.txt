@@ -1,0 +1,82 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 02 ONLINE WRITE SITES
+Date: 2026-11-04
+
+=== ALL SITES THAT CAN MARK LOCAL TRANSPORT AS "ONLINE" ===
+
+SITE 1: PlainTcpAdbConnection::connect() -> online_ = true
+  FILE = plain_tcp_connection.cpp:90
+  FUNCTION = connect()
+  CONDITION = RX_CNXN received in handleAuth()
+  PRECONDITION = TCP connected + TX_CNXN sent + AUTH exchange complete
+  CNXN_COMPLETION_REQUIRED = YES (RX_CNXN is the last step)
+  RX_CNXN_REQUIRED = YES
+  CALLABLE_BEFORE_HANDSHAKE = NO (only after handleAuth returns true)
+  VERDICT = CORRECT (only set after full handshake)
+
+SITE 2: AdbStreamHub::start() -> started_ = true
+  FILE = adb_stream_hub.cpp:50
+  FUNCTION = start()
+  CONDITION = conn_->isOnline() == true [line 40]
+  PRECONDITION = online_ already true (set by SITE 1)
+  CALLABLE_BEFORE_HANDSHAKE = NO (guards on isOnline())
+  VERDICT = CORRECT (only starts after ONLINE)
+
+SITE 3: AdbRuntime::probeLocalFirst() -> state = READY
+  FILE = AdbRuntime.kt:983-984
+  FUNCTION = probeLocalFirst()
+  CONDITION = connectLocalhost() returned true
+  PRECONDITION = full handshake complete (connectLocalhost only returns true after ONLINE + HUB START)
+  VERDICT = CORRECT
+
+SITE 4: AdbRuntime::ensureReady() fast path -> return READY
+  FILE = AdbRuntime.kt:344
+  FUNCTION = ensureReady()
+  CONDITION = state == AdbRuntimeState.READY
+  PRECONDITION = state was set to READY by probeLocalFirst or previous ensureReady
+  VERDICT = CORRECT (fast path, no state change)
+
+SITE 5: AdbRuntime transport observer -> onObservedTransportLost()
+  FILE = AdbRuntime.kt:290-292
+  FUNCTION = startTransportObserver() lambda
+  CONDITION = lastTransportOnline && !online (edge)
+  ACTION = onObservedTransportLost() -> state = TRANSPORT_LOST
+  VERDICT = CORRECT (clears READY on real transport loss)
+
+=== SITES THAT CAN INCORRECTLY MARK "ONLINE" ===
+
+NONE FOUND.
+
+The online_ flag is ONLY set to true at line 90 of plain_tcp_connection.cpp,
+which is ONLY reached after RX_CNXN is received in handleAuth().
+
+The isOnline() predicate is a bare bool read:
+  bool PlainTcpAdbConnection::isOnline() const { return online_; }
+
+It does NOT check:
+  - socket validity
+  - hub running
+  - RX_CNXN receipt (already consumed)
+  - data flow
+
+But it is ONLY set to true after RX_CNXN, so it is CORRECT at the moment of setting.
+The question is whether it is INCORRECTLY CLEARED or whether the transport dies
+without clearing it.
+
+=== EAGAIN DOES NOT CLEAR online_ ===
+
+rxLoop() line 93-100:
+  if (idleTimeout) { LOGI("RX_IDLE_TIMEOUT: continuing"); continue; }
+
+EAGAIN/ETIMEDOUT is treated as "transport still alive" and the loop continues.
+online_ is NEVER cleared on EAGAIN.
+
+This means:
+  1. Handshake completes -> online_ = true
+  2. adbd stops sending data (session "offline")
+  3. HUB08 gets EAGAIN -> continues (online_ stays true)
+  4. isOnline() returns true forever
+  5. connectLocalhost() would say "ALREADY ONLINE" (if called again)
+  6. executeShellLocalhost() would try to use the dead transport
+
+But in our trace, the command path goes through AdbRuntime.executeShell()
+(Wireless), NOT executeShellLocalhost() (Local). This is the divergence.

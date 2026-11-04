@@ -1,0 +1,60 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 05 AG PROCESS BIRTH TRACE RUN 1
+Date: 2026-11-04
+AG_PID = 12898
+AT_PID = (stopped)
+38800 = clean (no prior connections)
+
+=== TIMELINE ===
+
+T0 20:19:48.578 - logcat cleared
+T1 20:19:48.804 - am start sent
+
+BIRTH SEQUENCE (thread 12898 main, then 13023 IO):
+
+20:19:48.218 [12898/12898] AdbRuntime: transport observer started
+20:19:48.218 [12898/12898] AdbRuntime: initialize: readiness+discovery backends wired
+20:19:48.238 [12898/12898] AdbCliBridge: nativeStart OK listen_fd=132
+20:19:48.248 [12898/13038] AdbCliBridge: accept_thread started
+20:19:48.260 [12898/13023] AdbEngineJNI: connectLocalhost port=38800 keyDir=...
+20:19:48.262 [12898/13023] AdbKeyStore: loading existing key
+20:19:48.276 [12898/13023] AdbKeyStore: loaded existing key, pub=720 chars
+20:19:48.276 [12898/13023] PlainTcpADB: CONNECT_START 127.0.0.1:38800
+20:19:48.316 [12898/13023] PlainTcpADB: TCP_CONNECTED (fd=134)
+20:19:48.316 [12898/13023] PlainTcpADB: TX_CNXN version=0x01000000 banner="host::A35"
+20:19:48.522 [12898/13023] PlainTcpADB: RX_AUTH type=1 len=20 (round 1)
+20:19:48.535 [12898/13023] PlainTcpADB: TX_AUTH signature len=256
+20:19:48.556 [12898/13023] PlainTcpADB: RX_CNXN banner="device::..."
+20:19:48.556 [12898/13023] PlainTcpADB: ONLINE protocol_version=0x01000001
+20:19:48.557 [12898/13023] [HUB01] RX_OWNER_START
+20:19:48.557 [12898/13023] AdbEngineJNI: connectLocalhost: ONLINE + SHARED HUB STARTED
+20:19:48.558 [12898/13023] AdbRuntime: local-first probe: LOCAL active on :38800
+20:19:48.562 [12898/13090] [HUB01] RX_LOOP_ENTER
+
+FIRST_ONLINE_AT = 20:19:48.556
+FIRST_HUB_START_AT = 20:19:48.557
+FIRST_RUNTIME_LOCAL_SELECTED_AT = 20:19:48.558
+
+ADBD SIDE (simultaneous):
+  host-24: read thread spawning
+  host-24: write thread spawning
+  host-24: already offline
+  authPass 0
+  Calling send_auth_request...
+  adbd_auth: loading keys
+  adb client authorized
+
+DEATH SEQUENCE (5s later):
+20:19:53.756 [12898/13090] [HUB08] RX_IDLE_TIMEOUT: continuing (no data, transport still alive)
+(repeats every ~5s indefinitely)
+
+COMMAND EXECUTION (20:20:58):
+20:20:58.690 [12898/18894] AdbCliBridge: onOneShot: ensureReady for ['id']
+20:20:58.691 [12898/18894] AdbEngineJNI: AdbNative.executeShell: "'id'" timeout_ms=0
+20:20:58.692 [12898/18894] AdbRuntime: local transport loss; activeTransport -> WIRELESS
+20:20:58.692 [12898/18894] AdbCliBridge: onOneShot: result outcome=TRANSPORT_ERROR
+
+KEY OBSERVATION:
+  - No "ALREADY ONLINE" log (connectLocalhost not called at command time)
+  - No "executeShellLocalhost" log (WIRELESS path used, not LOCAL)
+  - "local transport loss" = activeTransport switched to WIRELESS
+  - HUB08 still in EAGAIN loop (online_ never cleared)

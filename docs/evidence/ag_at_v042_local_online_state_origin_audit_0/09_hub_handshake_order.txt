@@ -1,0 +1,34 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 09 HUB HANDSHAKE ORDER
+Date: 2026-11-04
+
+=== HUB START ORDERING ===
+
+AG (all 3 runs):
+  TCP connect -> TX_CNXN -> RX_AUTH -> TX_AUTH -> RX_CNXN -> ONLINE -> HUB START
+  HUB starts AFTER handshake completes. CORRECT.
+
+AT (working trace):
+  TCP connect -> TX_CNXN -> RX_AUTH -> TX_AUTH -> RX_CNXN -> ONLINE -> HUB START
+  HUB starts AFTER handshake completes. CORRECT.
+
+AG_HUB_START_BEFORE_HANDSHAKE = NO
+AT_WORKING_HUB_START_BEFORE_HANDSHAKE = NO
+
+=== SIMULTANEOUS_SOCKET_READERS_DURING_HANDSHAKE ===
+
+NO.
+
+Pre-ONLINE: only the connect thread (handleAuth) reads the socket.
+Post-ONLINE: only the HUB RX thread reads the socket.
+No overlap.
+
+The HUB's start() method (adb_stream_hub.cpp:40) guards on isOnline():
+  if (!conn_ || !conn_->isOnline()) { return false; }
+
+This ensures the HUB RX thread is only spawned after online_ = true.
+
+=== HANDSHAKE_READER ===
+connect thread (handleAuth in plain_tcp_connection.cpp)
+
+=== POST_ONLINE_READER ===
+HUB RX thread (rxLoop in adb_stream_hub.cpp)

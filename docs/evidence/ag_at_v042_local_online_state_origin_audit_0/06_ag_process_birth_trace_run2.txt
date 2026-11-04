@@ -1,0 +1,36 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 06 AG PROCESS BIRTH TRACE RUN 2
+Date: 2026-11-04
+AG_PID = 21283
+AT_PID = (stopped)
+38800 = clean
+
+=== TIMELINE (same pattern as RUN 1) ===
+
+BIRTH (thread 21354):
+20:26:40.543 connectLocalhost port=38800
+20:26:40.544 PlainTcpADB: CONNECT_START
+20:26:40.546 TCP_CONNECTED (fd=135)
+20:26:40.546 TX_CNXN banner="host::A35"
+20:26:40.746 RX_AUTH (round 1)
+20:26:40.750 TX_AUTH signature
+20:26:40.756 RX_CNXN banner="device::..."
+20:26:40.756 ONLINE
+20:26:40.756 [HUB01] RX_OWNER_START
+20:26:40.756 connectLocalhost: ONLINE + SHARED HUB STARTED
+20:26:40.756 [HUB01] RX_LOOP_ENTER
+20:26:40.756 local-first probe: LOCAL active
+
+DEATH:
+20:26:45.917 [HUB08] RX_IDLE_TIMEOUT (first EAGAIN)
+(repeats every ~5s)
+
+COMMAND (20:26:52):
+20:26:52.936 AdbRuntime: local transport loss; activeTransport -> WIRELESS
+20:26:52.936 AdbCliBridge: result outcome=TRANSPORT_ERROR
+
+ADBD:
+  host-24: already offline
+  authPass 0
+  adb client authorized
+
+RESULT: FAIL (same as RUN 1)

@@ -1,0 +1,90 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 01 NATIVE STATE MODEL
+Date: 2026-11-04
+
+=== LOCAL_GLOBAL_STATE_MODEL ===
+
+GLOBAL 1: g_local
+  TYPE = std::unique_ptr<LocalTcpState>
+  FILE = adb_engine_jni.cpp:365
+  INIT = nullptr (static)
+  CREATED = connectLocalhost() line 408: make_unique<LocalTcpState>()
+  ASSIGNED = connectLocalhost() line 435: g_local = std::move(state) [AFTER connect() succeeds]
+  RESET = connectLocalhost() line 405 (teardown), 417/429/445 (failure paths)
+  DISCONNECT = disconnectLocalhost() line 733+: g_local.reset()
+  FAILURE_CLEANUP = ALL failure paths call g_local.reset()
+
+GLOBAL 2: g_local_mutex
+  TYPE = std::mutex
+  FILE = adb_engine_jni.cpp:364
+  PROTECTS = g_local access in connectLocalhost/disconnectLocalhost/executeShellLocalhost
+
+GLOBAL 3: g_local_last_error
+  TYPE = std::string
+  FILE = adb_engine_jni.cpp:366
+  WRITTEN = connectLocalhost() failure paths
+  CLEARED = connectLocalhost() line 432 (success)
+
+STRUCT LocalTcpState (adb_engine_jni.cpp:357-362):
+  transport = adb::TcpTransport (embedded)
+  conn = adb::PlainTcpAdbConnection* (raw ptr)
+  keys = adb::AdbKeyStore* (raw ptr)
+  hub = std::unique_ptr<adb::AdbStreamHub>
+
+STRUCT PlainTcpAdbConnection (plain_tcp_connection.h):
+  online_ = bool (plain, NOT atomic)
+  INIT = false
+  WRITTEN TRUE = connect() line 90: online_ = true [AFTER RX_CNXN received]
+  WRITTEN FALSE = disconnect() line 98, markTransportLost() line 282
+  READ = isOnline() -> online_
+
+STRUCT AdbStreamHub (adb_stream_hub.cpp):
+  started_ = bool
+  rx_thread_ = std::thread
+  stopping_ = std::atomic<bool>
+  START = start() line 38: guards isOnline()==true, spawns rxLoop thread
+  STOP = shutdown() line 56: failAll + shutdownSocket + join + alive=false
+
+STRUCT AdbConnGuard:
+  conn = AdbPacketTransport*
+  hub = AdbStreamHub*
+  alive = std::atomic<bool> (only atomic liveness flag)
+
+STRUCT AdbRuntime (Kotlin, AdbRuntime.kt):
+  state = AdbRuntimeState (READY/CONNECTING/TRANSPORT_LOST/etc)
+  activeTransport = AdbTransportMode (LOCAL/WIRELESS)
+  connectionIntent = AdbConnectionIntent
+  transportObserver = daemon thread, polls every 1500ms
+  transport observer: checks activeTransportOnline() edge ONLINE->!ONLINE
+
+=== STATE TRANSITIONS ===
+
+NORMAL SUCCESS:
+  connectLocalhost()
+    -> TCP connect
+    -> TX_CNXN
+    -> handleAuth(): RX_AUTH -> TX_AUTH -> RX_CNXN
+    -> online_ = true [line 90]
+    -> g_local = state [line 435]
+    -> hub->start() [line 438-440]
+    -> RX_OWNER_START, RX_LOOP_ENTER
+    -> return TRUE
+  probeLocalFirst()
+    -> connectLocalhost() returns true
+    -> activeTransport = LOCAL
+    -> state = READY
+    -> "local-first probe: LOCAL active on :38800"
+
+FAILURE (all paths):
+  connect() fails
+    -> transport_->close()
+    -> delete conn (destructor calls disconnect() -> online_=false)
+    -> g_local.reset()
+    -> return FALSE
+  NO STALE STATE: online_ is false, g_local is null
+
+TRANSPORT LOSS (runtime):
+  rxLoop() readPacket() fails
+    -> if EAGAIN/timeout: "RX_IDLE_TIMEOUT: continuing" [line 97-100]
+       -> online_ NOT cleared, g_local NOT reset, HUB keeps running
+    -> if real failure: markTransportLost() [online_=false] + failAll + break
+       -> HUB exits, but g_local still non-null (torn down by next connectLocalhost)

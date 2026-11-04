@@ -1,0 +1,61 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 03 REUSE PREDICATE
+Date: 2026-11-04
+
+=== REUSE_PREDICATE ===
+
+SOURCE: adb_engine_jni.cpp:395
+  if (g_local && g_local->conn && g_local->conn->isOnline()) {
+      LOGI("connectLocalhost: ALREADY ONLINE, reusing shared transport");
+      return JNI_TRUE;
+  }
+
+PREDICATE = g_local != nullptr AND g_local->conn != nullptr AND g_local->conn->isOnline()
+
+WHAT IT PROVES:
+  1. g_local was assigned (connectLocalhost previously succeeded)
+  2. g_local->conn is non-null (not torn down)
+  3. online_ == true (set after RX_CNXN in a previous connect)
+
+WHAT IT DOES NOT PROVE:
+  - TCP socket is still valid (adbd may have closed the session)
+  - HUB is still running (may have been torn down)
+  - Data is actually flowing (adbd may be silent)
+  - RX_CNXN was received in THIS session (could be from a previous session)
+
+=== IN OUR TRACES ===
+
+"ALREADY ONLINE" was NEVER logged in any of our 3 runs.
+
+This means connectLocalhost() was NEVER called a second time while g_local
+was still non-null with online_=true.
+
+The command execution path (AdbCliBridge onOneShot) does NOT call
+connectLocalhost(). It calls:
+  1. AdbRuntime.ensureReady() [Kotlin]
+  2. AdbRuntime.executeShell() [Kotlin, Wireless path]
+
+The ensureReady() fast path (state == READY) returns without calling
+connectLocalhost(). The executeShell() is the WIRELESS path, which fails
+because no Wireless connection exists.
+
+=== THE REAL PREDICATE THAT MATTERS ===
+
+The predicate that determines whether the command succeeds is NOT
+connectLocalhost's reuse check. It is:
+
+  AdbRuntime.executeShell() -> does it use Local or Wireless?
+
+In AdbRuntime, executeShell() uses the activeTransport to decide:
+  - If LOCAL: executeShellLocalhost() [native, uses g_local->hub]
+  - If WIRELESS: AdbEngine.executeShell() [wireless connection]
+
+The log shows:
+  "AdbNative.executeShell: 'id' timeout_ms=0" = WIRELESS path
+  "local transport loss; activeTransport -> WIRELESS" = fallback
+
+This means activeTransport was WIRELESS (not LOCAL) when executeShell ran.
+But probeLocalFirst() set activeTransport = LOCAL at birth.
+
+So SOMETHING changed activeTransport from LOCAL to WIRELESS between
+birth and command execution. The transport observer or onOperationResult
+did this.

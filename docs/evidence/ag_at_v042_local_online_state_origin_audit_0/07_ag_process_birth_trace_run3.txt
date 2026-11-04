@@ -1,0 +1,40 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 07 AG PROCESS BIRTH TRACE RUN 3
+Date: 2026-11-04
+AG_PID = 21888
+AT_PID = (stopped)
+38800 = clean
+
+=== TIMELINE (same pattern as RUN 1/2) ===
+
+BIRTH (thread 21955):
+20:28:23.131 connectLocalhost port=38800
+20:28:23.133 TCP_CONNECTED (fd=134)
+20:28:23.133 TX_CNXN banner="host::A35"
+20:28:23.334 RX_AUTH (round 1)
+20:28:23.346 RX_CNXN banner="device::..."
+20:28:23.346 ONLINE
+20:28:23.346 [HUB01] RX_OWNER_START
+20:28:23.346 connectLocalhost: ONLINE + SHARED HUB STARTED
+20:28:23.346 [HUB01] RX_LOOP_ENTER
+20:28:23.346 local-first probe: LOCAL active
+
+DEATH:
+~20:28:28 [HUB08] RX_IDLE_TIMEOUT (first EAGAIN, ~5s after ONLINE)
+
+COMMAND (20:28:35):
+20:28:35.120 AdbNative.executeShell: "'id'" timeout_ms=0
+20:28:35.120 AdbRuntime: local transport loss; activeTransport -> WIRELESS
+20:28:35.120 AdbCliBridge: result outcome=TRANSPORT_ERROR
+
+ADBD:
+  host-23: already offline
+  authPass 0
+  adb client authorized
+
+RESULT: FAIL (same as RUN 1/2)
+
+=== REPRODUCIBILITY ===
+RUN_1 = FAIL (TRANSPORT_ERROR, Wireless path)
+RUN_2 = FAIL (TRANSPORT_ERROR, Wireless path)
+RUN_3 = FAIL (TRANSPORT_ERROR, Wireless path)
+REPRODUCIBILITY = 3/3 DETERMINISTIC

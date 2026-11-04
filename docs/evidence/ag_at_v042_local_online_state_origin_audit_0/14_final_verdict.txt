@@ -1,0 +1,103 @@
+AG.AT-V042-LOCAL-ONLINE-STATE-ORIGIN-AUDIT-0 - 14 FINAL VERDICT
+Date: 2026-11-04
+
+=== VERDICT ===
+
+VERDICT = PASS_FIRST_DIVERGENCE_FOUND
+
+NOT PASS_ROOT_CAUSE_FOUND (because FIRST_BAD_STATE_WRITE was not found
+in the native code; the online_ flag is correctly set).
+
+=== CONFIRMED ===
+
+1. AG's native handshake COMPLETES successfully (TX_CNXN -> RX_AUTH -> TX_AUTH -> RX_CNXN -> ONLINE)
+   CONFIRMED by log in all 3 runs.
+
+2. AG's HUB starts AFTER ONLINE (correct ordering).
+   CONFIRMED by log: [HUB01] RX_OWNER_START after "ONLINE".
+
+3. adbd creates a host session for AG but logs "host-N: already offline".
+   CONFIRMED by adbd log in all 3 runs.
+
+4. adbd authorizes AG's key (authPass 0, "adb client authorized").
+   CONFIRMED by adbd log.
+
+5. adbd does NOT send any data to AG's session after authorization.
+   CONFIRMED by: HUB08 EAGAIN loop (no RX_WRTE ever received).
+
+6. AT (same native code, same key) DOES receive data from adbd.
+   CONFIRMED by: AT's HUB07 RX_WRTE logs (prompt, command output).
+
+7. AG's command execution uses the WIRELESS path, not the LOCAL path.
+   CONFIRMED by: "AdbNative.executeShell" log (Wireless JNI), not "executeShellLocalhost".
+
+8. AG's activeTransport is switched from LOCAL to WIRELESS before command execution.
+   CONFIRMED by: "local transport loss; activeTransport -> WIRELESS" log.
+
+9. The online_ flag is NEVER incorrectly set in the native code.
+   CONFIRMED by: source code audit (only set at line 90 after RX_CNXN).
+
+10. The EAGAIN survival logic does NOT clear online_.
+    CONFIRMED by: source code (rxLoop line 97-100: continue, no markTransportLost).
+
+=== EXCLUDED ===
+
+1. KEY TRUST: EXCLUDED (key swap experiment: AG fails with AT's trusted key)
+2. BINARY VARIANT: EXCLUDED (AT debug works, AG candidate fails, both debug)
+3. TCP CHANNEL: EXCLUDED (TCP ESTABLISHED, adbd accepts connection)
+4. CONCURRENT CONNECTION: EXCLUDED (AG fails alone)
+5. REENTRANT CONNECT RACE: EXCLUDED (single connectLocalhost per process)
+6. HUB START BEFORE HANDSHAKE: EXCLUDED (HUB starts after ONLINE)
+7. SIMULTANEOUS SOCKET READERS: EXCLUDED (no overlap)
+8. BUILD/BINARY DIVERGENCE: EXCLUDED (identical behavior, SHA diff is build env)
+9. STALE STATE LEAK IN connectLocalhost: EXCLUDED (all failure paths clean up)
+
+=== INFERENCE ===
+
+1. adbd's "already offline" indicates the host session is in a state where
+   it does not send data to the client. This is NOT a key trust issue
+   (key is authorized) and NOT a TCP issue (connection is ESTABLISHED).
+
+2. The difference between AT (works) and AG (fails) is in the adbd SESSION
+   STATE, not the client. AT's session (host-27) sends data; AG's session
+   (host-23) does not.
+
+3. The AG command execution path (Wireless instead of Local) is a
+   CONSEQUENCE of the adbd session being unresponsive, not the cause.
+   The transport observer or onOperationResult switches activeTransport
+   to WIRELESS, causing the command to fail on a non-existent Wireless
+   connection.
+
+4. The ROOT CAUSE is in the adbd session management: adbd creates a host
+   session for AG's connection but does not send data. This is likely due
+   to the "already offline" state, which may be caused by:
+   - A previous connection on the same host-N number
+   - adbd's session lifecycle management
+   - A race condition in adbd's TCP connection handling
+
+=== UNKNOWN ===
+
+1. WHY adbd says "already offline" for AG but not for AT (or for AT in
+   the clean state test). The adbd log shows "already offline" for BOTH
+   AT and AG in the clean state test, but AT still works.
+
+2. The EXACT mechanism by which adbd decides to send data to one session
+   but not another, given identical keys and identical handshake sequences.
+
+3. Whether the "already offline" state is a red herring (always logged)
+   or an actual indicator of session state.
+
+=== MINIMUM_FIX_DIRECTION ===
+
+The fix should address the FIRST divergence point:
+  adbd session for AG's connection is unresponsive.
+
+Possible directions (NOT implemented, forensics only):
+  a) Investigate adbd's "already offline" log: what triggers it?
+     Is it a bug in adbd's TCP session management?
+  b) Add a health-check to the HUB RX loop: if no data received within
+     N seconds after ONLINE, treat as transport loss (clear online_,
+     trigger reconnection).
+  c) Ensure the AG command execution path uses the LOCAL transport
+     (executeShellLocalhost) instead of falling back to WIRELESS when
+     the LOCAL transport is unresponsive.
