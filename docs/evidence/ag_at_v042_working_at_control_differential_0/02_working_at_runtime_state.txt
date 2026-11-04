@@ -1,0 +1,36 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 02 WORKING AT RUNTIME STATE (REVISED)
+Date: 2026-11-04 (AT debug)
+
+AT_DEBUG_PID = (varies; was 30232 at one capture, later PIDs after restarts)
+AT_DEBUG_ADBD_PID = 12239
+service.adb.tcp.port = 38800
+persist.adb.tcp.port = (empty)
+adb_wifi_enabled = 0 (WD OFF)
+
+PORT_38800_LISTENER = YES
+LISTENER_UID = 2000 (adbd)
+
+AT_DEBUG_TCP_TUPLE (at golden capture):
+  127.0.0.1:39534 (0x9A66) → 127.0.0.1:38800 ESTABLISHED
+  (AT debug's Local TCP connection to adbd)
+
+AT_DEBUG_UI_STATE:
+  ADB: READY
+  State: ACTIVE
+  2 page(s) #2 ADB (ACTIVE)
+  command input field present
+  DebugBridge: LISTENING (127.0.0.1:45679)
+
+AT_DEBUG_IDENTITY:
+  key fingerprint = 6b1949b464a7c218fadeb60548cc373ac5119f358191c324eb25d128dd266baf
+  paired_at = 1793780077958
+  device_guid = adb-APLMUT4312005935-J4nb5z
+  key created = 2026-11-04 16:14 (fresh, after reinstall)
+
+AT_DEBUG_NATIVE_LOGS (working):
+  RX_CNXN received → ONLINE
+  (normal ADB protocol handshake completed)
+
+AT_DEBUG_SOCKETS:
+  0 Java-level socket fds (connection held in native libadbd_engine.so)
+  TCP visible in /proc/net/tcp6 but not in /proc/PID/fd

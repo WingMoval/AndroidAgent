@@ -1,0 +1,40 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 04 KEY SWAP EXPERIMENT
+Date: 2026-11-04
+
+PURPOSE = Distinguish "AG key not trusted by adbd" from "AG native build bug"
+
+METHOD:
+  1. Read AT debug identity (adbkey, adbkey.pub, adb_cert.pem, pairing_meta)
+     via run-as com.androidterminal.app cat (AT debug is debuggable)
+  2. Write to AG identity dir via:
+     adb shell "run-as com.androidagent.app tee /data/data/com.androidagent.app/files/at-consumer/identity/<file>"
+     with stdin from Python (tee runs INSIDE run-as context → app uid permission)
+  3. chmod 600 all files
+  4. Force-stop + restart AG
+  5. Trigger AG adb shell id via DebugBridge
+  6. Capture adbd + AG native logs
+
+IDENTITY BEFORE SWAP:
+  AG key fingerprint = ddb2440c8b29c5b966a8cb059a772e6c3598d1a35320aca6b5b5929735e9c6ba
+  AG paired_at = 1793761184326 (Wireless pairing, port 43099)
+  AG pub starts = QAAAAI0R4Dq7Zuk2A/Rj...
+
+IDENTITY AFTER SWAP:
+  AG key fingerprint = 6b1949b464a7c218fadeb60548cc373ac5119f358191c324eb25d128dd266baf
+  AG paired_at = 1793780077958 (AT debug's Local TCP pairing)
+  AG pub starts = QAAAAB8jwnshZygtuJulD...
+  MATCH = CONFIRMED (AG now has AT debug's exact identity)
+
+RESULT:
+  AG = FAIL (outcome=COMPLETED, exitCode=1, error="client not initialized")
+  AG native log:
+    connectLocalhost: ALREADY ONLINE, reusing shared transport
+    AdbRuntime: local transport loss; activeTransport -> WIRELESS
+    AdbCliBridge: onOneShot: result outcome=TRANSPORT_ERROR exit=-1
+  adbd: no host session created for AG
+  38800: AG TCP connection ESTABLISHED (B1DE) but no AUTH exchange
+
+CONCLUSION:
+  KEY_TRUST = EXCLUDED
+  AG fails even with AT's adbd-trusted key
+  The problem is NOT the key. The problem is AG's native state machine.

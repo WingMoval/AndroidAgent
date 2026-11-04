@@ -1,0 +1,50 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 03 STATE MATRIX (REVISED)
+Date: 2026-11-04
+
+=== COMPLETE STATE MATRIX ===
+
+Test 1: AT debug running, AG concurrent
+  AT = ADB: READY (9A66)
+  AG = FAIL (9CB0, client not initialized)
+  38800: listener + 9A66 (AT) + 9CB0 (AG) ESTABLISHED
+  adbd: no host session for AG
+  → CONCURRENT: AG FAILS
+
+Test 2: AT force-stopped, AG alone
+  AT = GONE
+  AG = FAIL (9CB0, client not initialized)
+  38800: listener + 9CB0 (AG) ESTABLISHED
+  adbd: no host session for AG
+  → SOLE: AG FAILS
+
+Test 3: AT debug restarted, reconnect
+  AT = ADB: READY (new tuple, reconnect PASS)
+  AG = not tested in this phase
+  → AT RECONNECT: PASS
+
+Test 4: AT debug running, AG retry
+  AT = ADB: READY
+  AG = FAIL (client not initialized)
+  → RETRY: AG FAILS
+
+Test 5: KEY SWAP (AG given AT's identity)
+  AG identity = AT debug's key (6b1949b4..., adbd-trusted)
+  AG = FAIL (TRANSPORT_ERROR, same as before)
+  → KEY TRUST: EXCLUDED
+
+=== CONCLUSIONS FROM MATRIX ===
+
+1. AG FAILS regardless of AT presence (concurrent, sole, retry)
+   → NOT a concurrent-connection issue
+
+2. AG FAILS even with AT's trusted key
+   → NOT a key trust issue
+
+3. AT debug (AE55F417) WORKS, AG candidate (804E547F) FAILS
+   → Both debug builds from same source
+   → Binary SHA differs (build environment)
+   → But the failure mode is a STATE MACHINE bug, not a binary defect
+
+4. FIRST DIVERGENCE (see 07_first_divergence.txt):
+   AG native claims "ALREADY ONLINE" but transport is dead (no CNXN ever received)
+   → Stale ONLINE state in AG's native ADB engine

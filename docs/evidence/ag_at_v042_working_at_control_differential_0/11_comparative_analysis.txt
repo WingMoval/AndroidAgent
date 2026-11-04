@@ -1,0 +1,60 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 11 COMPARATIVE ANALYSIS AT vs AG
+Date: 2026-11-04
+
+=== AT DEBUG (AE55F417) - WORKING ===
+
+Connection flow:
+  1. TCP connect to 127.0.0.1:38800 → ESTABLISHED
+  2. TX_CNXN (client sends banner first)
+  3. RX_AUTH (adbd responds with auth token)
+  4. TX_AUTH_RESPONSE (client signs token)
+  5. RX_CNXN (adbd confirms)
+  6. State → ONLINE
+  7. Commands work
+
+Native logs (working):
+  - TX_CNXN logged
+  - RX_AUTH logged
+  - ONLINE state reached
+  - Subsequent reads/receive data normally
+
+=== AG CANDIDATE (804E547F) - FAILING ===
+
+Connection flow:
+  1. TCP connect to 127.0.0.1:38800 → ESTABLISHED
+  2. (NO TX_CNXN - handshake not initiated)
+  3. HUB08 waits for data → EAGAIN loop
+  4. State machine claims "ALREADY ONLINE" (stale)
+  5. connectLocalhost skips handshake, reuses dead transport
+  6. executeShell fails → TRANSPORT_ERROR
+
+Native logs (failing):
+  - NO TX_CNXN logged
+  - NO RX_AUTH logged
+  - "ALREADY ONLINE, reusing shared transport"
+  - "local transport loss; activeTransport -> WIRELESS"
+  - HUB08: "TCP recv() failed after 0/24 bytes: 11: Try again" (infinite)
+
+=== KEY DIFFERENCES ===
+
+| Aspect | AT debug | AG candidate |
+|--------|----------|-------------|
+| TX_CNXN sent | YES | NO |
+| RX_AUTH received | YES | NO |
+| Handshake completed | YES | NO |
+| State after connect | ONLINE (valid) | "ONLINE" (stale) |
+| HUB08 behavior | Reads data normally | EAGAIN loop |
+| connectLocalhost | Fresh handshake | Reuses dead transport |
+| Result | WORKS | FAILS |
+
+=== ROOT CAUSE CONFIRMATION ===
+
+The AG candidate's native code has a bug where:
+  1. The transport state is marked "ONLINE" without completing the handshake
+  2. connectLocalhost() trusts the "ONLINE" state and skips the handshake
+  3. The HUB08 thread never sends CNXN, causing a deadlock with adbd
+  4. executeShell fails on the dead transport
+
+This explains BOTH observations:
+  - AT debug works: correct handshake implementation
+  - AG candidate fails: stale ONLINE state + skipped handshake

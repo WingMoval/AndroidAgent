@@ -1,0 +1,66 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 10 AG NATIVE LOG ANALYSIS
+Date: 2026-11-04
+
+=== AG PID 22963 (after key swap, force-stop + restart) ===
+
+Thread 23028 (HUB08 - ADB protocol reader):
+  Continuous loop every ~5 seconds:
+    E AndroidTerminalADB: TCP recv() failed after 0/24 bytes: 11: Try again
+    E AndroidTerminalADB: ReadPacket: failed to read 24-byte header: 11: Try again
+    I AndroidTerminalADB: [HUB08] RX_IDLE_TIMEOUT: continuing (no data, transport still alive)
+
+  Interpretation:
+    - HUB08 has a TCP socket connected to 127.0.0.1:38800
+    - It is trying to read the 24-byte ADB packet header
+    - recv() returns EAGAIN (0 bytes read, non-blocking socket)
+    - No data has EVER been received from adbd
+    - HUB08 NEVER sent CNXN (no TX_CNXN log)
+    - HUB08 is waiting for adbd to speak first (wrong protocol direction)
+
+Thread 23027 (CLI bridge worker):
+  17:07:14.274 AdbCliBridge: accepted client fd=90
+  17:07:14.274 AdbCliBridge: client fd=90 peerUid=10418 authed=1
+  17:07:14.274 AdbCliBridge: client fd=90 got HELLO v=1, sending HELLO_ACK
+  17:07:14.274 AdbCliBridge: onOneShot: ensureReady for ['id']
+  17:07:14.274 AdbEngineJNI: connectLocalhost port=38800 keyDir=...
+  17:07:14.274 AdbEngineJNI: connectLocalhost: ALREADY ONLINE, reusing shared transport
+  17:07:14.274 AdbRuntime: local-first probe: LOCAL active on :38800
+  17:07:14.274 AdbEngineJNI: AdbNative.executeShell: "'id'" timeout_ms=0
+  17:07:14.274 AdbRuntime: local transport loss; activeTransport -> WIRELESS
+  17:07:14.274 AdbCliBridge: onOneShot: result outcome=TRANSPORT_ERROR exit=-1
+
+  Interpretation:
+    - ensureReady → connectLocalhost(38800)
+    - connectLocalhost checks state: "ALREADY ONLINE" → reuse
+    - local-first probe confirms "LOCAL active on :38800" (stale state)
+    - executeShell immediately fails (no data on dead transport)
+    - activeTransport falls back to WIRELESS (but no wireless connection exists)
+    - Result: TRANSPORT_ERROR
+
+Thread 23007 (CLI bridge acceptor):
+  17:07:14.273 AdbCliBridge: accepted client fd=90
+  (DebugBridge client connected)
+
+Thread 23003 (DebugBridge):
+  17:07:13.789 AG.DebugBridge: debug client connected: /127.0.0.1
+  17:08:01.803 AG.DebugBridge: debug client disconnected
+
+=== CRITICAL OBSERVATION ===
+
+The HUB08 thread is the ADB protocol reader. It should be:
+  1. Connected to 38800
+  2. Sent CNXN (banner)
+  3. Waiting for AUTH response from adbd
+
+But it is:
+  1. Connected to 38800
+  2. NOT sending CNXN (no TX_CNXN in logs)
+  3. Waiting for data that will never come (adbd is also waiting for CNXN)
+
+This is a DEADLOCK:
+  - AG's HUB08 waits for adbd to send AUTH
+  - adbd waits for AG to send CNXN
+  - Neither speaks first → EAGAIN loop forever
+
+The "ALREADY ONLINE" state in connectLocalhost prevents a fresh
+connection attempt that would properly initiate CNXN.

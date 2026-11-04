@@ -1,0 +1,31 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 12 EVIDENCE INVENTORY
+Date: 2026-11-04
+
+=== FILES IN THIS DIRECTORY ===
+
+00_task_definition.txt      - Task scope, constraints, user guidance
+01_binary_identity.txt      - Three native builds, SHA comparison (REVISED)
+02_working_at_runtime_state.txt - AT debug runtime state, TCP tuples (REVISED)
+03_state_matrix.txt         - Complete state matrix: 5 tests (REVISED)
+04_key_swap_experiment.txt  - Key swap: AG given AT's identity, still FAILS
+05_adbd_side_observation.txt - adbd behavior for AT vs AG connections
+06_ag_concurrent_attempt.txt - AG test results: concurrent, sole, key-swap (REVISED)
+07_first_divergence.txt     - ROOT CAUSE: stale ONLINE state in AG native
+08_at_reconnect_control.txt - AT debug reconnect PASS (control)
+10_ag_native_log_analysis.txt - AG HUB08 deadlock, CLI bridge sequence
+11_comparative_analysis.txt   - AT vs AG side-by-side comparison
+12_evidence_inventory.txt     - This file
+
+=== UPLOAD COPIES ===
+
+All files copied to:
+  D:\codebank\AndCode\AndroidAgent-V2\upload\ag_at_v042_working_at_control_differential_0\
+
+=== AUDIT DOC ===
+
+  D:\codebank\AndCode\AndroidAgent-V2\docs\audit\AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0.md
+
+=== COMMIT ===
+
+  AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0
+  docs-only commit (evidence + audit)

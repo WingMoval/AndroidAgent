@@ -1,0 +1,46 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 06 AG CONCURRENT ATTEMPT (REVISED)
+Date: 2026-11-04
+
+=== AG CONCURRENT TEST (AT debug running) ===
+
+AG_PID = 13585 (first concurrent test)
+AG_NATIVE = 804E547F (candidate)
+
+38800 connections during test:
+  - 9A66 (AT debug, 39534→38800) ESTABLISHED — AT READY
+  - 9CB0 (AG, 40128→38800) ESTABLISHED — AG stuck
+  AG_RESULT = FAIL
+  AG_ERROR = "not connected (client not initialized)"
+
+=== AG SOLE TEST (AT force-stopped) ===
+
+AG_PID = 13585
+38800 connections:
+  - 9CB0 (AG, 40128→38800) ESTABLISHED — only connection
+  AG_RESULT = FAIL (same error)
+  → NOT a concurrent-connection issue
+
+=== AG RESTART + KEY SWAP TEST ===
+
+AG_PID = 22963 (after force-stop + restart with AT's key)
+38800 connections:
+  - B1DE (AG, 45534→38800) ESTABLISHED
+  AG_RESULT = FAIL (same error)
+  AG_ERROR = "not connected (client not initialized)"
+  → KEY TRUST EXCLUDED
+
+=== AG NATIVE LOG DURING KEY SWAP TEST ===
+
+17:07:14.274 AdbCliBridge: onOneShot: ensureReady for ['id']
+17:07:14.274 AdbEngineJNI: connectLocalhost port=38800 keyDir=...
+17:07:14.274 AdbEngineJNI: connectLocalhost: ALREADY ONLINE, reusing shared transport
+17:07:14.274 AdbRuntime: local-first probe: LOCAL active on :38800
+17:07:14.274 AdbEngineJNI: AdbNative.executeShell: "'id'" timeout_ms=0
+17:07:14.274 AdbRuntime: local transport loss; activeTransport -> WIRELESS
+17:07:14.274 AdbCliBridge: onOneShot: result outcome=TRANSPORT_ERROR exit=-1
+
+HUB08 thread (continuous):
+  E AndroidTerminalADB: TCP recv() failed after 0/24 bytes: 11: Try again
+  E AndroidTerminalADB: ReadPacket: failed to read 24-byte header: 11: Try again
+  I AndroidTerminalADB: [HUB08] RX_IDLE_TIMEOUT: continuing (no data, transport still alive)
+  (repeats every ~5 seconds indefinitely)

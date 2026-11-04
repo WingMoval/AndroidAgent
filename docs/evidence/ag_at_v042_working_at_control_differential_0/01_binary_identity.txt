@@ -1,0 +1,53 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 01 BINARY IDENTITY (REVISED)
+Date: 2026-11-04 (revised after AT debug reinstall)
+
+=== THREE NATIVE BUILDS ===
+
+AT_RELEASE (pre-reinstall, working on device):
+  PACKAGE = com.androidterminal.app
+  VERSION = 0.4.2 (versionCode 4)
+  APK_SHA256 = 90CD5E5B37186DC971126698A895F86A4F2992A38952C64B38B8919EBE019B2C
+  NATIVE_SHA256 = F381F3D660F124815E0479630CEB7DC53C42461C852784D5FDFF4910F1B4C745
+  VARIANT = release (stripped, -O2)
+  STATUS = WORKING (ADB: READY, Local TCP 38800)
+  NOTE = Uninstalled during this session to install debug
+
+AT_DEBUG (current, working on device):
+  PACKAGE = com.androidterminal.app
+  VERSION = 0.4.2 (versionCode 4)
+  APK_PATH = app/build/outputs/apk/debug/app-debug.apk (AT repo)
+  APK_SHA256 = 0CDB72E4CFEE4FFC7BAFDC19B97C89B7A63500F0971BDCCB63ECF15F5358C896
+  NATIVE_SHA256 = AE55F4172CA88B5E989312939D7CACC433EEDAFEEF07658BBD4D374AD7FEA757
+  VARIANT = debug (stripped, -O0)
+  STATUS = WORKING (ADB: READY, Local TCP 38800, key 6b1949b4...)
+  SOURCE = AT repo HEAD (64384ab), v0.4.2 tag (04f9c30) + docs-only commits
+  NOTE = Fresh install (no prior identity), user completed pairing
+
+AG_CANDIDATE (failing on device):
+  PACKAGE = com.androidagent.app
+  NATIVE_SHA256 = 804E547FA57A5972F263DF9052D3D55FEFFFEC744CDB41E6FDA79DEE0B0B67D7
+  VARIANT = debug (per MANIFEST.md)
+  SOURCE = AG candidate AAR, built from detached worktree at v0.4.2
+  STATUS = FAILING (client not initialized, TRANSPORT_ERROR)
+
+=== BINARY COMPARISON ===
+
+AT_DEBUG vs AG_CANDIDATE:
+  BOTH = debug variant
+  NATIVE_SHA256 DIFFERS: AE55F417... vs 804E547F...
+  SOURCE CODE: identical (v0.4.2, no native code changes between tag and HEAD)
+  BINARY_DIVERGENCE = YES (build environment/configuration difference)
+  BUILDMACHINE_DIFFERENCE = LIKELY (different Gradle cache, timestamps, or build config)
+
+AT_RELEASE vs AT_DEBUG:
+  NATIVE_SHA256 DIFFERS: F381F3D6... vs AE55F417...
+  VARIANT DIFFERS: release vs debug
+  SOURCE CODE: identical
+  BOTH WORK on device (when properly paired)
+
+KEY INSIGHT:
+  AT debug (AE55F417) WORKS on device.
+  AG candidate (804E547F) FAILS on device.
+  Both are debug builds from same source.
+  → Binary divergence alone does NOT explain the failure.
+  → The failure is in AG's NATIVE STATE MACHINE (stale ONLINE state), not the binary.

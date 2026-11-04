@@ -1,0 +1,62 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 05 ADBD SIDE OBSERVATION
+Date: 2026-11-04
+
+=== ADBD LOGS DURING AG ATTEMPTS ===
+
+When AG connects to 38800:
+  - adbd ACCEPTS the TCP connection (ESTABLISHED in /proc/net/tcp6)
+  - adbd does NOT send AUTH request to AG
+  - adbd does NOT create a host session (no host-N log)
+  - adbd logs are SILENT for AG's connection
+
+When AT debug connects to 38800 (working):
+  - adbd ACCEPTS the TCP connection
+  - adbd SENDS AUTH request
+  - adbd LOGS: "adbd_auth: loading keys from /data/misc/adb/adb_keys"
+  - adbd LOGS: "adb client authorized"
+  - adbd LOGS: "authPass 0"
+  - adbd LOGS: "Calling send_auth_request..."
+  - host session created
+
+=== WHY ADBD DOES NOT AUTH AG ===
+
+adbd's authentication flow for TCP connections:
+  1. TCP connection accepted
+  2. adbd sends AUTH (token) to client
+  3. Client responds with AUTH (key signature)
+  4. adbd verifies key against /data/misc/adb/adb_keys
+  5. If match → create host session
+  6. If no match → reject/disconnect
+
+For AG:
+  Step 1: TCP ESTABLISHED ✓
+  Step 2: adbd does NOT send AUTH (no log)
+  → adbd is NOT initiating the auth handshake for AG's connection
+
+For AT debug:
+  Step 1: TCP ESTABLISHED ✓
+  Step 2: adbd sends AUTH ✓ (log: "Calling send_auth_request...")
+  Step 3: AT responds ✓
+  Step 4: key verified ✓ (log: "adb client authorized")
+  Step 5: host session created ✓
+
+=== HYPOTHESIS ===
+
+adbd may be rate-limiting or rejecting multiple concurrent TCP connections
+from the same device. When AT already has an active session, adbd may not
+initiate auth for additional connections.
+
+However: Test 2 (AT force-stopped, AG alone) also FAILS with same behavior.
+This suggests adbd is NOT initiating auth for AG's connection regardless of
+whether AT is present.
+
+Possible explanations:
+  a) AG's TCP connection is established but adbd has already seen this
+     connection's key (ddb2440c) and is rejecting it silently
+  b) adbd has a connection limit and AG's connection is queued but not authed
+  c) AG's native code connects to 38800 but does NOT send CNXN first,
+     so adbd waits for CNXN before initiating AUTH (and never gets it)
+
+Option (c) is most likely: AG's native code establishes TCP but the
+CNXN/AUTH handshake is not properly initiated. The "ALREADY ONLINE" state
+causes connectLocalhost to SKIP the handshake entirely.

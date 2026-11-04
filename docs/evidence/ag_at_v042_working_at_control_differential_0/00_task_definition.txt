@@ -1,0 +1,23 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 00 TASK DEFINITION
+Date: 2026-11-04
+
+TASK = Find FIRST DIVERGENCE between working AT and failing AG consumer
+SCOPE = AT debug (same variant as AG) + AG consumer, key trust vs native build vs TCP channel
+CONSTRAINTS =
+  - No production source changes (AG/AT)
+  - No AAR/JAR/Gradle changes
+  - No tag/push/freeze
+  - G-b1 = UNRESOLVED_AGENT_EXECUTION_LIFECYCLE_SEMANTICS (not re-run, not blocking)
+  - Root cause must explain BOTH working AT AND failing AG
+  - Previous root cause (4096-byte banner, commit 38cea94) = RETRACTED
+
+SUPERSEDES_ROOT_CAUSE_OF = AG.AT-V042-CONSUMER-RUNTIME-DIFFERENTIAL-0 (commit 38cea94)
+PREVIOUS_ROOT_CAUSE_STATUS = RETRACTED
+PREVIOUS_ROOT_CAUSE = "9-byte CNXN banner mismatch" (REJECTED by user: historical evidence shows host::A35 + 0x01000000 once achieved RX_CNXN→ONLINE→PASS)
+
+USER_GUIDANCE =
+  - "debug版本肯定是通过后才release的" (debug passed 7/7 gates before release)
+  - "AG的应该是一个中间版本" (AG candidate is an intermediate version)
+  - "你看下是不是ag的adbkey不对，或是是ag没有正确建立tcp通道" (check AG key or TCP channel)
+  - "先换debug版和ag保持一致" (switch AT to debug to match AG)
+  - "算了，我可以重新配对" (user can re-pair)

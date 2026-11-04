@@ -1,0 +1,23 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 08 AT RECONNECT CONTROL
+Date: 2026-11-04
+
+=== AT DEBUG RECONNECT TEST ===
+
+After force-stopping AT debug and restarting:
+  AT starts in DISCONNECTED state (no auto-reconnect)
+  User clicks ADB button → AT reconnects
+  New TCP tuple established (9DF2 in release test, new tuple in debug)
+  UI: ADB: READY
+  → AT RECONNECT = PASS
+
+=== SIGNIFICANCE ===
+
+AT debug can establish a FRESH connection to 38800 and complete the
+full CNXN/AUTH handshake. This confirms:
+  1. 38800 listener is functional (adbd is listening)
+  2. AT debug's native code correctly performs the handshake
+  3. The key (6b1949b4) is trusted by adbd
+  4. The TCP channel is viable
+
+AG, on the other hand, CANNOT establish a fresh connection because
+its state machine believes it's already ONLINE and skips the handshake.

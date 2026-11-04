@@ -1,0 +1,95 @@
+AG.AT-V042-WORKING-AT-CONTROL-DIFFERENTIAL-0 - 07 FIRST DIVERGENCE (ROOT CAUSE)
+Date: 2026-11-04
+
+=== FIRST DIVERGENCE ===
+
+AG's native ADB engine has a STALE ONLINE state.
+
+EVIDENCE:
+  1. AG's HUB08 thread is stuck in an infinite loop:
+     "TCP recv() failed after 0/24 bytes: 11: Try again"
+     "ReadPacket: failed to read 24-byte header: 11: Try again"
+     "RX_IDLE_TIMEOUT: continuing (no data, transport still alive)"
+     → HUB08 has a TCP connection ESTABLISHED but NEVER received CNXN
+     → HUB08 NEVER completed the ADB protocol handshake
+
+  2. When AG attempts adb shell id:
+     "connectLocalhost: ALREADY ONLINE, reusing shared transport"
+     → The state machine claims the transport is ONLINE
+     → It SKIPS the CNXN/AUTH handshake
+     → It directly attempts executeShell on the dead transport
+
+  3. executeShell fails immediately:
+     "local transport loss; activeTransport -> WIRELESS"
+     "outcome=TRANSPORT_ERROR exit=-1"
+     → The transport is confirmed dead (no data ever received)
+     → But the state machine already lost the LOCAL transport reference
+
+  4. The error surfaces as:
+     "not connected (client not initialized)"
+     → This is the CLI bridge's interpretation of TRANSPORT_ERROR
+     → The "client" (ADB protocol session) was never initialized
+       because the handshake was skipped
+
+=== WHY THE STATE IS STALE ===
+
+The AG native code's connectLocalhost() checks the current transport state.
+If the state is "ONLINE", it reuses the existing transport without
+re-establishing the connection.
+
+The state becomes "ONLINE" when:
+  a) A TCP connection to 38800 is ESTABLISHED (kernel-level)
+  b) BUT the ADB protocol handshake (CNXN → AUTH → ONLINE) is NOT completed
+
+The state machine conflates "TCP connected" with "ADB protocol ONLINE".
+In AT debug (working), the full handshake completes:
+  TCP ESTABLISHED → TX_CNXN → RX_AUTH → TX_AUTH_RESPONSE → RX_CNXN → ONLINE
+
+In AG candidate (failing), the handshake is interrupted:
+  TCP ESTABLISHED → (no TX_CNXN logged) → HUB08 waits for data → EAGAIN loop
+  → State machine marks as "ONLINE" prematurely or retains stale "ONLINE"
+
+=== WHY AT DEBUG WORKS ===
+
+AT debug (AE55F417) performs the full handshake correctly:
+  1. TCP connect to 127.0.0.1:38800
+  2. TX_CNXN (banner: ADB connection)
+  3. RX_AUTH (adbd sends auth token)
+  4. TX_AUTH_RESPONSE (sign token with local key)
+  5. RX_CNXN (adbd confirms, sends banner)
+  6. State → ONLINE
+  7. Subsequent commands work
+
+The AT debug binary (AE55F417) correctly implements this flow.
+The AG candidate binary (804E547F) has a bug in the state machine
+that either:
+  a) Marks ONLINE before handshake completes, or
+  b) Retains a stale ONLINE state from a previous failed connection,
+  c) Skips CNXN transmission when reusing a "connected" TCP socket
+
+=== ROOT CAUSE CLASSIFICATION ===
+
+ROOT_CAUSE = AG_NATIVE_STATE_MACHINE_STALE_ONLINE
+CATEGORY = NATIVE ADB ENGINE BUG (not key trust, not binary variant, not TCP)
+AFFECTS = AG candidate AAR (804E547F) only
+NOT_AFFECTS = AT debug (AE55F417), AT release (F381F3D6)
+
+THE BUG:
+  connectLocalhost() sees "ONLINE" state → skips CNXN/AUTH handshake
+  → executeShell on dead transport → TRANSPORT_ERROR → "client not initialized"
+
+THE FIX (NOT APPLIED - forensics only):
+  connectLocalhost() should verify the transport is actually functional
+  (e.g., check if CNXN was received, or attempt a health-check read)
+  before reusing it. If the transport is dead, it should:
+  1. Close the existing TCP connection
+  2. Establish a new TCP connection
+  3. Perform the full CNXN/AUTH handshake
+  4. Only then mark as ONLINE
+
+=== SUPERSEDED ROOT CAUSE ===
+
+PREVIOUS (commit 38cea94): "9-byte CNXN banner mismatch"
+STATUS = RETRACTED
+REASON = Historical evidence shows host::A35 + 0x01000000 once achieved
+         RX_CNXN→ONLINE→PASS. The banner is NOT the root cause.
