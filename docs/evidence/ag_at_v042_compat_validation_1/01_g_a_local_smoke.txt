@@ -1,0 +1,20 @@
+AG.AT-V042-COMPAT-VALIDATION-1 - 01 G-A LOCAL SMOKE
+Date: 2026-11-04
+Path: DebugBridge tool_invoke -> AndroidShellToolImpl -> executeLocal -> LocalOneShotBackend
+
+G-a1: basic stdout
+  Command: echo G_A1_OK
+  Result: outcome=COMPLETED, exitCode=0, stdout="G_A1_OK\n", stderr=""
+  STATUS: PASS
+
+G-a2: stdout + stderr
+  Command: sh -c 'echo G_A2_OUT; echo G_A2_ERR >&2; exit 0'
+  Result: outcome=COMPLETED, exitCode=0, stdout="G_A2_OUT\n", stderr="G_A2_ERR\n"
+  STATUS: PASS
+
+G-a3: non-zero exit
+  Command: sh -c 'echo G_A3_OUT; echo G_A3_ERR >&2; exit 7'
+  Result: outcome=COMPLETED, exitCode=7, stdout="G_A3_OUT\n", stderr="G_A3_ERR\n", hasError=false
+  STATUS: PASS (non-zero exit correctly preserved, not mapped to infrastructure failure)
+
+G_A_STATUS = PASS

@@ -1,0 +1,27 @@
+AG.AT-V042-COMPAT-VALIDATION-1 - 02 G-G ADB CLI NORMAL
+Date: 2026-11-04
+
+G_G_STATUS = BLOCKED_ADB_TRANSPORT
+
+Reason: AT v0.4.2 Local TCP ADB transport TCP connection is ESTABLISHED
+(127.0.0.1:38182 -> 127.0.0.1:38800, confirmed via device netstat) but the
+ADB protocol handshake is incomplete. Logcat shows continuous:
+  "TCP recv() failed after 0/24 bytes: 11: Try again"
+  "ReadPacket: failed to read 24-byte header: 11: Try again"
+  "[HUB08] RX_IDLE_TIMEOUT: continuing (no data, transport still alive)"
+
+In-shell adb CLI returns:
+  outcome=COMPLETED, exitCode=1
+  stderr="[adb] connected (local)adb: OneShotResult(stdout=, stderr=,
+         exitCode=1, error=not connected (client not initialized))"
+
+Pairing was completed (bootstrap_pair_result success=true),
+adb_reconnect returned READY, but the ADB client remains uninitialized.
+
+Likely cause: AT v0.4.2 Local TCP ADB engine's key authorization with
+device adbd is not completing over loopback TCP. The TCP connection
+is alive but no ADB protocol data flows. This is an AT-side transport
+initialization issue, not an AG code issue.
+
+All ADB-dependent gates (G-g, G-b2, G-c2, G-d, G-e, G-f) are blocked
+by this AT transport issue.

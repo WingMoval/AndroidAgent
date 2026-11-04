@@ -1,0 +1,43 @@
+AG.AT-V042-COMPAT-VALIDATION-1 - 03 G-B1 LOCAL STOP
+Date: 2026-11-04
+Path: DebugBridge send -> AgentRuntime.send -> AgentCore -> ToolRegistry
+      -> AndroidShellToolImpl -> executeLocal -> LocalOneShotBackend
+Test: real AG Run (OpenRouter deepseek-v4-flash-0731), command "sleep 120"
+
+Timeline:
+  [0.0s]  Sent 'send' message (prompt: "Use the android_shell tool to run: sleep 120")
+  [~3s]   Model generated ToolCall: {"command":"sleep 120"}
+  [~4s]   Tool execution started (LocalOneShotBackend ProcessBuilder)
+  [12.2s] PS check BEFORE stop:
+           PID 10210, UID 10418, ETIME 00:10, [sh]     (parent shell)
+           PID 10214, UID 10418, ETIME 00:10, [sleep]  (child sleep)
+  [12.2s] *** STOP SENT *** (DebugBridge {"type":"stop"})
+  [12.2s] stop_result: "requested" (AgentRuntime.interruptActiveRun called)
+  [27.5s] PS check AFTER stop (15s later):
+           PID 10210, UID 10418, ETIME 00:25, [sh]     (STILL ALIVE)
+           PID 10214, UID 10418, ETIME 00:25, [sleep]  (STILL ALIVE)
+  [~90s]  No run_finished event received. No Interrupted event.
+          Run appears stuck (no terminal state).
+
+G_B1_STATUS = FAIL_NATIVE_TERMINATION
+
+Evidence:
+  - Stop accepted by AG (stop_result="requested")
+  - AgentRuntime.interruptActiveRun() was invoked
+  - LocalOneShotBackend ProcessBuilder child processes (sh + sleep) NOT terminated
+  - No orphan cleanup
+  - Run did not reach terminal state (no RunFinished, no Interrupted)
+  - Subsequent tool_invoke (direct) worked (app not crashed)
+  - Residual processes required external cleanup (run-as kill)
+
+Classification:
+  FAILURE_ORIGIN_CANDIDATE = AT (LocalOneShotBackend does not kill child process tree on cancellation)
+  LIKELY_LAYER = AT native Local one-shot backend (ProcessBuilder.destroy() not called,
+                 or child process not in same process group)
+  REPRODUCIBLE = YES (deterministic: Stop -> child survives)
+  V040_HAS_PROOF_OF_WORKING = NO (same gap existed in v0.4.0; G1 was TRULY_UNVERIFIED)
+
+Note: This is exactly the G1 gap predicted by the historical evidence
+reconciliation audit. The AG-side coroutine cancellation (interruptActiveRun
+-> Job.cancel) works at the AG boundary, but the AT-side LocalOneShotBackend
+does not translate that cancellation into OS-level process termination.

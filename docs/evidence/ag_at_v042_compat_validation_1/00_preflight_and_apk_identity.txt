@@ -1,0 +1,37 @@
+AG.AT-V042-COMPAT-VALIDATION-1 - 00 PREFLIGHT AND APK IDENTITY
+Date: 2026-11-04
+
+AG Preflight:
+  BRANCH = main
+  HEAD = 02a4cdd2b9160fa0526ab8f2ea075a91efd1c95c
+  WORKTREE = CLEAN (before upload/ restoration)
+
+Candidate Bundle:
+  EXISTS = YES (third_party/at-v042-consumer-candidate/m2)
+  V040_BUNDLE = PRESERVED (third_party/at-v4-consumer-freeze-v1/m2)
+  SETTINGS = candidate repo listed first (resolution priority)
+
+APK Verification:
+  PATH = app/build/outputs/apk/debug/app-debug.apk
+  SIZE = 6306722 bytes (matches expected)
+  SHA256[:16] = 51f6e5a3d3b3317a
+  NATIVE_LIB = lib/arm64-v8a/libadbd_engine.so
+  NATIVE_SHA256 = 804e547fa57a5972f263df9052d3d55fefffec744cdb41e6fda79dee0b0b67d7
+  V042_NATIVE_IDENTITY_CONFIRMED = YES
+
+Device:
+  MODEL = HONOR ALI-AN00
+  ANDROID_VERSION = 15 (SDK 35)
+  SERIAL = APLMUT4312005935
+  INSTALL = upgrade (-r), data preserved
+  APP_START = PASS
+  AT_COMPOSITION_INIT = PASS (Local TCP transport established to 127.0.0.1:38800)
+
+ADB Status (at test start):
+  BOOTSTRAP_STATE = PAIRING_REQUIRED (initial)
+  PAIRING = completed via DebugBridge (host=192.168.137.56, port=43099, code=422531)
+  POST_PAIR_STATE = CONNECT_FAILED -> adb_reconnect -> READY
+  ADB_CLI_FUNCTIONALITY = FAIL (client not initialized)
+  NOTE: Local TCP ADB transport TCP connection is ESTABLISHED (127.0.0.1:38182 -> 127.0.0.1:38800)
+        but ADB protocol handshake incomplete (continuous "failed to read 24-byte header" in logcat).
+        This blocks all ADB-dependent gates (G-g, G-b2, G-c2, G-d, G-e, G-f).

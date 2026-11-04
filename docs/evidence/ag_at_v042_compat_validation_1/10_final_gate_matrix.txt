@@ -1,0 +1,35 @@
+AG.AT-V042-COMPAT-VALIDATION-1 - 10 FINAL GATE MATRIX
+Date: 2026-11-04
+VERDICT: FAIL_P0
+
+Gate  Path                          Status                   Detail
+----  ----------------------------  -----------------------  ------------------------------------------
+G-a1  Local one-shot stdout         PASS                     echo -> COMPLETED exit 0
+G-a2  Local one-shot stdout+stderr  PASS                     dual-stream preserved
+G-a3  Local one-shot non-zero exit  PASS                     exit 7 preserved, hasError=false
+G-b1  Local one-shot Stop           FAIL_NATIVE_TERMINATION  Stop accepted but child survives 90s+
+G-b2  ADB one-shot Stop             BLOCKED_ADB_TRANSPORT    client not initialized
+G-c1  Local one-shot timeout        NOT_EXECUTED             P0 early-stop rule (section 35)
+G-c2  ADB one-shot timeout          BLOCKED_ADB_TRANSPORT    client not initialized
+G-d   ADB recovery                  BLOCKED_ADB_TRANSPORT    client not initialized
+G-e   ADB pairing                   BLOCKED_ADB_TRANSPORT    pair OK but ADB client not init
+G-f   Local TCP ADB                 BLOCKED_ADB_TRANSPORT    TCP alive, protocol handshake incomplete
+G-g   ADB CLI normal                BLOCKED_ADB_TRANSPORT    client not initialized
+
+P0 FAILURES: 1 (G-b1)
+BLOCKED: 6 (all ADB-dependent)
+NOT_EXECUTED: 1 (G-c1, stopped by P0 rule)
+PASS: 3 (G-a sub-gates)
+
+FAILURE_CLASSIFICATION:
+  F1: Local one-shot Stop does not terminate child process tree
+      ORIGIN: AT (LocalOneShotBackend)
+      LAYER: AT native local backend (ProcessBuilder.destroy not called)
+      SEVERITY: P0
+  F2: Local TCP ADB transport handshake incomplete
+      ORIGIN: AT (ADB engine / key auth)
+      LAYER: AT native ADB engine (key authorization over loopback TCP)
+      SEVERITY: P1 (blocks all ADB-dependent gates)
+
+CONTROLLER_REVIEW_TRIGGERED: YES
+REASON: P0 deterministic failure (G-b1) per section 35
