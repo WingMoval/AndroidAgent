@@ -1,0 +1,60 @@
+AG.AT-V042-CONSUMER-RUNTIME-DIFFERENTIAL-0 - 01 SOURCE CALL CHAIN DIFF
+Date: 2026-11-04
+
+STANDALONE_CALL_CHAIN:
+  MainActivity.onCreate
+    -> AppRuntime.initialize(context)
+      -> ATAndroid.create(context)                    [1 composition]
+        -> AdbRuntime.initialize(app)                 [process singleton, idempotent]
+        -> identityDir = filesDir/adb_identity        [default profile]
+        -> DefaultATEngine(LocalOneShotBackend, LocalPersistentBackend)
+        -> DefaultATEngine(AdbOneShotBackend, AdbPersistentBackend)
+        -> ATAndroidAdbControl(identityPath)
+      -> AdbCliBridgeServer(filesDir, AppCliExecution) [1 CLI bridge]
+      -> AppCliExecution.ensureReady(sessionId, cb)
+        -> AppRuntime.adbControl.ensureReady(cb)
+          -> AdbRuntime.ensureReady(identityDir, cb)
+            -> probeLocalFirst(keyDir)
+              -> connectLocal(keyDir)
+                -> AdbEngine.connectLocalhost(38800, keyDir)
+                  -> AdbNative.connectLocalhost(38800, keyDir)  [JNI]
+                    -> PlainTcpAdbConnection::connect("127.0.0.1", 38800)
+                      -> TCP connect
+                      -> TX CNXN (banner="host::A35", data_length=9)  <<<<< PROBLEM
+                      -> handleAuth (readPacket loop)
+            -> [if local fails] WD readiness -> discovery -> connectAuto
+              -> enableLocalTcp (promotion)
+
+AG_CONSUMER_CALL_CHAIN:
+  ChatCompositionRoot.<init>
+    -> ATAndroid.create(context, ATAndroidConfig(identityProfile="at-consumer/identity"))
+       [1 composition — SAME entry point as standalone]
+      -> AdbRuntime.initialize(app)                  [SAME process singleton]
+      -> identityDir = filesDir/at-consumer/identity [DIFFERENT profile]
+      -> DefaultATEngine(LocalOneShotBackend, LocalPersistentBackend)
+      -> DefaultATEngine(AdbOneShotBackend, AdbPersistentBackend)
+      -> ATAndroidAdbControl(identityPath)
+    -> CompositionAdbSemantic(atComposition.adbControl)
+    -> AtExecutionAdapter(localEngine, adbEngine, adbSemantic, cliBridgeDir)
+      -> AdbCliBridgeServer(cliBridgeDir, cliExecution)  [1 CLI bridge]
+      -> cliExecution.ensureReady(sessionId, cb)
+        -> adbSemantic.ensureReady(cb)
+          -> CompositionAdbSemantic.ensureReady(cb)
+            -> ATAndroidAdbControl.ensureReady(cb)
+              -> AdbRuntime.ensureReady(identityDir, cb)  [SAME code path]
+                -> probeLocalFirst -> connectLocal -> AdbEngine.connectLocalhost
+                  -> PlainTcpAdbConnection::connect  [SAME native code]
+
+DIFFERENCES:
+  1. identityProfile: "adb_identity" vs "at-consumer/identity" (EXPECTED, per-consumer)
+  2. CLI bridge dir: filesDir/ vs filesDir/at-cli-bridge/ (cosmetic)
+  3. AG has extra CompositionAdbSemantic adapter layer (thin delegation, no logic)
+
+SAME:
+  - 1 ATAndroidComposition per app
+  - 1 AdbRuntime per process (singleton)
+  - 1 AdbCliBridgeServer per app
+  - CLI and main share same AdbRuntime
+  - Pairing and CLI share same identity
+  - ensureReady code path identical
+  - PlainTcpAdbConnection::connect code identical (same AAR bytes)

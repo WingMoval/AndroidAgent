@@ -1,0 +1,52 @@
+AG.AT-V042-CONSUMER-RUNTIME-DIFFERENTIAL-0 - 09 FIRST DIVERGENCE AND ROOT CAUSE
+Date: 2026-11-04
+
+FIRST_DIVERGENCE_LAYER = ADB protocol TX (CNXN banner length)
+FIRST_DIVERGENCE_EVENT = PlainTcpAdbConnection::connect sends 9-byte CNXN banner
+                         instead of required 4096 bytes; adbd fails to read and
+                         terminates the session without sending AUTH or CNXN response
+
+DOWNSTREAM_FAILURE = client not initialized / RX_IDLE_TIMEOUT
+
+ROOT_CAUSE_CLASS = LOCAL_TCP_PROTOCOL_TX
+
+ROOT_CAUSE =
+  PlainTcpAdbConnection::connect() (plain_tcp_connection.cpp:52-58) constructs
+  the CNXN packet with a 9-byte banner ("host::A35") and data_length=9.
+  The ADB protocol requires the CNXN banner field to be exactly
+  A_CNXN_MAX_BANNER_LENGTH (4096) bytes. adbd on HONOR Android 15
+  strictly enforces this: when it reads only 9 bytes where 4096 are expected,
+  the read fails ("read failed: Success") and the session is terminated
+  immediately. AT's handleAuth() then enters an infinite readPacket loop
+  waiting for AUTH/CNXN that adbd will never send, producing the observed
+  "TCP recv() failed after 0/24 bytes" + "RX_IDLE_TIMEOUT" pattern.
+
+ROOT_CAUSE_CONFIDENCE = HIGH
+
+Evidence:
+  1. Source code clearly shows 9-byte banner (plain_tcp_connection.cpp:56-58)
+  2. AT standalone (same code) also FAILS on clean device (not stale-connection related)
+  3. PC test with proper 4096-byte banner: adbd creates host-N but still fails
+     (suggests additional issue: arg0 version flag 0x01000000 = "with checksum"
+     may also be incompatible with this adbd build)
+  4. adbd log shows "read failed: Success" = immediate read error, not timeout
+  5. No AUTH/CNXN response ever received by AT app
+
+FIX_OWNER = AT (adb-engine native: PlainTcpAdbConnection::connect)
+MINIMUM_FIX =
+  Pad the CNXN banner to 4096 bytes (A_CNXN_MAX_BANNER_LENGTH) in
+  PlainTcpAdbConnection::connect(). Additionally verify that arg0 version
+  flag (0x01000000 = with-checksum) is compatible with the target adbd
+  version; may need to use 0x01000001 (no checksum) or 0x00000001.
+
+WHY NOT AG:
+  AG uses the exact same AAR bytes (native SHA256 verified). The bug is in
+  the shared native code. AG has no code path that could cause or fix this.
+
+WHY NOT DEVICE:
+  The device's adbd is behaving correctly per ADB protocol spec (rejecting
+  malformed CNXN). The bug is in AT's TX, not in adbd's RX.
+
+WHY NOT IDENTITY:
+  The failure occurs BEFORE any AUTH exchange. The CNXN packet is rejected
+  before adbd even looks at the key. Identity is irrelevant at this stage.

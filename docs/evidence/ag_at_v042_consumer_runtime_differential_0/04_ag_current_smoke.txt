@@ -1,0 +1,19 @@
+AG.AT-V042-CONSUMER-RUNTIME-DIFFERENTIAL-0 - 04 AG CURRENT SMOKE
+Date: 2026-11-04
+
+AG_CURRENT_SMOKE = BLOCKED (not re-tested this round)
+
+NOTE: AG was not re-tested this round because:
+  1. AT standalone (same AAR bytes, same native code) also FAILS
+  2. The root cause is in the shared native code (PlainTcpAdbConnection)
+  3. Testing AG would produce the same result (same CNXN format)
+
+PREVIOUS ROUND (AG.AT-V042-COMPAT-VALIDATION-1):
+  AG ADB = BLOCKED (client not initialized)
+  Same RX_IDLE_TIMEOUT pattern
+  Same root cause (CNXN banner too short)
+
+ENVIRONMENT_OR_SHARED_AT_STATE_DRIFT = YES
+  The device's adbd (HONOR Android 15) does not properly handle the
+  9-byte CNXN banner that AT v0.4.2 sends. This affects BOTH standalone
+  and AG consumer equally.

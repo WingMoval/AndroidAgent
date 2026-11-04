@@ -1,0 +1,46 @@
+AG.AT-V042-CONSUMER-RUNTIME-DIFFERENTIAL-0 - 06 PROTOCOL TX RX DIFF
+Date: 2026-11-04
+
+STANDALONE_TX_CNXN = YES (PlainTcpAdbConnection::connect sends CNXN)
+AG_TX_CNXN = YES (same code, same AAR bytes)
+
+STANDALONE_RX_FIRST_PACKET = NONE (adbd never responds)
+AG_RX_FIRST_PACKET = NONE (adbd never responds)
+
+AG_AUTH_STAGE_REACHED = NO
+
+CNXN PACKET ANALYSIS (from source: plain_tcp_connection.cpp:52-58):
+  command   = 0x434E584E (CNXN)
+  arg0      = 0x01000000 (A_VERSION, with checksum — legacy)
+  arg1      = 1048576    (1MB max payload)
+  data_len  = 9          <<<<< PROBLEM: should be 4096
+  banner    = "host::A35" (9 bytes, NO padding)
+
+ADB PROTOCOL REQUIREMENT:
+  CNXN banner field MUST be A_CNXN_MAX_BANNER_LENGTH = 4096 bytes.
+  The banner is a fixed-size field in the ADB packet format.
+  adbd expects to read 4096 bytes of banner data after the 24-byte header.
+  When it receives only 9 bytes, the read fails.
+
+ADBD BEHAVIOR (observed):
+  - TCP connection accepted (ESTABLISHED)
+  - "host-N: read thread spawning" (for PC test via adb forward)
+  - "host-N: read failed: Success" (immediate failure)
+  - "host-N: connection terminated: read failed"
+  - No AUTH challenge sent
+  - No CNXN response sent
+
+  For AT app connection (C08C):
+  - No "host-N" log entry at all (adbd may not have accepted it,
+    or the accept happened before logcat capture)
+  - Connection stays ESTABLISHED but no data flows
+
+ROOT CAUSE:
+  PlainTcpAdbConnection::connect() sends a 9-byte CNXN banner.
+  adbd (HONOR Android 15) expects 4096 bytes.
+  The mismatch causes adbd to fail the read and terminate the session.
+  AT's handleAuth() then loops forever waiting for AUTH/CNXN that never comes.
+
+TX_OBSERVABILITY_GAP = NO
+  The source code clearly shows the CNXN packet construction.
+  The bug is in the TX direction (wrong banner length), not an observability gap.

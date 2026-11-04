@@ -1,0 +1,21 @@
+AG.AT-V042-CONSUMER-RUNTIME-DIFFERENTIAL-0 - 00 PREFLIGHT
+Date: 2026-11-04
+
+AG:
+  BRANCH = main
+  HEAD = e469815
+  WORKTREE = CLEAN (except pre-existing upload/ untracked)
+
+AT:
+  REPO = D:\codebank\AndCode\AndroidTerminal-V4-LOCAL-TCP-042
+  TAG v0.4.2 = 925e7ac223d19eea7ddb89bf05e55df25ca7a7f2 (annotated tag fd8fb7c)
+  SOURCE = UNMODIFIED
+
+DEVICE:
+  MODEL = HONOR ALI-AN00 (ALI_AN00)
+  ANDROID = 15 (SDK 35)
+  SERIAL = APLMUT4312005935
+
+AG_V042_NATIVE_IDENTITY = PASS
+  APK native SHA256 = 804e547fa57a5972f263df9052d3d55fefffec744cdb41e6fda79dee0b0b67d7
+  Matches candidate bundle.

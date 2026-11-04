@@ -1,0 +1,27 @@
+AG.AT-V042-CONSUMER-RUNTIME-DIFFERENTIAL-0 - 02 OWNERSHIP & IDENTITY DIFF
+Date: 2026-11-04
+
+STANDALONE_COMPOSITION_COUNT = 1 (AppRuntime.composition, via ATAndroid.create)
+AG_COMPOSITION_COUNT = 1 (ChatCompositionRoot.atComposition, via ATAndroid.create)
+
+STANDALONE_ADB_RUNTIME_COUNT = 1 (AdbRuntime process singleton)
+AG_ADB_RUNTIME_COUNT = 1 (SAME AdbRuntime process singleton)
+
+STANDALONE_RX_OWNER_COUNT = 1 (AdbStreamHub inside PlainTcpAdbConnection)
+AG_RX_OWNER_COUNT = 1 (SAME AdbStreamHub)
+
+PAIRING_AND_CLI_SHARE_RUNTIME = YES (both delegate to same AdbRuntime via adbControl)
+IDENTITY_AND_RUNTIME_SHARE_OWNER = YES (identityDir passed to both bootstrap and ensureReady)
+DUPLICATE_AT_OWNERSHIP = NO
+
+IDENTITY:
+  AT_STANDALONE_IDENTITY_FINGERPRINT = filesDir/adb_identity/adbkey.pub (not read, not output)
+  AG_IDENTITY_FINGERPRINT = filesDir/at-consumer/identity/adbkey.pub (not read, not output)
+  AG_PAIR_IDENTITY_FINGERPRINT = SAME as AG_IDENTITY (pairDiscovered uses same bootstrap)
+  AG_CONNECT_IDENTITY_FINGERPRINT = SAME as AG_IDENTITY (ensureReady uses same identityDir)
+  AG_LOCAL_IDENTITY_FINGERPRINT = SAME as AG_IDENTITY (connectLocalhost uses same keyDir)
+  AG_IDENTITY_CONTINUITY = PASS (single identityDir for all operations within AG)
+
+NOTE: Different identity paths between standalone and AG is EXPECTED (per-consumer
+app-private identity). This is NOT a bug. The question is whether identity is
+consistent WITHIN each host — and it is.

@@ -1,0 +1,40 @@
+AG.AT-V042-CONSUMER-RUNTIME-DIFFERENTIAL-0 - 03 STANDALONE CURRENT SMOKE
+Date: 2026-11-04
+
+AT_STANDALONE_CURRENT_SMOKE = FAIL
+
+Test: AT standalone v0.4.2 (com.androidterminal.app) on HONOR ALI-AN00 Android 15
+Action: Force-stop -> start MainActivity -> click "ADB" button (btnRetryAdb)
+       -> AppRuntime.adbControl.ensureReady {}
+
+Result:
+  - ADB state: DISCONNECTED (UI shows "ADB: DISCONNECTED")
+  - logcat: continuous "TCP recv() failed after 0/24 bytes: 11: Try again"
+  - logcat: continuous "[HUB08] RX_IDLE_TIMEOUT: continuing (no data, transport still alive)"
+  - No CNXN/AUTH exchange observed
+  - ensureReady did NOT reach READY
+
+REPRODUCTION:
+  Test 1 (before reboot): FAIL (stale AG connection 40916 present)
+  Test 2 (after reboot, clean 38800): FAIL (no stale connections, single AT connection)
+  
+  The failure is NOT caused by stale connections. It reproduces on a clean device.
+
+DEVICE STATE AT FAIL:
+  service.adb.tcp.port = 38800 (persistent from prior tcpip)
+  adb_wifi_enabled = 1 (WD ON)
+  38800 LISTEN: present (UID 2000 = adbd)
+  38800 connections: 1 (AT app's, ESTABLISHED)
+  adbd log: "adbwifi started on port 42721" (wireless TLS on separate port)
+  adbd log: NO "host-N: read thread spawning" for 38800 connections
+  adbd log: "adb client authorized" for USB + framework (not for 38800 TCP)
+
+PC TEST (adb forward tcp:38800 + CNXN send):
+  - TCP connect: OK
+  - CNXN sent (92 bytes, 4096-byte banner)
+  - adbd: "host-30: read thread spawning" then "read failed: Success"
+  - adbd: connection terminated immediately
+  - Response: 0 bytes
+
+This confirms adbd ACCEPTS TCP connections on 38800 but IMMEDIATELY FAILS
+to read the CNXN packet, regardless of the client.
