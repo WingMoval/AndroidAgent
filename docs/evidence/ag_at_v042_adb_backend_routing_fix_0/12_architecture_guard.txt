@@ -1,0 +1,45 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 12 ARCHITECTURE GUARD
+Date: 2026-11-05
+
+=== ARCHITECTURE GUARD ===
+
+AdbRuntime REMAINS UNIQUE TRANSPORT ROUTING OWNER
+
+BEFORE FIX:
+  AdbOneShotBackend made its own routing decision:
+    - ensureConnected() checked activeTransport + localhostConnected()
+    - execute() called AdbEngine.executeShell() directly (Wireless)
+  This created a SECOND routing owner (the backend).
+
+AFTER FIX:
+  AdbOneShotBackend delegates routing to AdbRuntime:
+    - ensureConnected() still validates readiness (port 0 = reuse lifecycle)
+    - execute() calls AdbRuntime.executeShell() (canonical router)
+  AdbRuntime is the ONLY routing owner.
+
+DUPLICATE_ROUTING_OWNER = NO
+ADB_BACKEND_DIRECT_WIRELESS_EXECUTION = REMOVED
+CANONICAL_ROUTER = AdbRuntime.executeShell
+
+=== SCOPE GUARD ===
+
+PAIRING_CHANGED = NO
+NATIVE_SOURCE_CHANGED = NO
+AG_CORE_CHANGED = NO
+AG_RUNTIME_CHANGED = NO
+INTEGRATION_AT_CHANGED = NO (no code changes, only AAR update)
+AT_BACKEND_CHANGED = YES (AdbBackend.kt, single line + comment)
+AT_RUNTIME_CHANGED = NO
+SHELL_V2_PARSER_CHANGED = NO
+ADB_PROTOCOL_CHANGED = NO
+LOCAL_TCP_CHANGED = NO
+IDENTITY_CHANGED = NO
+WIRELESS_BOOTSTRAP_CHANGED = NO
+AG_CORE_CHANGED = NO
+
+=== G-b1 ===
+
+G_B1 = UNRESOLVED_AGENT_EXECUTION_LIFECYCLE_SEMANTICS
+G_B1_RETESTED = NO
+G_B1_FIX = NO
+G_B1_BLOCK = NO

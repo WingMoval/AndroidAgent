@@ -1,0 +1,50 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 04 BUILD
+Date: 2026-11-05
+
+=== AT BUILD ===
+
+Command:
+  cd D:\codebank\AndCode\AndroidTerminal-V4-LOCAL-TCP-042
+  .\gradlew.bat :at-backend-adb:assembleDebug
+
+Result: BUILD SUCCESSFUL
+
+AAR output:
+  at-backend-adb-debug.aar (9197 bytes)
+  SHA256 prefix: 58B26810E4E452AD
+
+=== ARTIFACT SYNC TO AG ===
+
+Source: D:\codebank\AndCode\AndroidTerminal-V4-LOCAL-TCP-042\at-backend-adb\build\outputs\aar\at-backend-adb-debug.aar
+Target: D:\codebank\AndCode\AndroidAgent-V2\third_party\at-v042-consumer-candidate\m2\com\at\backend\adb\at-backend-adb\4.0.0\at-backend-adb-4.0.0.aar
+
+NOTE: The correct m2 path is com/at/backend/adb/at-backend-adb/4.0.0/
+      (groupId=com.at.backend.adb, artifactId=at-backend-adb)
+      NOT com/at/at-backend-adb/4.0.0/ (wrong path, initially used)
+
+Old AAR hash: 15895A5B6FE4B699 (9196 bytes, pre-fix)
+New AAR hash: 58B26810E4E452AD (9197 bytes, post-fix)
+
+ARTIFACT_STATUS = POST_V042_FIX_CANDIDATE
+BASE_VERSION = 0.4.2
+PATCH = ADB backend transport routing fix
+SOURCE_COMMIT = e24cf4c (AT feature/local-tcp-v0.4.2)
+
+=== AG BUILD ===
+
+Command:
+  cd D:\codebank\AndCode\AndroidAgent-V2
+  .\gradlew.bat :app:clean :integration-at:clean
+  .\gradlew.bat :app:assembleDebug --refresh-dependencies
+
+Result: BUILD SUCCESSFUL
+
+APK: app-debug.apk
+APK contains 3 .so files:
+  lib/arm64-v8a/libadbd_engine.so (3318152 bytes)
+  lib/arm64-v8a/libat_local_backend.so (384784 bytes)
+  lib/arm64-v8a/libatcli_env.so (456760 bytes)
+
+=== INSTALL ===
+
+adb install -r app-debug.apk -> Success

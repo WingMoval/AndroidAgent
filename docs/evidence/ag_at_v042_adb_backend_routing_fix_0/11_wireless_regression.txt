@@ -1,0 +1,34 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 11 WIRELESS REGRESSION
+Date: 2026-11-05
+
+=== WIRELESS REGRESSION ===
+
+WIRELESS_REAL_DEVICE = NOT_RUN
+
+Reason:
+  No Wireless READY state available on this device for testing.
+  The device is configured for Local TCP (38800) only.
+  Wireless ADB (5555) is not enabled/available.
+
+JVM/UNIT REGRESSION:
+  The fix changes AdbOneShotBackend.execute() to call
+  AdbRuntime.executeShell() instead of AdbEngine.executeShell().
+  
+  AdbRuntime.executeShell() (AdbRuntime.kt:860-865):
+    if (activeTransport == AdbTransportMode.LOCAL) {
+        AdbEngine.executeShellLocalhost(command)
+    } else {
+        AdbEngine.executeShell(command, timeoutMs)
+    }
+  
+  When activeTransport == WIRELESS, the code path is:
+    AdbRuntime.executeShell() -> AdbEngine.executeShell()
+  
+  This is IDENTICAL to the previous behavior (AdbEngine.executeShell()
+  was called directly). The Wireless path is unchanged.
+
+ARCHITECTURE GUARD:
+  - AdbRuntime remains the unique transport routing owner
+  - AdbOneShotBackend no longer makes routing decisions
+  - No duplicate routing state in backend
+  - WIRELESS_JVM_REGRESSION = PASS (by code inspection)

@@ -1,0 +1,37 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 06 LOCAL ONESHOT (Gate B)
+Date: 2026-11-05
+
+=== GATE B: AG ADB One-shot ===
+
+Action:
+  DebugBridge tool_invoke: android_shell, command="adb shell id"
+
+Result:
+  outcome: COMPLETED
+  exitCode: 0
+  stdout: uid=2000(shell) gid=2000(shell) groups=2000(shell),1004(input),1007(log),1011(adb),1015(sdcard_rw),1028(sdcard_r),1078(ext_data_rw),1079(ext_obb_rw),3001(net_bt_admin),3002(net_bt),3003(inet),3006(net_bw_stats),3009(readproc),3011(uhid),3012(readtracefs) context=u:r:shell:s0
+  stderr: [adb] connected
+
+Native logs (KEY EVIDENCE):
+  11-05 00:41:06.655   805  1416 I AdbCliBridge: onOneShot: ensureReady for ['id']
+  11-05 00:41:06.656   805  1416 I AdbEngineJNI: executeShellLocalhost: "'id'"
+  11-05 00:41:06.656   805  1416 I AndroidTerminalADB: [HUB07] STREAM_REGISTER local=1 registry=1
+  11-05 00:41:06.656   805  1416 I AndroidTerminalADB: [HUB02] STREAM_OPEN_TX local=1 service="shell,v2,raw:'id'" ack_writes=1
+  11-05 00:41:06.673   805   923 I AndroidTerminalADB: [HUB03] STREAM_ACTIVE local=1 remote=436
+  11-05 00:41:06.674   805  1416 I AdbEngineJNI: executeShellLocalhost: stream open local=1 remote=436
+  11-05 00:41:06.739   805   923 I AndroidTerminalADB: [HUB07] RX_WRTE local=1 remote=436 bytes=281 -> TX_OKAY_CREDIT
+  11-05 00:41:06.740   805   923 I AndroidTerminalADB: [HUB07] RX_WRTE local=1 remote=436 bytes=6 -> TX_OKAY_CREDIT
+  11-05 00:41:06.741   805   923 I AndroidTerminalADB: [HUB04] STREAM_CLOSE_PEER local=1 remote=436
+  11-05 00:41:06.741   805   923 I AndroidTerminalADB: [HUB07] STREAM_UNREGISTER local=1 registry=0
+  11-05 00:41:06.742   805  1416 I AdbCliBridge: onOneShot: result outcome=COMPLETED exit=0
+
+AG_LOCAL_ADB_ONESHOT = PASS
+AG_LOCAL_EXECUTION_PRIMITIVE = executeShellLocalhost
+ADB_SHELL_ID_RESULT = uid=2000(shell)
+
+CONFIRMED:
+  - executeShellLocalhost called (NOT AdbNative.executeShell)
+  - Local hub used (HUB07 STREAM_REGISTER local=1)
+  - No Wireless fallback
+  - No TRANSPORT_ERROR
+  - No "client not initialized"

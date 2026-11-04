@@ -1,0 +1,54 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 02 FIX DIFF
+Date: 2026-11-05
+
+=== FILE ===
+AT repo: at-backend-adb/src/main/java/com/at/backend/adb/AdbBackend.kt
+
+=== BEFORE (line ~101-105) ===
+
+        // AUTO path (port == 0) or online explicit path: run the operation. On a
+        // dead connection executeShell returns TRANSPORT_ERROR, after which we
+        // signal AdbRuntime for bounded connection recovery. The ORIGINAL
+        // failure below is returned unchanged — no transparent command replay.
+        val r = AdbEngine.executeShell(request.command, request.timeoutMs)
+
+=== AFTER ===
+
+        // AUTO path (port == 0) or online explicit path: run the operation.
+        // Route through the canonical AdbRuntime transport selector so that
+        // LOCAL → executeShellLocalhost and WIRELESS → executeShell.
+        // On a dead connection the result is TRANSPORT_ERROR, after which we
+        // signal AdbRuntime for bounded connection recovery. The ORIGINAL
+        // failure below is returned unchanged — no transparent command replay.
+        val r = AdbRuntime.executeShell(request.command, request.timeoutMs)
+
+=== CHANGES ===
+
+1. AdbEngine.executeShell() -> AdbRuntime.executeShell()
+   (line 105, single line change + comment update)
+
+2. No other changes to AdbBackend.kt
+
+3. No changes to AdbRuntime.kt (activeTransport already @Volatile)
+
+4. No changes to native code
+
+5. No changes to shell-v2 parser / protocol / Local TCP / pairing / identity
+
+=== AFTER FIX: Call Chain ===
+
+AdbCliBridgeServer.onOneShot()
+  -> DefaultATEngine.execute()
+    -> AdbOneShotBackend.execute()
+      -> AdbRuntime.executeShell()  <-- CANONICAL ROUTER
+        -> if (activeTransport == LOCAL)
+           -> AdbEngine.executeShellLocalhost()  <-- LOCAL PATH
+        -> else
+           -> AdbEngine.executeShell()  <-- WIRELESS PATH
+      -> AdbRuntime.onOperationResult(transportLost=true) [if failed]
+
+=== AdbRuntime REMAINS UNIQUE ROUTING OWNER ===
+
+DUPLICATE_ROUTING_OWNER = NO
+ADB_BACKEND_DIRECT_WIRELESS_BYPASS_REMOVED = YES
+CANONICAL_ROUTER = AdbRuntime.executeShell

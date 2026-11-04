@@ -1,0 +1,51 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 01 CURRENT ROUTING BUG
+Date: 2026-11-05
+
+=== BEFORE FIX: Call Chain ===
+
+AdbCliBridgeServer.onOneShot()
+  -> DefaultATEngine.execute()
+    -> AdbOneShotBackend.execute()
+      -> AdbEngine.executeShell()  <-- DIRECT WIRELESS JNI (BUG)
+      -> AdbRuntime.onOperationResult(transportLost=true)
+
+=== ROOT CAUSE ===
+
+AdbOneShotBackend.execute() directly calls AdbEngine.executeShell()
+(Wireless-only JNI primitive), bypassing the canonical AdbRuntime
+transport router.
+
+AdbRuntime.executeShell() (AdbRuntime.kt:860-865) is the canonical
+router:
+  if (activeTransport == AdbTransportMode.LOCAL) {
+      AdbEngine.executeShellLocalhost(command)
+  } else {
+      AdbEngine.executeShell(command, timeoutMs)
+  }
+
+But AdbOneShotBackend never calls AdbRuntime.executeShell().
+Instead it calls AdbEngine.executeShell() directly (AdbBackend.kt:105).
+
+=== RESULT ===
+
+Even when activeTransport = LOCAL and Local transport is ONLINE,
+the one-shot execution still uses the Wireless JNI path, which
+fails with "client not initialized" because no Wireless connection
+exists.
+
+=== AdbRuntime.activeTransport ===
+
+Declaration: AdbRuntime.kt:83-85
+  @Volatile
+  var activeTransport: AdbTransportMode = AdbTransportMode.WIRELESS
+      private set
+
+NOTE: activeTransport is ALREADY @Volatile. The previous audit
+(AG.AT-V042-PAIRING-TO-EXECUTION-STATE-AUDIT-0) incorrectly
+identified it as a plain var without @Volatile.
+
+=== FIX ===
+
+Change AdbOneShotBackend.execute() to call AdbRuntime.executeShell()
+instead of AdbEngine.executeShell(), so that the canonical transport
+router decides LOCAL vs WIRELESS.

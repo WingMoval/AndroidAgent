@@ -1,0 +1,16 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 00 PREFLIGHT
+Date: 2026-11-05
+
+AG_BRANCH = main
+AG_HEAD = 749c22c (start)
+AT_BRANCH = feature/local-tcp-v0.4.2
+AT_HEAD = e24cf4c (start)
+
+DEVICE = HONOR ALI-AN00, Android 15
+ADB = C:\android\platform-tools\adb.exe
+PYTHON = C:\ProgramData\anaconda3\python.exe
+
+AG_IDENTITY = AT debug key (6b1949b4...)
+PAIRING_METADATA = valid (paired_at=1793780077958, device_guid=adb-APLMUT4312005935-J4nb5z)
+
+38800_LISTENER = available (adbd wireless debug)

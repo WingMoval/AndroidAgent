@@ -1,0 +1,30 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 08 REPEATED COMMANDS (Gate D)
+Date: 2026-11-05
+
+=== GATE D: Repeated Commands (10/10) ===
+
+10 consecutive "adb shell id" commands via AG production path.
+
+[1/10] PASS (outcome=COMPLETED, exit=0)
+[2/10] PASS (outcome=COMPLETED, exit=0)
+[3/10] PASS (outcome=COMPLETED, exit=0)
+[4/10] PASS (outcome=COMPLETED, exit=0)
+[5/10] PASS (outcome=COMPLETED, exit=0)
+[6/10] PASS (outcome=COMPLETED, exit=0)
+[7/10] PASS (outcome=COMPLETED, exit=0)
+[8/10] PASS (outcome=COMPLETED, exit=0)
+[9/10] PASS (outcome=COMPLETED, exit=0)
+[10/10] PASS (outcome=COMPLETED, exit=0)
+
+REPEATED_COMMANDS = 10/10 PASS
+
+Native log verification:
+  - No repeated AUTH
+  - No new TCP connection per command
+  - No Wireless fallback
+  - No double RX owner
+  - One LOCAL connection, one HUB, N streams
+
+NEW_TCP_PER_COMMAND = NO
+NEW_AUTH_PER_COMMAND = NO
+RX_OWNER_COUNT = 1 (stable)

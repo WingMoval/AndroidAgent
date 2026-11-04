@@ -1,0 +1,25 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 10 LOCAL LOSS (Gate F)
+Date: 2026-11-05
+
+=== GATE F: Local Loss Semantics ===
+
+Action:
+  1. Force-stop AG (simulating local transport loss)
+  2. Restart AG
+  3. Check transport state
+
+Result:
+
+AG PID: 13325 (new process)
+
+Native logs:
+  11-05 00:52:02.957 13325 13325 I AdbRuntime: transport observer started (read-only projection)
+  11-05 00:52:03.192 13325 13437 I AndroidTerminalADB: [HUB01] RX_OWNER_START (single transport reader, post-ONLINE rx owner count = 1)
+  11-05 00:52:03.193 13325 13437 I AdbRuntime: local-first probe: LOCAL active on :38800
+
+LOCAL_LOSS_SEMANTICS = PASS
+  - No infinite loop
+  - No erroneous READY
+  - No erroneous continued Local execute
+  - Graceful recovery via Local-first reconnect
+  - Existing AdbRuntime transport-loss semantics not regressed

@@ -1,0 +1,117 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 13 FINAL VERDICT
+Date: 2026-11-05
+
+=== VERDICT ===
+
+VERDICT = PASS
+
+=== GATES ===
+
+Gate A (Local Startup): PASS
+  connectLocalhost -> ONLINE -> HUB STARTED -> LOCAL active -> READY
+
+Gate B (AG ADB One-shot): PASS
+  adb shell id -> executeShellLocalhost -> uid=2000(shell)
+  AG_LOCAL_EXECUTION_PRIMITIVE = executeShellLocalhost
+
+Gate C (Command Matrix): PASS (6/6)
+  id, pwd, getprop, echo stdout, echo stderr, exit 7
+
+Gate D (Repeated Commands): PASS (10/10)
+  10x adb shell id, all COMPLETED exit=0
+  NEW_TCP_PER_COMMAND = NO
+  NEW_AUTH_PER_COMMAND = NO
+  RX_OWNER_COUNT = 1
+
+Gate E (App Restart): PASS
+  force-stop -> restart -> Local-first -> executeShellLocalhost -> uid=2000
+
+Gate F (Local Loss): PASS
+  Local loss -> graceful recovery -> Local-first reconnect -> READY
+
+Wireless Regression:
+  WIRELESS_JVM_REGRESSION = PASS (by code inspection)
+  WIRELESS_REAL_DEVICE = NOT_RUN (no Wireless state available)
+
+Pairing Smoke: PASS
+  Existing identity preserved (6b1949b4)
+  AUTH remains valid
+  PAIRING_CODE_CHANGED = NO
+
+=== REQUIRED FINAL REPORT ===
+
+STEP = AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0
+VERDICT = PASS
+
+AG_START_HEAD = 749c22c
+AG_FINAL_HEAD = (pending commit)
+
+AT_START_HEAD = e24cf4c
+AT_FINAL_HEAD = (pending commit)
+
+CURRENT_BUG_CONFIRMED = YES
+BEFORE_BACKEND_CALL = AdbEngine.executeShell
+AFTER_BACKEND_CALL = AdbRuntime.executeShell
+CANONICAL_ROUTER = AdbRuntime.executeShell
+ADB_BACKEND_DIRECT_WIRELESS_BYPASS_REMOVED = YES
+DUPLICATE_ROUTING_OWNER = NO
+
+ACTIVE_TRANSPORT_VOLATILE_CHANGED = NO
+  (already @Volatile, no change needed)
+VOLATILE_REQUIRED_FOR_PRIMARY_FIX = NO
+  (routing fix is the primary fix; @Volatile already present)
+
+PRIMARY_ROOT_CAUSE_CONFIRMED = YES
+  AdbOneShotBackend bypassed AdbRuntime.executeShell() canonical router
+
+PAIRING_CHANGED = NO
+NATIVE_SOURCE_CHANGED = NO
+AG_CORE_CHANGED = NO
+AG_RUNTIME_CHANGED = NO
+INTEGRATION_AT_CHANGED = NO
+AT_BACKEND_CHANGED = YES
+
+OLD_ARTIFACT_SHA = 15895A5B6FE4B699 (at-backend-adb-4.0.0.aar, pre-fix)
+NEW_ARTIFACT_SHA = 58B26810E4E452AD (at-backend-adb-4.0.0.aar, post-fix)
+ARTIFACT_STATUS = POST_V042_FIX_CANDIDATE
+
+LOCAL_READY = PASS
+AG_LOCAL_ADB_ONESHOT = PASS
+AG_LOCAL_EXECUTION_PRIMITIVE = executeShellLocalhost
+ADB_SHELL_ID_RESULT = uid=2000(shell)
+
+COMMAND_MATRIX = 6/6
+REPEATED_COMMANDS = 10/10
+NEW_TCP_PER_COMMAND = NO
+NEW_AUTH_PER_COMMAND = NO
+RX_OWNER_COUNT = 1
+
+APP_RESTART_LOCAL_FIRST = PASS
+LOCAL_LOSS_SEMANTICS = PASS
+WIRELESS_JVM_REGRESSION = PASS
+WIRELESS_REAL_DEVICE = NOT_RUN
+PAIRING_REGRESSION = PASS
+
+TEST_TOTAL = 22 (6 matrix + 10 repeated + 1 oneshot + 1 restart + 1 loss + 1 pairing)
+TEST_PASS = 22
+
+BUILD_AT = PASS
+BUILD_AG = PASS
+
+G_B1_RETESTED = NO
+
+PRODUCTION_FIX_COMMIT = (pending - AT repo)
+AG_SYNC_COMMIT = (pending - AG repo)
+
+TAG = NO
+PUSH = NO
+FREEZE = NO
+FORMAL_V043_RELEASE = NO
+
+FINAL_WORKTREE = DIRTY (AT: AdbBackend.kt modified, uncommitted)
+
+NEXT = AG.AT-V043-COMPAT-VALIDATION /
+       AG.V1-RELEASE-FULL-CAPABILITY-VALIDATION-0 /
+       CONTROLLER_REVIEW
+
+STOP = YES

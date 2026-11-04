@@ -1,0 +1,25 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 05 LOCAL STARTUP (Gate A)
+Date: 2026-11-05
+
+=== GATE A: Clean Local Startup ===
+
+Precondition:
+  38800 listener available
+  Valid identity (6b1949b4)
+  AG process stopped
+
+Action:
+  adb shell am start -n com.androidagent.app/.ChatActivity
+  Wait 12 seconds
+
+Result:
+
+11-05 00:40:54.959   805   805 I AdbRuntime: transport observer started (read-only projection)
+11-05 00:40:54.992   805   901 I AdbEngineJNI: connectLocalhost port=38800 keyDir=/data/user/0/com.androidagent.app/files/at-consumer/identity
+11-05 00:40:55.216   805   901 I PlainTcpADB: ONLINE protocol_version=0x01000001 max_payload=1048576
+11-05 00:40:55.216   805   901 I AndroidTerminalADB: [HUB01] RX_OWNER_START (single transport reader, post-ONLINE rx owner count = 1)
+11-05 00:40:55.216   805   901 I AdbEngineJNI: connectLocalhost: ONLINE + SHARED HUB STARTED
+11-05 00:40:55.216   805   901 I AdbRuntime: local-first probe: LOCAL active on :38800
+
+LOCAL_READY = PASS
+  connectLocalhost -> ONLINE -> HUB STARTED -> LOCAL active -> READY

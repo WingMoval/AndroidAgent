@@ -1,0 +1,42 @@
+AG.AT-V042-ADB-BACKEND-ROUTING-FIX-0 - 07 COMMAND MATRIX (Gate C)
+Date: 2026-11-05
+
+=== GATE C: Command Matrix (6/6) ===
+
+All commands executed via AG production path (DebugBridge tool_invoke).
+
+1. adb shell id
+   outcome: COMPLETED, exit: 0
+   stdout: uid=2000(shell) gid=2000(shell) groups=2000(shell),...
+   PASS
+
+2. adb shell pwd
+   outcome: COMPLETED, exit: 0
+   stdout: /
+   PASS
+
+3. adb shell getprop ro.build.version.release
+   outcome: COMPLETED, exit: 0
+   stdout: 15
+   PASS
+
+4. adb shell sh -c 'echo stdout'
+   outcome: COMPLETED, exit: 0
+   stdout: stdout
+   PASS
+
+5. adb shell sh -c 'echo stderr >&2'
+   outcome: COMPLETED, exit: 0
+   stdout: (empty)
+   stderr: stderr
+   PASS
+
+6. adb shell sh -c 'exit 7'
+   outcome: COMPLETED, exit: 7
+   stdout: (empty)
+   PASS
+
+COMMAND_MATRIX = 6/6 PASS
+
+All commands used executeShellLocalhost (confirmed by native logs).
+No Wireless fallback observed.
