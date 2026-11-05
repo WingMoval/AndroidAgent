@@ -35,14 +35,20 @@ class TranscriptCardAdapter(
     fun updateBlocks(newBlocks: List<TranscriptModel.Block>) {
         val oldSize = blocks.size
         blocks = newBlocks
-        when {
-            // Full replacement (session switch, re-projection): sizes differ OR
-            // content identity changed. notifyItemRangeChanged(0, 0) is a no-op
-            // for RecyclerView, so an empty new list must use notifyDataSetChanged.
-            newBlocks.size == 0 && oldSize > 0 -> notifyDataSetChanged()
-            newBlocks.size != oldSize -> notifyItemRangeChanged(0, maxOf(newBlocks.size, oldSize))
-            newBlocks.isNotEmpty() -> notifyItemChanged(blocks.size - 1)
+        if (newBlocks.size != oldSize) {
+            // Structural change (item count differs): must use a full invalidation.
+            // notifyItemRangeChanged is NOT a valid structural notification — it
+            // only updates existing item views in place. When the count changes
+            // (session switch, re-projection, growth, shrink, 0↔N), the
+            // RecyclerView adapter position contract is broken and only
+            // notifyDataSetChanged() correctly rebuilds the item set.
+            notifyDataSetChanged()
+        } else if (newBlocks.isNotEmpty()) {
+            // Same count: refresh the last item (streaming append pattern where
+            // the final block mutates in place).
+            notifyItemChanged(blocks.size - 1)
         }
+        // 0 → 0: nothing to do.
     }
 
     override fun getItemCount(): Int = blocks.size

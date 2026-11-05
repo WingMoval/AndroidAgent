@@ -1,0 +1,65 @@
+AG.HOST-TRANSCRIPT-PROJECTION-CLOSEOUT-0 - FINAL EVIDENCE
+Date: 2026-11-05
+
+=== 1. AUDIT ===
+STRUCTURAL_CHANGE_USES_RANGE_CHANGED_BEFORE = YES (line 43: notifyItemRangeChanged for count change)
+STRUCTURAL_CHANGE_USES_RANGE_CHANGED_AFTER = NO (replaced with notifyDataSetChanged)
+
+=== 2. FIX ===
+File: TranscriptCardAdapter.kt, function: updateBlocks
+Change: oldCount != newCount → notifyDataSetChanged() (was notifyItemRangeChanged)
+        oldCount == newCount, non-empty → notifyItemChanged(last) (unchanged)
+        0 → 0 → no-op (unchanged)
+
+=== 3. ADAPTER MATRIX (T1-T9) ===
+T1 0→0: no notification ✓
+T2 0→1: notifyDataSetChanged ✓
+T3 1→0: notifyDataSetChanged ✓
+T4 0→5: notifyDataSetChanged ✓
+T5 5→0: notifyDataSetChanged ✓
+T6 3→5: notifyDataSetChanged ✓
+T7 5→3: notifyDataSetChanged ✓
+T8 5→5 all changed: notifyItemChanged(4) ✓
+T9 5→5 partial: notifyItemChanged(4) ✓
+RESULT: 9/9 PASS
+
+=== 4. SESSION PROJECTION MATRIX ===
+A(5)→B(0): 0 blocks, no A leak ✓
+B(0)→C(2): 2 blocks, C content ✓
+C(2)→D(8): 8 blocks, D content ✓
+D(8)→A(5): 5 blocks, no D leak ✓
+A(5)→C(2): 2 blocks, no A leak ✓
+Full cycle A→B→C→D→A: 5 blocks, all A ✓
+RESULT: 6/6 PASS
+
+=== 5. REPEATED NEW SESSION (real device) ===
+5 consecutive new_session calls: 5/5 success=True
+Each: unique session ID, empty transcript
+RESULT: 5/5 PASS
+
+=== 6. SWITCH-BACK UI (real device) ===
+Session A: sent SESSION_A_PROBE → agent replied
+New Session B: sent SESSION_B_PROBE → agent replied
+UI check: SESSION_A_PROBE=False, SESSION_B_PROBE=True
+RESULT: PASS (no cross-session leak)
+
+=== 7. FORCE-STOP RESTORE (real device) ===
+Force-stop while in Session B
+Restart: SESSION_B_PROBE restored (durable), SESSION_A_PROBE absent
+Transient "Ready." block correctly gone
+RESULT: PASS
+
+=== 8. TEST COUNT ===
+AUTOMATED_TEST_TOTAL = 220
+AUTOMATED_TEST_PASS = 220
+AUTOMATED_TEST_FAIL = 0
+(New tests: 9 adapter matrix + 6 projection regression = 15)
+
+=== 9. SCOPE ===
+AG_CORE_CHANGED = NO
+AG_RUNTIME_CHANGED = NO
+SESSIONHOLDER_CHANGED = NO
+CHAT_ACTIVITY_CHANGED = NO
+ROOM_SCHEMA_CHANGED = NO
+AT_CHANGED = NO
+FIX_FILES = TranscriptCardAdapter.kt + 2 new test files
