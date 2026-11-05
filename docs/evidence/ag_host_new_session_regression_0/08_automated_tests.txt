@@ -1,0 +1,12 @@
+AG.HOST-NEW-SESSION-REGRESSION-0 - 08 AUTOMATED TESTS
+Date: 2026-11-05
+
+App module tests: 205/205 PASS (0 failures, 0 skips)
+
+Pre-existing test compile issue (NOT caused by this fix):
+  :ag-runtime:compileTestKotlin FAILED
+  Reason: Test fakes (FakeTopicSessionStore, InMemoryTopicSessionStore, GatingStore)
+  missing listSessions() implementation (added in AG.UI-TRANSCRIPT-CARDS-1,
+  fakes not updated). This is a pre-existing issue unrelated to the New Session fix.
+
+The fix is in :app module (TranscriptCardAdapter), which compiles and tests green.

@@ -1,0 +1,46 @@
+AG.HOST-NEW-SESSION-REGRESSION-0 - 03 SESSION STATE TIMELINE
+Date: 2026-11-05
+
+Timeline (real device, before fix):
+
+T0: App launch
+    sessionId = session-A (restored from DB, 12 messages)
+    transcriptModel: [User, Assistant, User, Assistant, ...] (12 blocks)
+
+T1: User sends "Hello_debug_test_123"
+    AgentRuntime.send("Hello_debug_test_123")
+    → agentCore.run(sessionId="session-A", ...)
+    → session-A messages: 12 → 14 (user + assistant)
+    transcriptModel: [..., User("Hello_debug_test_123"), Assistant("Hello!...")]
+
+T2: User taps "+ NEW SESSION"
+    ChatActivity.onNewSession()
+    → HostActions.newSession()
+    → SessionHolder.newSession()
+    → AgentRuntime.newSession()
+      → createNewDurableSession()
+        → topicSessionStore.createSession("session-B", now)  [DB: session-B row created]
+        → agentCore.restoreSession("session-B", emptyList())  [Core: session-B hydrated empty]
+      → sessionId = "session-B"
+      → return true
+    → projectCurrentHistory()
+      → currentHistory() = agentCore.session("session-B").history() = []
+      → transcriptModel.reproject([])
+        → _blocks.clear()  [TranscriptModel IS empty now]
+      → notifyUiUpdate()
+    → ChatActivity.onUiUpdate
+      → renderTranscript()
+      → cardAdapter.updateBlocks(transcriptModel.snapshot())
+        → updateBlocks([])
+          → blocks = []  (size 0)
+          → oldSize = 14, newBlocks.size = 0
+          → 0 != 14 → notifyItemRangeChanged(0, 0)  ← NO-OP!
+          → RecyclerView still shows 14 old items!
+
+T3: User observes
+    "New session started." status visible ✓
+    Old 14 blocks STILL VISIBLE ✗
+
+ROOT CAUSE: notifyItemRangeChanged(0, 0) does not tell RecyclerView
+to remove the 14 existing items. The adapter's `blocks` list is empty,
+but the RecyclerView's internal view pool still holds the old views.

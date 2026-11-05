@@ -1,0 +1,27 @@
+AG.HOST-NEW-SESSION-REGRESSION-0 - 09 DEVICE VALIDATION
+Date: 2026-11-05
+
+Real device: HONOR ALI-AN00 (APLMUT4312005935), Android 15
+AG build: app-debug.apk (with fix)
+
+Test 1: New Session from session with content
+  1. Send "Hello_debug_test_123" via DebugBridge
+  2. Agent replies (transcript: User + Assistant blocks visible)
+  3. Execute new_session via DebugBridge
+  4. Result: success=True
+  5. Transcript: EMPTY (no old content) ✓
+
+Test 2: New Session from empty session
+  1. After Test 1, transcript is empty
+  2. Execute new_session via DebugBridge
+  3. Result: success=True
+  4. Transcript: EMPTY ✓
+
+Test 3: Session isolation (DB verification)
+  1. Pull Room DB after New Session
+  2. Latest session: 0 messages ✓
+  3. Previous sessions: messages unchanged ✓
+  4. No cross-session contamination ✓
+
+BUG_REPRODUCED = YES (before fix)
+FIX_VERIFIED = YES (after fix)

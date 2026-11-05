@@ -1,0 +1,16 @@
+AG.HOST-NEW-SESSION-REGRESSION-0 - 04 PERSISTENCE AUDIT
+Date: 2026-11-05
+
+Room DB (topic_sessions.db) after New Session:
+
+topic_sessions table:
+  session-A: 12 messages (unchanged)
+  session-B: 0 messages (newly created, empty) ✓
+
+Session isolation:
+  Session A messages: UNCHANGED ✓
+  Session B: independent session id ✓
+  Session B initial transcript: empty ✓
+
+No data corruption. No message loss. No cross-session contamination.
+The persistence layer is CORRECT. The bug is purely in the UI projection.

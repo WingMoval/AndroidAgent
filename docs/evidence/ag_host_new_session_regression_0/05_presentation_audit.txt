@@ -1,0 +1,18 @@
+AG.HOST-NEW-SESSION-REGRESSION-0 - 05 PRESENTATION AUDIT
+Date: 2026-11-05
+
+TranscriptModel.reproject():
+  _blocks.clear() → _blocks is empty after reproject ✓
+  transcriptModel.snapshot() returns emptyList() ✓
+
+TranscriptCardAdapter.updateBlocks([]):
+  blocks = emptyList() ✓ (adapter's internal list is correct)
+  notifyItemRangeChanged(0, 0) ✗ (RecyclerView not notified of removal)
+
+The adapter's data model IS correct (blocks = []).
+The RecyclerView IS NOT updated to reflect the empty state.
+
+This is a classic RecyclerView notification bug:
+  - notifyItemRangeChanged(0, N) updates N existing items
+  - notifyItemRangeChanged(0, 0) is a no-op (zero-length range)
+  - To REMOVE items: notifyItemRangeRemoved or notifyDataSetChanged

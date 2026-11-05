@@ -1,0 +1,29 @@
+AG.HOST-NEW-SESSION-REGRESSION-0 - 11 FINAL VERDICT
+Date: 2026-11-05
+
+VERDICT = PASS
+
+BUG_REPRODUCED = YES
+ROOT_CAUSE_CLASS = TRANSCRIPT_PROJECTION_STALE
+ROOT_CAUSE_FILE = TranscriptCardAdapter.kt
+ROOT_CAUSE_FUNCTION = updateBlocks
+
+FIX:
+  notifyItemRangeChanged(0, 0) → notifyDataSetChanged() when transitioning
+  from non-empty to empty block list (session switch to new empty session).
+
+VERIFICATION:
+  - Real device: New Session correctly clears old transcript ✓
+  - Room DB: new session created, empty, old sessions unchanged ✓
+  - App tests: 205/205 PASS ✓
+  - No other code changed ✓
+
+SCOPE:
+  1 file changed: TranscriptCardAdapter.kt
+  1 function changed: updateBlocks
+  AG Core: UNCHANGED
+  AG Runtime: UNCHANGED
+  SessionHolder: UNCHANGED
+  ChatActivity: UNCHANGED
+  Room schema: UNCHANGED
+  AT: UNCHANGED

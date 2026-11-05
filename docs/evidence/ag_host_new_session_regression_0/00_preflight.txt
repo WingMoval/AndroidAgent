@@ -1,0 +1,9 @@
+AG.HOST-NEW-SESSION-REGRESSION-0 - 00 PREFLIGHT
+Date: 2026-11-05
+
+START_HEAD = cd5d190 (main)
+DEVICE = HONOR ALI-AN00 (APLMUT4312005935), Android 15
+AG APK = app-debug.apk (debug build)
+
+Bug report: "+ New Session" button does not create a visible new session.
+Old transcript content remains visible after tapping New Session.

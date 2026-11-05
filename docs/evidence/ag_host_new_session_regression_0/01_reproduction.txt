@@ -1,0 +1,28 @@
+AG.HOST-NEW-SESSION-REGRESSION-0 - 01 REPRODUCTION
+Date: 2026-11-05
+
+Reproduction steps (real device):
+1. Launch AG
+2. Send message "Hello_debug_test_123" via DebugBridge
+3. Agent replies with assistant message
+4. Transcript shows: User block + Assistant block
+5. Open sidebar → tap "+ NEW SESSION"
+6. Result: "New session started." status appears, BUT old User + Assistant
+   blocks STILL VISIBLE in transcript
+
+Before fix:
+  NEW_SESSION_CLICK_RECEIVED = YES (button tap registered)
+  NEW_TOPIC_SESSION_CREATE_CALLED = YES (new session row in Room DB)
+  NEW_TOPIC_SESSION_ID_CREATED = YES (session-b048119f..., 0 messages)
+  ROOM_SESSION_ROW_CREATED = YES
+  CURRENT_SESSION_ID_CHANGED = YES
+  RUNTIME_CURRENT_SESSION_CHANGED = YES
+  TRANSCRIPT_REPROJECTED = NO ← BUG: old blocks remain in RecyclerView
+  OLD_TRANSCRIPT_LEAKED = YES
+  NEW_MESSAGE_WRITTEN_TO_CORRECT_SESSION = YES (verified via DB)
+
+Room DB confirmed:
+  Latest session (session-b048119f) has 0 messages
+  Previous sessions retain their messages
+  New session IS created and IS empty in DB
+  The bug is PURELY in the UI projection layer

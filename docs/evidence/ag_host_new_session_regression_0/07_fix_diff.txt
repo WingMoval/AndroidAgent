@@ -1,0 +1,39 @@
+AG.HOST-NEW-SESSION-REGRESSION-0 - 07 FIX DIFF
+Date: 2026-11-05
+
+File: app/src/main/java/com/androidagent/app/TranscriptCardAdapter.kt
+Function: updateBlocks
+
+BEFORE:
+    fun updateBlocks(newBlocks: List<TranscriptModel.Block>) {
+        val oldSize = blocks.size
+        blocks = newBlocks
+        if (newBlocks.size != oldSize) {
+            notifyItemRangeChanged(0, newBlocks.size)
+        } else if (newBlocks.isNotEmpty()) {
+            notifyItemChanged(blocks.size - 1)
+        }
+    }
+
+AFTER:
+    fun updateBlocks(newBlocks: List<TranscriptModel.Block>) {
+        val oldSize = blocks.size
+        blocks = newBlocks
+        when {
+            // Full replacement (session switch, re-projection): sizes differ OR
+            // content identity changed. notifyItemRangeChanged(0, 0) is a no-op
+            // for RecyclerView, so an empty new list must use notifyDataSetChanged.
+            newBlocks.size == 0 && oldSize > 0 -> notifyDataSetChanged()
+            newBlocks.size != oldSize -> notifyItemRangeChanged(0, maxOf(newBlocks.size, oldSize))
+            newBlocks.isNotEmpty() -> notifyItemChanged(blocks.size - 1)
+        }
+    }
+
+Changes:
+  1. Added explicit case for empty new list (session switch to empty session):
+     notifyDataSetChanged() ensures RecyclerView removes all old items.
+  2. Fixed the non-empty size-change case to use maxOf(newBlocks.size, oldSize)
+     so that when growing (old < new), all new items are notified, and when
+     shrinking (old > new), the removed range is covered.
+
+Scope: 1 file, 1 function. No other code changed.

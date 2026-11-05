@@ -1,0 +1,23 @@
+AG.HOST-NEW-SESSION-REGRESSION-0 - 06 ROOT CAUSE
+Date: 2026-11-05
+
+ROOT_CAUSE_CLASS = TRANSCRIPT_PROJECTION_STALE
+ROOT_CAUSE_FILE = app/src/main/java/com/androidagent/app/TranscriptCardAdapter.kt
+ROOT_CAUSE_FUNCTION = updateBlocks
+
+Details:
+  TranscriptCardAdapter.updateBlocks() uses notifyItemRangeChanged(0, newBlocks.size)
+  when the block count changes. When switching to an empty session (newBlocks.size == 0),
+  this becomes notifyItemRangeChanged(0, 0), which is a no-op for RecyclerView.
+  The old items remain visible even though the adapter's internal blocks list is empty.
+
+This is NOT:
+  - A session creation bug (newSession() works correctly)
+  - A persistence bug (Room DB is correct)
+  - A runtime bug (AgentRuntime.sessionId is correctly updated)
+  - A TranscriptModel bug (reproject() correctly clears blocks)
+  - A SessionHolder bug (notifyUiUpdate is called)
+  - A ChatActivity bug (renderTranscript is called)
+
+It IS:
+  - A RecyclerView notification bug in the adapter's updateBlocks method

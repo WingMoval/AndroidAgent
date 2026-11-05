@@ -35,10 +35,13 @@ class TranscriptCardAdapter(
     fun updateBlocks(newBlocks: List<TranscriptModel.Block>) {
         val oldSize = blocks.size
         blocks = newBlocks
-        if (newBlocks.size != oldSize) {
-            notifyItemRangeChanged(0, newBlocks.size)
-        } else if (newBlocks.isNotEmpty()) {
-            notifyItemChanged(blocks.size - 1)
+        when {
+            // Full replacement (session switch, re-projection): sizes differ OR
+            // content identity changed. notifyItemRangeChanged(0, 0) is a no-op
+            // for RecyclerView, so an empty new list must use notifyDataSetChanged.
+            newBlocks.size == 0 && oldSize > 0 -> notifyDataSetChanged()
+            newBlocks.size != oldSize -> notifyItemRangeChanged(0, maxOf(newBlocks.size, oldSize))
+            newBlocks.isNotEmpty() -> notifyItemChanged(blocks.size - 1)
         }
     }
 

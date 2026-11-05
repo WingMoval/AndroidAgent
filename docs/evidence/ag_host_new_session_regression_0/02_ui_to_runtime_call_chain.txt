@@ -1,0 +1,48 @@
+AG.HOST-NEW-SESSION-REGRESSION-0 - 02 UI TO RUNTIME CALL CHAIN
+Date: 2026-11-05
+
+Full call chain (all verified correct):
+
+1. ChatActivity.onNewSession()
+   → lifecycleScope.launch { HostActions.newSession() }
+
+2. HostActions.newSession()
+   → SessionHolder.newSession()
+   → if success: SessionHolder.notifyUiUpdate()
+
+3. SessionHolder.newSession()
+   → r.newSession() (AgentRuntime)
+   → if success: projectCurrentHistory()
+     → transcriptModel.reproject(r.currentHistory())
+     → notifyUiUpdate()
+
+4. AgentRuntime.newSession()
+   → if isBusy: return false
+   → createNewDurableSession()
+     → topicSessionStore.createSession(id, now)  [DB INSERT]
+     → agentCore.restoreSession(id, emptyList()) [Core hydration]
+   → sessionId = newId
+   → return true
+
+5. AgentRuntime.currentHistory()
+   → agentCore.session(sessionId).history()
+   → returns emptyList for new session ✓
+
+6. TranscriptModel.reproject(history)
+   → withBlocks { clear(); for (m in history) { ... } }
+   → _blocks is cleared ✓
+
+7. ChatActivity.onUiUpdate callback
+   → transcriptModel = SessionHolder.transcriptModel
+   → renderTranscript()
+   → cardAdapter.updateBlocks(transcriptModel.snapshot())
+
+8. TranscriptCardAdapter.updateBlocks(newBlocks)  ← BUG HERE
+   → blocks = newBlocks
+   → if (newBlocks.size != oldSize)
+     → notifyItemRangeChanged(0, newBlocks.size)
+     → WHEN newBlocks.size == 0: notifyItemRangeChanged(0, 0)
+     → THIS IS A NO-OP FOR RECYCLERVIEW!
+     → Old items remain visible!
+
+Divergence point: TranscriptCardAdapter.updateBlocks() line 38-39
