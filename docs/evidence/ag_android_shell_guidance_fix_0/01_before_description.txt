@@ -1,0 +1,11 @@
+AG.ANDROID-SHELL-GUIDANCE-FIX-0
+Date: 2026-11-05
+
+BEFORE (AndroidShellToolImpl.spec.description, WHEN clause):
+
+"WHEN: Use the local shell for operations that belong to AndroidAgent's own
+ execution environment (files, local state). Use the `adb` CLI inside this
+ shell when the task requires ADB-specific operations, ADB shell privileges,
+ pairing, or device-side shell access."
+
+CONFLICT: "(files, local state)" directly overlaps with FileTool's domain.

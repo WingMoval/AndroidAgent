@@ -1,0 +1,27 @@
+AG.ANDROID-SHELL-GUIDANCE-FIX-0
+Date: 2026-11-05
+
+CAUSAL COMPARISON:
+
+| Variable | Before (FAIL) | After (PASS) |
+|----------|--------------|-------------|
+| Provider | OpenRouter | OpenRouter (SAME) |
+| Model | deepseek/deepseek-v4-flash-0731 | deepseek/deepseek-v4-flash-0731 (SAME) |
+| User prompt | 请读取 llm_file_probe.txt... | 请读取 llm_file_probe.txt... (SAME) |
+| Tool set | shell + network + file | shell + network + file (SAME) |
+| AgentInstructions | V1 | V1 (SAME) |
+| FileTool description | unchanged | unchanged (SAME) |
+| NetworkTool description | unchanged | unchanged (SAME) |
+| android_shell WHEN | "...(files, local state)..." | "...command execution, process operations..." (CHANGED) |
+| File tool selected | NO (shell ls+cat) | YES (file read) |
+
+SINGLE_VARIABLE_CHANGED = android_shell ToolSpec WHEN clause
+OUTCOME_CHANGED = shell → file
+
+GUIDANCE_FIX_CAUSAL_CLOSURE = STRONG_PASS
+PRIMARY_CAUSE_CONFIRMED = ANDROID_SHELL_GUIDANCE_CONFLICT
+
+Note: This is a strong causal inference (same model, same prompt, same
+environment, single variable changed, outcome flipped). It is not a
+mathematical 100% proof (single sample, no N=10 replication), but it
+confirms the audit's root cause diagnosis.

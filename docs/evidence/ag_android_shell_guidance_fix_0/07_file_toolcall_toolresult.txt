@@ -1,0 +1,22 @@
+AG.ANDROID-SHELL-GUIDANCE-FIX-0
+Date: 2026-11-05
+
+GATE R1 — TOOL RESULT
+
+FILE TOOL RESULT:
+{
+  "action": "read",
+  "path": "llm_file_probe.txt",
+  "content": "AndroidAgent FileTool LLM validation fixture.\n\nFILE_PROBE=FILE_CAD2CA7E0566\r",
+  "startLine": 0,
+  "totalLines": 3,
+  "truncated": false,
+  "bytesRead": 80,
+  "totalBytes": 80,
+  "isBinary": false
+}
+
+FILE_TOOLCALL_EXECUTED = YES
+FILE_TOOLRESULT_RETURNED = YES
+FILE_RESULT_CONTAINS_EXPECTED_TOKEN = YES (FILE_CAD2CA7E0566)
+ANDROID_SHELL_USED_FOR_FILE_READ = NO

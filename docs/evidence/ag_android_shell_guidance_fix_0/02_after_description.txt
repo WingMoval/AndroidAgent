@@ -1,0 +1,18 @@
+AG.ANDROID-SHELL-GUIDANCE-FIX-0
+Date: 2026-11-05
+
+AFTER (AndroidShellToolImpl.spec.description, WHEN clause):
+
+"WHEN: Use the local shell for command execution, process operations,
+ environment inspection, build/test commands, or behavior that requires
+ shell semantics. Use the `adb` CLI inside this shell when the task
+ requires ADB-specific operations, ADB shell privileges, pairing, or
+ device-side shell access."
+
+CHANGES:
+- REMOVED: "(files, local state)" from WHEN use cases
+- ADDED: "command execution, process operations, environment inspection,
+  build/test commands, or behavior that requires shell semantics"
+- PRESERVED: ADB CLI semantics, principal distinction, INPUT/OUTPUT contract
+- PRESERVED: CONTEXT line "File paths are relative to the app's private storage"
+  (factual execution context, not a routing claim)

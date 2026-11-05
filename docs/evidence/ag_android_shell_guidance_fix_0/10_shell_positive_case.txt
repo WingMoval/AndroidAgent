@@ -1,0 +1,28 @@
+AG.ANDROID-SHELL-GUIDANCE-FIX-0
+Date: 2026-11-05
+
+GATE 20 — ANDROID SHELL POSITIVE CASE (REGRESSION)
+
+SESSION: New clean TopicSession
+PROMPT: 请告诉我 AndroidAgent 当前本地 shell 的执行身份。
+
+TOOL_SELECTED: android_shell (AUTONOMOUS)
+COMMAND: id
+
+TOOL_RESULT:
+{
+  "outcome": "COMPLETED",
+  "exitCode": 0,
+  "stdout": "uid=10418(u0_a418) gid=10418(u0_a418) groups=10418(u0_a418),3003(inet),9997(everybody),..."
+}
+
+FINAL_ANSWER:
+AndroidAgent 当前本地 shell 的执行身份是：
+- UID/GID：uid=10418(u0_a418) gid=10418(u0_a418)
+- SELinux 上下文：u:r:untrusted_app:s0:c162,c257,c512,c768
+即一个以 u0_a418（应用进程，UID 10418）运行的普通 Android 未受信任应用身份。
+
+ANDROID_SHELL_AUTONOMOUS_SELECTION = PASS
+ANDROID_SHELL_POSITIVE_CASE = "id" (execution identity query)
+
+Proves: removing "files" from shell WHEN did NOT break shell autonomy.

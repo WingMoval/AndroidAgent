@@ -228,6 +228,31 @@ class AndroidShellToolImplTest {
         assertEquals("android_shell", AndroidShellToolImpl(FakeExecutor(completed())).spec.name)
     }
 
+    @Test
+    fun U20_spec_does_not_claim_workspace_file_reading() {
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        // The WHEN clause must not list "files" as a primary use case
+        val whenSection = desc.substringAfter("WHEN:").substringBefore("INPUT:")
+        assertFalse(whenSection.contains("(files"), "WHEN must not claim files as primary use case")
+        assertFalse(whenSection.contains("file reading"), "WHEN must not claim file reading")
+        assertFalse(whenSection.contains("file listing"), "WHEN must not claim file listing")
+    }
+
+    @Test
+    fun U21_spec_does_not_use_files_as_primary_when_example() {
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        val whenSection = desc.substringAfter("WHEN:").substringBefore("INPUT:")
+        assertFalse(whenSection.contains("files, local state"), "WHEN must not use 'files, local state' as example")
+    }
+
+    @Test
+    fun U22_spec_preserves_command_execution_when() {
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        val whenSection = desc.substringAfter("WHEN:").substringBefore("INPUT:")
+        assertTrue(whenSection.contains("command execution"), "WHEN must mention command execution")
+        assertTrue(whenSection.contains("shell semantics"), "WHEN must mention shell semantics")
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private fun call(arguments: String): ToolCall =

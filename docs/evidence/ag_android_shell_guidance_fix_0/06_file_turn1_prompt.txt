@@ -1,0 +1,16 @@
+AG.ANDROID-SHELL-GUIDANCE-FIX-0
+Date: 2026-11-05
+
+GATE R1 — AUTONOMOUS TOOL SELECTION
+
+SESSION: New clean TopicSession (DebugBridge new_session)
+PROMPT: 请读取 llm_file_probe.txt，并告诉我其中 FILE_PROBE 的值。
+
+TOOL_SELECTED: file (AUTONOMOUS)
+TOOL_ARGUMENTS: {"action":"read","path":"llm_file_probe.txt"}
+ANDROID_SHELL_USED: NO (no ls, no cat, no grep)
+
+FILE_TOOL_AUTONOMOUSLY_SELECTED = YES
+FILE_ACTION = read
+FILE_PATH = llm_file_probe.txt
+R1 = PASS

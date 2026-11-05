@@ -1,0 +1,22 @@
+AG.ANDROID-SHELL-GUIDANCE-FIX-0
+Date: 2026-11-05
+
+UNIT / CONTRACT REGRESSION:
+
+:tool-android-shell:testDebugUnitTest — PASS (includes U15-U22)
+:tool-file:testDebugUnitTest — PASS
+:tool-network:testDebugUnitTest — PASS
+:app:testDebugUnitTest — PASS
+:app:assembleDebug — PASS
+
+New tests added:
+  U20_spec_does_not_claim_workspace_file_reading = PASS
+  U21_spec_does_not_use_files_as_primary_when_example = PASS
+  U22_spec_preserves_command_execution_when = PASS
+
+Pre-existing tests still passing:
+  U15_spec_describes_local_shell_and_app_identity = PASS
+  U16_spec_describes_adb_cli_availability = PASS
+  U17_spec_distinguishes_local_and_adb_shell_principals = PASS
+  U18_spec_preserves_result_semantics = PASS
+  U19_tool_name_unchanged = PASS

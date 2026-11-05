@@ -1,0 +1,19 @@
+AG.ANDROID-SHELL-GUIDANCE-FIX-0
+Date: 2026-11-05
+
+GATE R2 — FINAL ANSWER + OBSERVATION DEPENDENCY
+
+FINAL_ANSWER:
+已读取 `llm_file_probe.txt`。
+
+`FILE_PROBE` 的值为：**FILE_CAD2CA7E0566**
+
+FINAL_FILE_ANSWER_CORRECT = YES
+FILE_READ_OBSERVATION_DEPENDENCY = PASS
+
+Token FILE_CAD2CA7E0566:
+  - NOT in user prompt ✓
+  - NOT in system instructions ✓
+  - NOT in tool descriptions ✓
+  - NOT in filename ✓
+  - ONLY in fixture file → ToolResult → FinalAnswer ✓

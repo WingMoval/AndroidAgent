@@ -1,0 +1,15 @@
+AG.ANDROID-SHELL-GUIDANCE-FIX-0
+Date: 2026-11-05
+
+DEVICE FIXTURE:
+  NEW token generated (to eliminate historical context guessing)
+  EXPECTED_FILE_TOKEN = FILE_CAD2CA7E0566
+  Filename: llm_file_probe.txt (same as previous round)
+  Placement: files/agent/llm_file_probe.txt (via adb push + run-as cp)
+  Verification: run-as cat confirmed FILE_PROBE=FILE_CAD2CA7E0566
+
+TOKEN NOT IN:
+  User prompt = NO
+  System instructions = NO
+  Tool descriptions = NO
+  Filename = NO

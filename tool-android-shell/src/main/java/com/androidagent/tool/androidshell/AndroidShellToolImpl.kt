@@ -69,10 +69,11 @@ class AndroidShellToolImpl internal constructor(
                 "to run commands under the Android shell principal (a different execution " +
                 "identity from the local app shell). Inspect with `adb shell id` when " +
                 "identity matters.\n" +
-                "WHEN: Use the local shell for operations that belong to AndroidAgent's own " +
-                "execution environment (files, local state). Use the `adb` CLI inside this " +
-                "shell when the task requires ADB-specific operations, ADB shell privileges, " +
-                "pairing, or device-side shell access.\n" +
+                "WHEN: Use the local shell for command execution, process operations, " +
+                "environment inspection, build/test commands, or behavior that requires " +
+                "shell semantics. Use the `adb` CLI inside this shell when the task " +
+                "requires ADB-specific operations, ADB shell privileges, pairing, or " +
+                "device-side shell access.\n" +
                 "INPUT: A single JSON object with one string field \"command\", " +
                 "for example {\"command\":\"id\"}. No other fields are supported.\n" +
                 "OUTPUT: A JSON object with fields \"outcome\", \"exitCode\", \"stdout\", " +

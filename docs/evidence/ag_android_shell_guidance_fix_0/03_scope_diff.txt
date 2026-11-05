@@ -1,0 +1,26 @@
+AG.ANDROID-SHELL-GUIDANCE-FIX-0
+Date: 2026-11-05
+
+SCOPE DIFF (production files changed):
+
+1. tool-android-shell/src/main/java/com/androidagent/tool/androidshell/AndroidShellToolImpl.kt
+   - WHEN clause reworded (4 lines changed)
+   - No other changes
+
+2. tool-android-shell/src/test/java/com/androidagent/tool/androidshell/AndroidShellToolImplTest.kt
+   - Added U20_spec_does_not_claim_workspace_file_reading
+   - Added U21_spec_does_not_use_files_as_primary_when_example
+   - Added U22_spec_preserves_command_execution_when
+
+NOT CHANGED:
+  FileToolImpl.kt = NO
+  NetworkToolImpl.kt = NO
+  AgentInstructions.kt = NO
+  AG Core = NO
+  AG Runtime = NO
+  Tool contract = NO
+  ToolRegistry = NO
+  Provider = NO
+  AT / integration-at = NO
+  DB / Room = NO
+  Tool registration order = NO
