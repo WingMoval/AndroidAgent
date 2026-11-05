@@ -1,0 +1,23 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate E — File Real-LLM Release Smoke
+
+EXPECTED_FILE_TOKEN = RELFILE_C3AAEF05F652
+FIXTURE: release_file_probe.txt
+PROMPT: 请读取 release_file_probe.txt，并告诉我其中 RELEASE_FILE_PROBE 的值。
+
+TOOL: file (autonomous)
+ACTION: read
+PATH: release_file_probe.txt
+
+TOOL_RESULT:
+{"action":"read","path":"release_file_probe.txt","content":"AndroidAgent release validation fixture.\n\nRELEASE_FILE_PROBE=RELFILE_C3AAEF05F652\r",...}
+
+FINAL_ANSWER: RELEASE_FILE_PROBE 的值为 `RELFILE_C3AAEF05F652`。
+
+FILE_AUTONOMOUS_SELECTION = PASS
+FILE_TOOLRESULT_REAL = PASS
+FILE_OBSERVATION_DEPENDENCY = PASS
+FILE_FINAL_ANSWER_CORRECT = PASS
+ANDROID_SHELL_USED = NO

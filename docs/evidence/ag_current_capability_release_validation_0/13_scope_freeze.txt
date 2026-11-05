@@ -1,0 +1,21 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate N — Capability Freeze Audit
+
+FILE ACTIONS = read/search/list/stat only (confirmed from FileToolImpl source)
+NETWORK ACTIONS = fetch only (confirmed from NetworkToolImpl source)
+ANDROID_SHELL = one-shot command execution surface (confirmed)
+
+NOT IMPLEMENTED (out of current release scope):
+  file write/edit/patch/delete = NO
+  web search = NO
+  download = NO
+  POST/request/auth = NO
+  new tool = NO
+  new provider = NO
+  new session capability = NO
+  new persistence capability = NO
+
+NEW_CAPABILITY_ADDED = NO
+PRODUCTION_CODE_CHANGED = NO

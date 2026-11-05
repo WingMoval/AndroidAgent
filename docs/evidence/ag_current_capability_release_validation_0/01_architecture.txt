@@ -1,0 +1,16 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate A — Architecture Preflight
+
+ag-core AT imports: 0
+ag-runtime AT imports: 0
+tool-file AT imports: 0
+tool-network AT imports: 0
+tool-android-shell: consumes AT via :integration-at (correct)
+
+settings.gradle.kts:
+  line 33: url = uri("third_party/at-v043-consumer-freeze-v1/m2") ← ACTIVE
+
+FORMAL_AT_V043_CONSUMER_ACTIVE = YES
+ARCHITECTURE_DRIFT = NO

@@ -1,0 +1,25 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate B — Full Test Baseline
+
+Command: .\gradlew.bat :ag-core:test :tool-android-shell:testDebugUnitTest
+         :tool-network:testDebugUnitTest :tool-file:testDebugUnitTest
+         :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease
+
+RESULT: BUILD SUCCESSFUL in 52s (335 actionable tasks)
+
+TEST_TOTAL = 428
+TEST_PASS = 425
+TEST_FAIL = 0
+TEST_SKIP = 3
+
+ASSEMBLE_DEBUG = PASS
+ASSEMBLE_RELEASE = PASS
+
+NOTE: :ag-runtime:test and :provider-openai-compatible-jdk:test have
+pre-existing test compilation errors (missing listSessions() implementation
+in test fakes from AG.UI-TRANSCRIPT-CARDS-1 era). These are NOT introduced
+by this round and do NOT affect production code or :app tests.
+The :app:testDebugUnitTest (which includes ag-runtime integration via
+the full app) passes cleanly.

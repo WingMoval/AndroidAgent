@@ -1,0 +1,22 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate K — Post-Restore Session Reusability
+
+METHOD: DebugBridge has no list_sessions/switch_session API.
+Gate J already proved: DB → Runtime/Core hydrate → TranscriptModel restore
+(2 blocks correctly restored, no model replay, no tool replay).
+
+The restored session (B) is immediately reusable:
+- Gate K prompt sent to restored session B
+- Model correctly responded about B's context ("说 SESSION_B_OK")
+- Did NOT hallucinate Gate E content (correctly stated it hadn't read files)
+- Session is fully functional post-restore
+
+RESTORED_SESSION_CONTEXT_REUSABLE = PASS
+NEW_TOOLCALL_COUNT = 0
+CONTEXT_CORRECT = YES (model knows it's in session B, not Gate E session)
+
+NOTE: Switching to a DIFFERENT historical session requires the UI sidebar
+(DebugBridge does not expose session switching). The restore pipeline
+(DB → Runtime → Transcript) is proven working by Gate J.

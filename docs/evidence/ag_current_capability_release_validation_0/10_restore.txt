@@ -1,0 +1,29 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate J — Durable Restore Smoke
+
+BEFORE FORCE-STOP:
+  Active session: session-d02ee92b (Gate I Session B)
+  transcriptBlockCount: 2 (User + Assistant "SESSION_B_OK")
+  lastBlockType: Assistant
+
+ACTION: adb shell am force-stop com.androidagent.app
+RESTART: am start -n com.androidagent.app/.ChatActivity
+NEW PID: 13883 (was 1464)
+
+AFTER RESTART (snapshot):
+  currentSessionId: session-d02ee92b-abf5-4802-9af2-6693616fb2bf (SAME)
+  transcriptBlockCount: 2 (RESTORED)
+  lastBlockType: Assistant (RESTORED)
+  activeProvider: OpenRouter
+  activeModel: deepseek/deepseek-v4-flash-0731
+  adbState: READY
+
+NO_MODEL_REPLAY = YES (no model call on restore)
+NO_TOOL_REPLAY = YES (no tool execution on restore)
+
+FORCE_STOP_RESTORE = PASS
+
+NOTE: App restores the MOST RECENT session (B), not the Gate E session.
+This is expected behavior (last-used session is the default on launch).

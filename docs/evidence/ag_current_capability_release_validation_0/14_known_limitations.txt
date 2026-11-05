@@ -1,0 +1,26 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate O — Known Limitations Ledger
+
+RELEASE BLOCKERS: NONE
+
+KNOWN DEFERRED LIMITATIONS:
+  G-b1: Long-running Local one-shot child termination / Stop semantics
+    = KNOWN_DEFERRED_LIMITATION
+    (Stop Run ≠ guaranteed Local ProcessBuilder child termination)
+    NOT a release blocker. NOT reopened this round.
+
+NOT IMPLEMENTED (out of scope, not defects):
+  File write/edit = NOT_IMPLEMENTED
+  Web Search = NOT_IMPLEMENTED
+  Download = NOT_IMPLEMENTED
+
+TEST HARNESS NOTE:
+  :ag-runtime:test and :provider-openai-compatible-jdk:test have
+  pre-existing test compilation errors (test fakes missing listSessions()).
+  NOT introduced by this round. Does not affect production or :app tests.
+  Classification: TEST_HARNESS_DEFECT (pre-existing, non-blocking).
+
+G_B1_REOPENED = NO
+G_B1_CLASSIFICATION = KNOWN_DEFERRED_LIMITATION

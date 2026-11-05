@@ -1,0 +1,28 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate H — Formal AT / ADB Production Regression (direct tool_invoke, NO LLM)
+
+adb version:
+  outcome=COMPLETED exit=0
+  stdout: "AndroidTerminal adb CLI (app_process entrypoint, bridge protocol v1)"
+  ADB_CLI = PASS
+
+adb shell id:
+  outcome=COMPLETED exit=0
+  stdout: "uid=2000(shell) gid=2000(shell) groups=2000(shell),... context=u:r:shell:s0"
+  ADB_SHELL_UID = 2000 ✓
+  ADB_SHELL_PRINCIPAL = u:r:shell:s0 ✓
+
+adb shell getprop ro.product.model:
+  outcome=COMPLETED exit=0
+  stdout: "ALI-AN00"
+  DEVICE_MODEL = ALI-AN00 ✓
+
+PRINCIPAL DISTINCTION:
+  LOCAL SHELL = uid=10418 (u0_a418), untrusted_app
+  ADB SHELL = uid=2000 (shell), u:r:shell:s0
+  LOCAL != ADB ✓
+
+ACTIVE_TRANSPORT = LOCAL (executeShellLocalhost)
+AT_V043_EXECUTION_REGRESSION = PASS

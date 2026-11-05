@@ -1,0 +1,13 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+BRANCH: main
+START_HEAD: d93c79b
+WORKTREE: CLEAN (non-upload)
+DEVICE: HONOR ALI-AN00 (APLMUT4312005935), Android 15
+PROVIDER: OpenRouter
+MODEL: deepseek/deepseek-v4-flash-0731
+AG PID: 13883 (post force-stop restart)
+
+GOAL: Validate current frozen capability combination forms a stable
+Release Baseline. NO new capability, NO production change.

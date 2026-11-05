@@ -1,0 +1,22 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate F — Network Real-LLM Release Smoke
+
+URL: https://example.com/
+PROMPT: 请读取 https://example.com/ ，告诉我网页标题。
+
+TOOL: network (autonomous)
+ACTION: fetch
+HTTP_STATUS: 200
+
+TOOL_RESULT:
+{"action":"fetch","requestedUrl":"https://example.com/","finalUrl":"https://example.com:443/","httpStatus":200,"contentType":"text/html; charset=utf-8","content":"Example Domain\nThis domain is for use in documentation examples..."}
+
+FINAL_ANSWER: 网页标题是 **Example Domain**。
+
+ANDROID_SHELL_CURL_USED = NO
+NETWORK_AUTONOMOUS_SELECTION = PASS
+NETWORK_FETCH = PASS
+NETWORK_OBSERVATION_DEPENDENCY = PASS
+FINAL_ANSWER_DEPENDS_ON_TOOLRESULT = YES

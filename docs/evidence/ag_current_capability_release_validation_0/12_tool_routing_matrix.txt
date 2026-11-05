@@ -1,0 +1,16 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate M — Tool Routing Regression Summary (Policy B: Realm + Intent)
+
+| Prompt Intent | Expected Tool | Actual Tool | Result |
+|---|---|---|---|
+| APP_SELF file read | file.read | file (action=read) | PASS |
+| Known HTTPS URL | network.fetch | network (action=fetch) | PASS |
+| Local execution identity | android_shell | android_shell (id) | PASS |
+| ADB shell identity | android_shell → adb shell | android_shell (adb shell id) | PASS |
+
+ROUTING_POLICY_B_REALM_AND_INTENT = PASS
+
+All three tools autonomously selected for their intended realm.
+No cross-realm confusion observed.

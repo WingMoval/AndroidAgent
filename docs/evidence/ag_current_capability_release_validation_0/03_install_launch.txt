@@ -1,0 +1,16 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate C — APK Install / Launch Smoke
+
+APK: app-debug.apk (d93c79b)
+Install: adb install -r → Success
+Force-stop + relaunch: OK
+AG PID: 1464 (initial), 13883 (post Gate J force-stop)
+FATAL_EXCEPTION: NO (logcat clean)
+PROCESS_ALIVE: YES
+
+APK_INSTALL = PASS
+APP_LAUNCH = PASS
+PROCESS_ALIVE = YES
+FATAL_EXCEPTION = NO

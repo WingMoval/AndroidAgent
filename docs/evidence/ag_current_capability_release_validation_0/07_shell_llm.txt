@@ -1,0 +1,20 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate G — android_shell Real-LLM Release Smoke
+
+PROMPT: 请告诉我 AndroidAgent 当前本地 shell 的执行身份。
+
+TOOL: android_shell (autonomous)
+COMMAND: id
+
+TOOL_RESULT:
+{"outcome":"COMPLETED","exitCode":0,"stdout":"uid=10418(u0_a418) gid=10418(u0_a418) ... context=u:r:untrusted_app:s0:c162,c257,c512,c768"}
+
+LOCAL_UID = 10418
+LOCAL_PRINCIPAL = u0_a418 (app UID, NOT uid=2000)
+SELINUX = u:r:untrusted_app:s0
+
+ANDROID_SHELL_AUTONOMOUS_SELECTION = PASS
+LOCAL_UID_OBSERVED = 10418 (app UID ✓)
+LOCAL_PRINCIPAL = untrusted_app ✓

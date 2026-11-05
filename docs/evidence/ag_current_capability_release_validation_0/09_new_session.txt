@@ -1,0 +1,15 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0
+Date: 2026-11-05
+
+Gate I — New Session Smoke
+
+Session A: new_session → "说 SESSION_A_OK" → ANSWER: SESSION_A_OK
+Session B: new_session → "说 SESSION_B_OK" → ANSWER: SESSION_B_OK
+
+A != B (different session IDs)
+B transcript initially empty (fresh session)
+A content NOT leaked into B (B only knows "说 SESSION_B_OK")
+
+NEW_SESSION = PASS
+SESSION_SWITCH = PASS (implicit: each new_session creates isolated context)
+TRANSCRIPT_ISOLATION = PASS
