@@ -1,0 +1,20 @@
+AG.EXISTING-TOOLS-LLM-VALIDATION-0
+Date: 2026-11-05
+
+BRANCH: main
+START_HEAD: cf6cb6b (main)
+EXPECTED_BASELINE: 68616e0 (actual HEAD is cf6cb6b = 68616e0 + docs commit)
+WORKTREE: CLEAN (0 untracked non-upload)
+
+DEVICE: HONOR ALI-AN00 (APLMUT4312005935), Android 15
+AG PID: 17263
+AG APK: app-debug.apk (debug build)
+
+PROVIDER: OpenRouter
+MODEL: deepseek/deepseek-v4-flash-0731
+
+DEBUG_BRIDGE_PORT: 45678 (adb forward)
+
+GOAL: Validate existing file.read + network.fetch can be autonomously
+identified, called, and utilized by real LLM; ToolResult enters
+TopicSession and is recalled in next turn.

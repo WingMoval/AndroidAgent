@@ -1,0 +1,31 @@
+AG.EXISTING-TOOLS-LLM-VALIDATION-0
+Date: 2026-11-05
+
+VERDICT = FAIL (partial)
+
+FILE READ:
+  F1 = FAIL (model chose android_shell, not file tool)
+  F2 = PASS (observation dependency satisfied — token only in file)
+  F3 = NOT_TESTED (blocked by F1)
+  EXISTING_FILE_READ_LLM_CLOSED = NO
+
+NETWORK FETCH:
+  N1 = PASS (model autonomously selected network tool, action=fetch)
+  N2 = PASS (observation dependency — title only in ToolResult)
+  N3 = PASS (next-turn recall, 0 new toolcalls, correct answer)
+  EXISTING_NETWORK_FETCH_LLM_CLOSED = YES
+
+OVERALL:
+  NETWORK: FULLY VALIDATED (autonomous selection + observation + recall)
+  FILE: TOOL SELECTION FAILURE (model prefers shell over file tool)
+
+This is NOT a production bug. The file tool exists and works.
+The failure is in LLM tool selection behavior: deepseek-v4-flash-0731
+prefers android_shell for file reading over the dedicated file tool.
+
+CURRENT_EXISTING_TOOL_BASELINE = PARTIALLY_FROZEN
+  network.fetch: FROZEN (fully validated)
+  file.read: NOT_FROZEN (tool selection unreliable with current model)
+
+NEXT = CONTROLLER_REVIEW (decide: accept as model limitation,
+  or improve file tool ToolSpec visibility in a future step)

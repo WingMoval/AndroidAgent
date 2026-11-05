@@ -1,0 +1,23 @@
+AG.EXISTING-TOOLS-LLM-VALIDATION-0
+Date: 2026-11-05
+
+GATE N3 — NETWORK NEXT-TURN RECALL
+
+SESSION: Same TopicSession as N1 (no new_session between N1 and N3)
+
+TURN2_PROMPT:
+不要再次调用任何工具。刚才那个网页的标题是什么？
+
+TOOL_CALLS_IN_TURN2: 0 (none)
+NEW_TOOLCALL_COUNT = 0
+
+FINAL_ANSWER_TURN2:
+刚才那个网页的标题是：
+
+**网文里有哪些看起来弱智，实际上却很真实的设定？**
+
+CORRECT = YES (matches N1 ToolResult content)
+
+NETWORK_NEXT_TURN_RECALL = PASS
+NETWORK_RECALL_WITHOUT_REEXECUTION = PASS
+NETWORK_NEXT_TURN_NEW_TOOLCALL_COUNT = 0

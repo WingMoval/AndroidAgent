@@ -1,0 +1,18 @@
+AG.EXISTING-TOOLS-LLM-VALIDATION-0
+Date: 2026-11-05
+
+File: docs/integration/AT_TO_AG_HANDOFF_CURRENT.md
+
+BEFORE:
+  AT_V4_CONSUMER_HANDOFF = CURRENT (V4 freeze 7216d0e; replaces V3 consumer handoff)
+  Section 3 referenced third_party/at-v4-consumer-freeze-v1/ as active
+
+AFTER:
+  AT_V4_CONSUMER_HANDOFF = HISTORICAL / SUPERSEDED (V4 freeze 7216d0e; replaced by v0.4.3)
+  AT_V043_CONSUMER_HANDOFF = CURRENT (v0.4.3 freeze 5517fc0, tag v0.4.3 target 2e1cdd5)
+  Section 3 updated to reference third_party/at-v043-consumer-freeze-v1/
+  Superseded list: v4, v042 candidate, v3 (all HISTORICAL, m2 commented out)
+
+HANDOFF_CURRENT_NORMALIZED = YES
+DOC_ONLY = YES
+HISTORICAL_EVIDENCE_MODIFIED = NO

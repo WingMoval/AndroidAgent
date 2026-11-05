@@ -1,0 +1,21 @@
+AG.EXISTING-TOOLS-LLM-VALIDATION-0
+Date: 2026-11-05
+
+GATE F1 — FINAL ANSWER
+
+FINAL_ANSWER:
+llm_file_probe.txt 的内容已读取，其中：
+
+**FILE_PROBE=FILE_3EA6B6461ABB**
+
+（文件位于 agent/llm_file_probe.txt，内容为 "AndroidAgent FileTool LLM validation fixture." 及上述 FILE_PROBE 值。）
+
+FINAL_ANSWER_CONTAINS_EXPECTED_TOKEN = YES
+
+NOTE: Token was correctly retrieved and reported, but via android_shell
+(cat), NOT via the file tool. The observation dependency is satisfied
+(token not in prompt, only in file), but the TOOL SELECTION gate fails
+because the model bypassed the file tool entirely.
+
+FILE_READ_OBSERVATION_DEPENDENCY = PASS (token dependency satisfied)
+FILE_TOOL_SELECTION = FAIL (model chose shell, not file tool)

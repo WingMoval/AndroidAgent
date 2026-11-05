@@ -1,0 +1,15 @@
+AG.EXISTING-TOOLS-LLM-VALIDATION-0
+Date: 2026-11-05
+
+SESSION: New clean TopicSession (via DebugBridge new_session)
+
+PROMPT_SENT_TO_LLM:
+请读取 llm_file_probe.txt，并告诉我其中 FILE_PROBE 的值。
+
+OBSERVATION_DEPENDENCY_CHECK:
+  EXPECTED_FILE_TOKEN (FILE_3EA6B6461ABB) present in user prompt? NO
+  EXPECTED_FILE_TOKEN present in system prompt? NO
+  EXPECTED_FILE_TOKEN present in tool descriptions? NO
+  EXPECTED_FILE_TOKEN present in fixture filename? NO (filename = llm_file_probe.txt)
+
+NOT_PRESENT_IN_USER_PROMPT = YES

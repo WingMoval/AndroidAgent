@@ -53,20 +53,22 @@ NEXT_FORMAL_SYNC       = POST_V043 (AT v0.4.3 is current; next sync after v0.5.0
 ```text
 AT_TO_AG_HANDOFF_V1          = HISTORICAL PUBLISHED SNAPSHOT (base 700ca3b, UNCHANGED)
 AT_TO_AG_CONSUMER_HANDOFF_V1 = SUPPLEMENTAL CONSUMER CAPABILITY SNAPSHOT (base c9cee21, SUPERSEDED)
-AT_V4_CONSUMER_HANDOFF       = CURRENT (V4 freeze 7216d0e; replaces V3 consumer handoff)
-RELATION                     = V4 SUPERSEDES V3; V0/V1 unchanged (historical)
+AT_V4_CONSUMER_HANDOFF       = HISTORICAL / SUPERSEDED (V4 freeze 7216d0e; replaced by v0.4.3)
+AT_V043_CONSUMER_HANDOFF     = CURRENT (v0.4.3 freeze 5517fc0, tag v0.4.3 target 2e1cdd5)
+RELATION                     = V043 SUPERSEDES V4; V0/V1/V4 unchanged (historical)
 ```
 
 ## 3. Physical consumption
 
-Vendored AARs/JARs in `third_party/at-v4-consumer-freeze-v1/` with repo-local
-Maven metadata in `third_party/at-v4-consumer-freeze-v1/m2/`. Artifacts from
-AT V4 freeze commit `7216d0e` (tag `AT.V4-CONSUMER-FREEZE-V1`). No sibling AT
+Vendored AARs/JARs in `third_party/at-v043-consumer-freeze-v1/` with repo-local
+Maven metadata in `third_party/at-v043-consumer-freeze-v1/m2/`. Artifacts from
+AT v0.4.3 release commit `5517fc0` (tag `v0.4.3`, target `2e1cdd5`). No sibling AT
 source tree required for build.
 
-**Superseded:** `third_party/at-consumer-freeze-v1/` (V3, baseline c9cee21,
-release) retained for rollback reference only. Its m2 repo entry in
-`settings.gradle.kts` is commented out.
+**Superseded (HISTORICAL):**
+- `third_party/at-v4-consumer-freeze-v1/` (V4, baseline 7216d0e) — rollback reference only, m2 entry commented out.
+- `third_party/at-v042-consumer-candidate/` (v0.4.2 candidate) — rollback reference only, m2 entry commented out.
+- `third_party/at-consumer-freeze-v1/` (V3, baseline c9cee21) — rollback reference only, m2 entry commented out.
 
 ## 4. Identity
 

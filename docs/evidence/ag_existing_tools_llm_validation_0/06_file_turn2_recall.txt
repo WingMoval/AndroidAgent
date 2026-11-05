@@ -1,0 +1,15 @@
+AG.EXISTING-TOOLS-LLM-VALIDATION-0
+Date: 2026-11-05
+
+GATE F3 — FILE NEXT-TURN RECALL
+
+STATUS: NOT_TESTED
+
+REASON: F1 = FAIL (model used android_shell, not file tool).
+Since the file tool was never exercised, there is no file tool ToolResult
+to verify for next-turn recall. The shell-based recall would test
+android_shell recall (already validated in prior rounds), not the
+file tool specifically.
+
+FILE_NEXT_TURN_RECALL = NOT_TESTED (blocked by F1 FAIL)
+FILE_NEXT_TURN_NEW_TOOLCALL_COUNT = N/A

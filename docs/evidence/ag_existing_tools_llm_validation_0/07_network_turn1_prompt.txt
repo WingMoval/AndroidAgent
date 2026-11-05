@@ -1,0 +1,16 @@
+AG.EXISTING-TOOLS-LLM-VALIDATION-0
+Date: 2026-11-05
+
+SESSION: New clean TopicSession (via DebugBridge new_session)
+
+PROMPT_SENT_TO_LLM:
+请读取这个网页，并告诉我页面的标题：
+https://www.bilibili.com/video/BV14MxW6LE8F/
+
+OBSERVATION_DEPENDENCY_CHECK:
+  Page title "网文里有哪些看起来弱智，实际上却很真实的设定？" present in user prompt? NO
+  Page title present in system prompt? NO
+  Page title present in tool descriptions? NO
+  URL only provided, no answer keywords.
+
+NOT_PRESENT_IN_USER_PROMPT = YES

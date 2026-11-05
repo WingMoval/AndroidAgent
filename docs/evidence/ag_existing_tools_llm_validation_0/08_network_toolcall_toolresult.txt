@@ -1,0 +1,30 @@
+AG.EXISTING-TOOLS-LLM-VALIDATION-0
+Date: 2026-11-05
+
+GATE N1 — REAL LLM NETWORK FETCH
+
+TOOL_CALLS_OBSERVED (from DebugBridge event stream):
+  1. network tool: action=fetch, url=https://www.bilibili.com/video/BV14MxW6LE8F/
+
+NETWORK_TOOL (NetworkToolImpl) SELECTED: YES (autonomous)
+ANDROID_SHELL_CURL_USED: NO
+
+TOOL_RESULT:
+{
+  "action": "fetch",
+  "requestedUrl": "https://www.bilibili.com/video/BV14MxW6LE8F/",
+  "finalUrl": "https://m.bilibili.com:443/video/BV14MxW6LE8F",
+  "httpStatus": 200,
+  "contentType": "text/html; charset=utf-8",
+  "content": "网文里有哪些看起来弱智，实际上却很真实的设定？_哔哩哔哩_bilibili\n下载 App 打开App，流畅又高清 30.9万 515 05:26 网文里有哪些看起来弱智，实际上却很真..."
+}
+
+NETWORK_TOOLCALL_EXECUTED = YES
+NETWORK_TOOLRESULT_RETURNED = YES
+NETWORK_RESULT_NONEMPTY = YES
+HTTP_STATUS = 200
+REDIRECT = www.bilibili.com → m.bilibili.com (mobile redirect, normal)
+
+NETWORK_TOOL_AUTONOMOUSLY_SELECTED = YES
+NETWORK_ACTION = fetch
+N1 = PASS

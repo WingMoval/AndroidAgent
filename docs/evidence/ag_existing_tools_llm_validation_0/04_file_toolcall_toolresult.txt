@@ -1,0 +1,30 @@
+AG.EXISTING-TOOLS-LLM-VALIDATION-0
+Date: 2026-11-05
+
+GATE F1 — REAL LLM FILE READ
+
+TOOL_CALLS_OBSERVED (from DebugBridge event stream):
+  1. android_shell: ls -la (listing files directory)
+  2. android_shell: cat files/agent/llm_file_probe.txt
+
+FILE_TOOL (FileToolImpl) SELECTED: NO
+ANDROID_SHELL_USED_FOR_FILE_READ: YES (2 invocations: ls + cat)
+
+TOOL_RESULT (from android_shell cat):
+  {"outcome":"COMPLETED","exitCode":0,"stdout":"AndroidAgent FileTool LLM validation fixture.\n\nFILE_PROBE=FILE_3EA6B6461ABB\r\n","stderr":"","hasError":false}
+
+FILE_RESULT_CONTAINS_EXPECTED_TOKEN = YES (via shell, not file tool)
+
+ASSESSMENT:
+  The LLM (deepseek-v4-flash-0731) did NOT autonomously select the 'file' tool.
+  It chose 'android_shell' (ls + cat) instead.
+  
+  Per task rule: "如果模型选择 shell 而不是 file: F1 = FAIL"
+  
+  FILE_TOOL_AUTONOMOUSLY_SELECTED = NO
+  F1 = FAIL
+
+NOTE: This is a real model behavior observation, not a production bug.
+The file tool exists and works (verified in prior rounds), but the model
+prefers android_shell for file reading. Recorded as genuine tool selection
+failure for the LLM validation gate.

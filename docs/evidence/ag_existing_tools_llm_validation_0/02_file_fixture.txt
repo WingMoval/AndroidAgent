@@ -1,0 +1,23 @@
+AG.EXISTING-TOOLS-LLM-VALIDATION-0
+Date: 2026-11-05
+
+EXPECTED_FILE_TOKEN = FILE_3EA6B6461ABB
+
+FIXTURE_CONTENT:
+AndroidAgent FileTool LLM validation fixture.
+
+FILE_PROBE=FILE_3EA6B6461ABB
+
+PLACEMENT:
+  PC source: C:\Users\Wing\AppData\Local\Temp\opencode\llm_file_probe.txt
+  Pushed to: /data/local/tmp/llm_file_probe.txt
+  Copied to: /data/user/0/com.androidagent.app/files/agent/llm_file_probe.txt
+  Method: adb push + run-as com.androidagent.app cp
+
+VERIFICATION:
+  adb shell run-as com.androidagent.app cat files/agent/llm_file_probe.txt
+  → FILE_PROBE=FILE_3EA6B6461ABB confirmed
+
+FIXTURE_PRESENT = YES
+
+NOTE: adb used ONLY for fixture preparation, NOT as tool validation channel.
