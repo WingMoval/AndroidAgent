@@ -1,0 +1,14 @@
+AG.AT-V043-COMPAT-VALIDATION-0 - 18 IDENTITY CONTINUITY
+Date: 2026-11-05
+
+=== IDENTITY CONTINUITY AFTER RECOVERY ===
+
+AG identity fingerprint (before loss): 6b1949b464a7c218fadeb60548cc373ac5119f358191c324eb25d128dd266baf
+AG identity fingerprint (after recovery): 6b1949b464a7c218fadeb60548cc373ac5119f358191c324eb25d128dd266baf
+MATCH = YES
+
+pairing_meta: preserved (paired_at=1793780077958, device_guid=adb-APLMUT4312005935-J4nb5z)
+No new key generated.
+Same key used throughout (AT and AG share the same pub key).
+
+IDENTITY_CONTINUITY_AFTER_RECOVERY = PASS

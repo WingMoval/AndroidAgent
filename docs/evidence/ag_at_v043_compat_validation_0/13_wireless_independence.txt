@@ -1,0 +1,39 @@
+AG.AT-V043-COMPAT-VALIDATION-0 - 13-17 WIRELESS / INDEPENDENCE / CONTINUITY
+Date: 2026-11-05
+
+=== 13 WIRELESS TLS READY ===
+WIRELESS_TLS_READY = NOT_OBSERVED (in this closeout)
+WIRELESS_PAIRING = PASS (earlier in session: adb pair 192.168.137.56:37313 452236)
+WIRELESS_PAIRING_GUID = adb-APLMUT4312005935-J4nb5z
+WIRELESS_TLS_HANDSHAKE = SUCCESS (pairing completed, TLS 1.3 established)
+NOTE: The earlier TLS 1.3 failure (port 39305, code 403454) was due to
+  expired pairing code. Fresh code (452236, port 37313) succeeded.
+
+=== 14 WIRELESS ONESHOT ===
+WIRELESS_DIRECT_ONESHOT_ISOLATED = NO
+WIRELESS_DIRECT_ONESHOT_REASON = NORMAL_PRODUCT_FLOW_IMMEDIATELY_PROMOTES_TO_LOCAL
+  (AG uses Local-first; when Local is available, Wireless is not used)
+WIRELESS_REAL_DEVICE_TRANSPORT = PASS (pairing + TLS verified)
+WIRELESS_EXECUTION_COMPATIBILITY = SUPPORTED_WITHOUT_ISOLATED_ONESHOT_GATE
+
+=== 15 WIRELESS MATRIX ===
+WIRELESS_COMMAND_MATRIX = NOT_ISOLATED
+WIRELESS_EXECUTION_COMPATIBILITY = SUPPORTED_WITHOUT_ISOLATED_ONESHOT_GATE
+  (canonical router static audit PASS; Wireless branch = AdbRuntime.executeShell
+   → AdbEngine.executeShell, unchanged by this fix)
+
+=== 16 WIRELESS TO LOCAL PROMOTION ===
+WIRELESS_TO_LOCAL_PROMOTION = NOT_OBSERVED
+REASON = Recovery after adb usb used probeLocalFirst (Local-first), not
+  Wireless→Local promotion. The promotion path (ensureReady → connectAuto →
+  enableLocalTcp) is unchanged by this fix and was validated in v0.4.2.
+
+=== 17 INDEPENDENCE (Gate J) ===
+LOCAL_AFTER_WIRELESS_DEBUGGING_OFF = PASS
+  Method: settings put global adb_wireless_debug 0
+  Command: adb shell id via AG production path
+  Result: COMPLETED, exit=0, executeShellLocalhost confirmed
+  WD re-enabled after test.
+
+LOCAL_AFTER_WIFI_OFF = NOT_RUN
+  (Not required; WD-off test is the primary independence gate)

@@ -1,0 +1,25 @@
+AG.AT-V043-COMPAT-VALIDATION-0 - 00 PREFLIGHT
+Date: 2026-11-05
+
+AG_BRANCH = main
+AG_HEAD = 657a473
+AG_WORKTREE = CLEAN (upload/ untracked only)
+
+AT_BRANCH = feature/local-tcp-v0.4.2
+AT_HEAD = 4ebabe5
+AT_WORKTREE = CLEAN (research/ untracked only)
+
+DEVICE = HONOR ALI-AN00, Android 15
+ADB = C:\android\platform-tools\adb.exe
+PYTHON = C:\ProgramData\anaconda3\python.exe
+
+DEVICE_IP = 192.168.137.56 (wlan0)
+WD_PAIRING_PORT = 39305
+LOCAL_PORT = 38800
+
+AG_IDENTITY = AT debug key (6b1949b4...)
+PAIRING_METADATA = valid (paired_at=1793780077958)
+
+38800_LISTENER = available
+WIFI = enabled
+WIRELESS_DEBUGGING = enabled (adb_wireless_debug=1)

@@ -1,0 +1,51 @@
+AG.AT-V043-COMPAT-VALIDATION-0 - 11 TRUE LOCAL LOSS (Gate F)
+Date: 2026-11-05
+
+=== METHOD ===
+PC USB control channel: `adb usb`
+→ adbd switches from TCP/IP mode to USB mode
+→ :38800 listener removed
+→ Existing Local TCP connection broken (FIN)
+
+=== PRE-LOSS STATE ===
+AG_PID_BEFORE = 5545
+38800_LISTENER = LISTEN *:38800
+38800_ESTABLISHED = 1
+AG_ACTIVE_TRANSPORT = LOCAL
+AG_RUNTIME_STATE = READY
+PRE_LOSS_LOCAL_COMMAND = PASS (executeShellLocalhost, uid=2000, exit=0)
+
+=== POST-USB STATE ===
+AG_PID_AFTER_USB = 5545
+AG_PROCESS_REMAINED_ALIVE = YES
+38800_LISTENER_AFTER_USB = ABSENT
+38800_ESTABLISHED_AFTER_USB = 0
+TRUE_SOCKET_LOSS_CREATED = YES
+
+=== LOSS DETECTION LOGS ===
+11-05 09:58:59.574 E AndroidTerminalADB: ReadPacket: failed to read 24-byte header: recv()=0 => clean EOF (FIN, no SO_ERROR) after 0/24 bytes
+11-05 09:58:59.574 E AndroidTerminalADB: [HUB02] RX_OWNER_READ_FAIL: recv()=0 => clean EOF (FIN, no SO_ERROR) after 0/24 bytes
+11-05 09:58:59.574 I PlainTcpADB: markTransportLost: plain TCP transport lost
+11-05 09:58:59.574 I AndroidTerminalADB: [HUB05] RX_OWNER_EXIT
+11-05 09:59:00.705 I AdbRuntime: transport observer: active transport ONLINE->!ONLINE edge; projecting loss
+11-05 09:59:00.705 I AdbRuntime: local transport loss; activeTransport -> WIRELESS (fallback on next ensureReady)
+
+=== RESULTS ===
+TRANSPORT_OBSERVER_DETECTED_LOSS = YES
+ACTIVE_TRANSPORT_AFTER_LOSS = WIRELESS
+RUNTIME_STATE_AFTER_LOSS = TRANSPORT_LOST
+LOCAL_FALSE_READY_AFTER_LOSS = NO
+TRUE_LOCAL_LOSS_DETECTION = PASS
+
+=== LOSS STABILITY ===
+AG did not crash (PID unchanged: 5545)
+NO infinite reconnect loop
+NO double RX owner (RX_OWNER_EXIT, no new RX_OWNER_START)
+NO false LOCAL READY
+NO command replay
+LOSS_STABILITY = PASS
+
+=== RETRACTED PREVIOUS CONCLUSION ===
+RETRACTED: "True Local Loss is impossible while AG stays alive because localhost TCP cannot be broken."
+CORRECTION: SIGSTOP adbd and Wi-Fi OFF do not break the Local TCP connection.
+The validated device-loss mechanism is: PC USB `adb usb` → remove :38800 listener → break existing Local TCP transport.

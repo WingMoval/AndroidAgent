@@ -1,0 +1,28 @@
+AG.AT-V043-COMPAT-VALIDATION-0 - 19 TRANSPORT INVARIANTS
+Date: 2026-11-05
+
+=== TRANSPORT OWNERSHIP ===
+
+MAX_ACTIVE_ADB_TRANSPORTS = 1
+  (at all times: either LOCAL or WIRELESS, never both)
+
+MAX_RX_OWNER_PER_CONNECTION = 1
+  (RX_OWNER_START count = 1 for the entire session)
+  (RX_OWNER_EXIT on loss, no new RX_OWNER_START without new connection)
+
+NO duplicate Local connection.
+NO Local/Wireless simultaneous execution owner.
+NO double hub.
+NO stale duplicate Local transport.
+
+TRANSPORT_OWNERSHIP = PASS
+
+=== LOSS SEQUENCE VERIFICATION ===
+1. TCP recv() => clean EOF (FIN)
+2. markTransportLost: plain TCP transport lost
+3. [HUB05] RX_OWNER_EXIT
+4. transport observer: ONLINE->!ONLINE edge
+5. activeTransport -> WIRELESS
+6. state = TRANSPORT_LOST
+
+Each step occurred exactly once. No duplicates. No out-of-order events.

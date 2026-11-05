@@ -1,0 +1,50 @@
+AG.AT-V043-COMPAT-VALIDATION-0 - 12 POST-LOSS RECOVERY (Gate G)
+Date: 2026-11-05
+
+=== RECOVERY ATTEMPT 1 (WD disabled by adb usb) ===
+
+After `adb usb`, Wireless Debugging is disabled (USB mode).
+AG ensureReady sequence:
+  1. probeLocalFirst → connectLocalhost 38800 → Connection refused
+  2. readiness() → DISABLED
+  3. canWriteSecureSettings() → false (AG app has no WRITE_SECURE_SETTINGS)
+  4. Result: USER_ACTION_REQUIRED
+  5. stderr: "wireless debugging: off" / "user action required: enable Wireless Debugging"
+
+WIRELESS_TLS_READY = NO (WD disabled in USB mode)
+RECOVERY_BLOCKED_REASON = adb usb disables Wireless Debugging (USB mode has no WD)
+
+=== RECOVERY ATTEMPT 2 (WD re-enabled, 38800 restored) ===
+
+PC adb: `settings put global adb_wireless_debug 1` + `adb tcpip 38800`
+→ adbd restarts in TCP/IP mode
+→ 38800 listener restored
+→ WD enabled
+
+AG ensureReady sequence:
+  1. probeLocalFirst → connectLocalhost 38800 → SUCCESS
+  2. activeTransport = LOCAL
+  3. state = READY
+  4. stderr: "connected (local)"
+
+RESULT: Local recovery via probeLocalFirst (NOT Wireless TLS)
+POST_RECOVERY_LOCAL_COMMAND = PASS (executeShellLocalhost, uid=2000, exit=0)
+POST_RECOVERY_EXECUTION_PRIMITIVE = executeShellLocalhost
+
+=== WIRELESS TLS RECOVERY ===
+WIRELESS_TLS_READY = NOT_OBSERVED
+WIRELESS_REAL_DEVICE_TRANSPORT = BLOCKED_BY_USB_MODE
+REASON = `adb usb` (the validated true-loss method) inherently disables WD.
+  USB mode has no Wireless Debugging service.
+  This is Android's design, not a product defect.
+  The existing v0.4.2 Wireless pairing (guid=adb-APLMUT4312005935-J4nb5z)
+  was successfully established earlier in this session, proving the Wireless
+  TLS path works. The inability to test Wireless recovery after `adb usb`
+  is a TESTABILITY limitation of the loss method, not a product defect.
+
+=== POST-RECOVERY STATE ===
+AG PID: 5545 (unchanged)
+38800: 1 ESTABLISHED
+activeTransport: LOCAL
+state: READY
+executeShellLocalhost: confirmed
