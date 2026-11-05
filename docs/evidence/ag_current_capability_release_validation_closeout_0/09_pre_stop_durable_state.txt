@@ -1,0 +1,21 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-CLOSEOUT-0
+Date: 2026-11-06
+
+Gate R2 — Pre-Stop Durable State
+
+SESSION_C_ID = session-a7c17dee-f901-44b4-8728-afa98050a42b
+OLD_PID = 25046
+PRE_STOP_SNAPSHOT:
+  currentSessionId: session-a7c17dee-f901-44b4-8728-afa98050a42b
+  transcriptBlockCount: 6
+  lastBlockType: Assistant
+
+The 6 blocks represent:
+  User: "请读取 restore_tool_probe.txt..."
+  ToolCall: file read
+  ToolResult: RESTORE_227DD7513F1B
+  Assistant: final answer with token
+  (+ reasoning/thinking blocks)
+
+TOOLCALL_DURABLE_BEFORE_STOP = YES (file.read ToolCall in session history)
+TOOLRESULT_DURABLE_BEFORE_STOP = YES (ToolResult with token in session history)

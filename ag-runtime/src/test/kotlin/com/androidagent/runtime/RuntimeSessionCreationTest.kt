@@ -89,6 +89,8 @@ class RuntimeSessionCreationTest {
         override suspend fun updateModelProviderMetadata(
             sessionId: String, model: String?, provider: String?,
         ) {}
+        override suspend fun listSessions(): List<com.androidagent.runtime.persistence.TopicSessionRecord> =
+            createdIds.map { com.androidagent.runtime.persistence.TopicSessionRecord(it, 0L, 0L) }
     }
 
     private fun makeRuntime(

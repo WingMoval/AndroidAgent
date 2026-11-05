@@ -164,6 +164,9 @@ internal class FakeTopicSessionStore(
     ) {
     }
 
+    override suspend fun listSessions(): List<TopicSessionRecord> =
+        sessionMessages.keys.map { TopicSessionRecord(it, 0L, 0L) }
+
     /** Test helper: get the stored messages for a session. */
     fun messagesFor(sessionId: String): List<Message> =
         sessionMessages[sessionId]?.toList() ?: emptyList()

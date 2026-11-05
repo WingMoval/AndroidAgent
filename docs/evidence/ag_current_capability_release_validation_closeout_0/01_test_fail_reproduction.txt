@@ -1,0 +1,20 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-CLOSEOUT-0
+Date: 2026-11-06
+
+Gate T0 — Reproduce Test Compilation Failure
+
+:ag-runtime:test → COMPILE_FAIL
+  3 test fakes missing listSessions():
+  - RuntimeSessionCreationTest.kt:58 GatingStore
+  - TestSupport.kt:81 FakeTopicSessionStore
+  - persistence/InMemoryTopicSessionStore.kt:20
+
+:provider-openai-compatible-jdk:test → COMPILE_FAIL
+  1 test fake missing listSessions():
+  - ProviderProtocolTest.kt:488 anonymous class
+
+ROOT_CAUSE = TEST_ONLY_FAKE_INTERFACE_DRIFT
+  (AG.UI-TRANSCRIPT-CARDS-1 added listSessions() to TopicSessionStore
+   interface; test fakes were not updated in that commit)
+
+PRODUCTION_CODE_COMPILES = YES (no production compilation errors)

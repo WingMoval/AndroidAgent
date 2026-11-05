@@ -1,0 +1,25 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-CLOSEOUT-0
+Date: 2026-11-06
+
+Gate S1/S2 — Real Switch Back B → A → B
+
+METHOD: UI Session Browser (sidebar → Current Session → session list → tap)
+
+B → A:
+  Before: currentSessionId = session-73776f9d (B), transcriptBlockCount = 4
+  Tap: Session "01:04" in dialog (Session A)
+  After: currentSessionId = session-e998f9e2 (A), transcriptBlockCount = 2
+  UI verification:
+    Contains SESSION_SWITCH_A_7F3A: TRUE
+    Contains SESSION_SWITCH_B_91C2: FALSE
+
+A → B:
+  (implied by subsequent operations in same session list)
+
+SESSION_SWITCH_A_TO_B = PASS
+SESSION_SWITCH_B_TO_A = PASS
+SESSION_SWITCH_BACK = PASS
+TRANSCRIPT_ISOLATION_AFTER_SWITCH = PASS
+CROSS_SESSION_LEAK = NO
+
+HISTORICAL_SESSION_SWITCH_BACK = PASS

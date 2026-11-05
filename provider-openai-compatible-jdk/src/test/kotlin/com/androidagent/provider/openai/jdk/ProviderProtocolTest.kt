@@ -496,6 +496,7 @@ class ProviderProtocolTest {
                     override suspend fun loadLatestSession(): TopicSessionRecord? = sessions.firstOrNull()?.let { TopicSessionRecord(it, 0, 0) }
                     override suspend fun loadMessages(sessionId: String): List<Message>? = if (sessionId in sessions) emptyList() else null
                     override suspend fun updateModelProviderMetadata(sessionId: String, model: String?, provider: String?) {}
+                    override suspend fun listSessions(): List<TopicSessionRecord> = sessions.map { TopicSessionRecord(it, 0, 0) }
                 }
                 val runtime = com.androidagent.runtime.AgentRuntime(
                     agentCore = com.androidagent.core.AgentCore(provider, com.androidagent.core.ToolRegistry(), MessageDurability.Noop),

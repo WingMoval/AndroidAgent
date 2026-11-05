@@ -1,0 +1,14 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-CLOSEOUT-0
+Date: 2026-11-06
+
+Gate R0 — Restore Fixture
+
+EXPECTED_RESTORE_TOKEN = RESTORE_227DD7513F1B
+FILE: restore_tool_probe.txt
+CONTENT:
+  AndroidAgent durable ToolResult restore fixture.
+  RESTORE_PROBE=RESTORE_227DD7513F1B
+PLACEMENT: files/agent/restore_tool_probe.txt (via adb push + run-as cp)
+VERIFIED: run-as cat confirmed token present
+
+TOKEN NOT IN LLM PROMPT = YES

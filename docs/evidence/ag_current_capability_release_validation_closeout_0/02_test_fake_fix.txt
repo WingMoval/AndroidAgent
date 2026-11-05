@@ -1,0 +1,21 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-CLOSEOUT-0
+Date: 2026-11-06
+
+Gate T1 — Test-Only Repair
+
+Files changed (TEST ONLY):
+  1. ag-runtime/src/test/kotlin/com/androidagent/runtime/RuntimeSessionCreationTest.kt
+     Added: override suspend fun listSessions() → returns createdIds as records
+  2. ag-runtime/src/test/kotlin/com/androidagent/runtime/TestSupport.kt
+     Added: override suspend fun listSessions() → returns sessionMessages keys
+  3. ag-runtime/src/test/kotlin/com/androidagent/runtime/persistence/InMemoryTopicSessionStore.kt
+     Added: override suspend fun listSessions() → returns sessions sorted by lastUsedAt DESC
+  4. provider-openai-compatible-jdk/src/test/kotlin/com/androidagent/provider/openai/jdk/ProviderProtocolTest.kt
+     Added: override suspend fun listSessions() → returns sessions as records
+
+TEST_FAKE_FILES_CHANGED = 4
+PRODUCTION_FILES_CHANGED = NONE
+
+Each fake implements the minimum deterministic behavior matching
+the current production interface. No production semantic change.
+No new abstraction. No default implementation added to interface.

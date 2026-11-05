@@ -1,0 +1,14 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-CLOSEOUT-0
+Date: 2026-11-06
+
+BRANCH: main
+START_HEAD: 85e1254
+WORKTREE: CLEAN (non-upload)
+DEVICE: HONOR ALI-AN00 (APLMUT4312005935), Android 15
+PROVIDER: OpenRouter
+MODEL: deepseek/deepseek-v4-flash-0731
+
+GOAL: Close 3 gaps from AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0:
+  GAP-1: Full module test baseline not truly green
+  GAP-2: Historical session switch-back not actually verified
+  GAP-3: Force-stop restore did not verify ToolCall/ToolResult durable session

@@ -97,6 +97,9 @@ class InMemoryTopicSessionStore : TopicSessionStore {
         sessions[sessionId] = session.copy(model = model, provider = provider)
     }
 
+    override suspend fun listSessions(): List<TopicSessionRecord> =
+        sessions.values.toList().sortedByDescending { it.lastUsedAt }
+
     // ---- test-only inspection (NOT part of the contract) ----
 
     fun records(sessionId: String): List<MessageRecord> =

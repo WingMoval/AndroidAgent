@@ -1,0 +1,22 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-CLOSEOUT-0
+Date: 2026-11-06
+
+Gate R1 — Real Tool Session C
+
+SESSION_C_ID = session-a7c17dee-f901-44b4-8728-afa98050a42b
+PROMPT: 请读取 restore_tool_probe.txt，并告诉我其中 RESTORE_PROBE 的值。
+
+TOOL: file (autonomous)
+ACTION: read
+PATH: restore_tool_probe.txt
+
+TOOL_RESULT:
+{"action":"read","path":"restore_tool_probe.txt","content":"AndroidAgent durable ToolResult restore fixture.\n\nRESTORE_PROBE=RESTORE_227DD7513F1B\r",...}
+
+FINAL_ANSWER: RESTORE_227DD7513F1B ✓
+
+FILE_TOOLCALL = PASS
+FILE_TOOLRESULT = PASS
+OBSERVATION_DEPENDENCY = PASS
+REAL_FILE_TOOLCALL_BEFORE_STOP = YES
+REAL_TOOLRESULT_BEFORE_STOP = YES

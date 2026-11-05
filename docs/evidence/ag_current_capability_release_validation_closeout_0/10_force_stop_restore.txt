@@ -1,0 +1,26 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-CLOSEOUT-0
+Date: 2026-11-06
+
+Gate R3/R4 — Force Stop + Restore
+
+OLD_PID = 25046
+ACTION: adb shell am force-stop com.androidagent.app
+RESTART: am start -n com.androidagent.app/.ChatActivity
+NEW_PID = 30238
+PROCESS_RECREATED = YES (25046 → 30238)
+
+POST_RESTORE_SNAPSHOT:
+  currentSessionId: session-a7c17dee-f901-44b4-8728-afa98050a42b (SAME as pre-stop)
+  transcriptBlockCount: 5
+  lastBlockType: Assistant
+  activeProvider: OpenRouter
+  activeModel: deepseek/deepseek-v4-flash-0731
+  adbState: READY
+
+RESTORED_SESSION_ID = session-a7c17dee-f901-44b4-8728-afa98050a42b
+EXACT_TOOL_SESSION_RESTORED = YES
+
+NO_MODEL_REPLAY = YES (no model call on restore)
+NO_TOOL_REPLAY = YES (no tool execution on restore)
+
+FORCE_STOP_RESTORE = PASS

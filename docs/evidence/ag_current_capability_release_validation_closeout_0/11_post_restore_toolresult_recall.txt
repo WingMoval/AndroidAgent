@@ -1,0 +1,24 @@
+AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-CLOSEOUT-0
+Date: 2026-11-06
+
+Gate R5/R6 — Post-Restore ToolResult Recall
+
+SESSION: session-a7c17dee (same as pre-stop, restored)
+PROMPT: 不要再次调用任何工具。刚才从文件中读取到的 RESTORE_PROBE 是什么？
+
+NEW_TOOLCALL_COUNT = 0 (no tools called)
+FINAL_ANSWER:
+  根据之前读取的内容，restore_tool_probe.txt 中 RESTORE_PROBE 的值是：
+  RESTORE_227DD7513F1B
+
+POST_RESTORE_RECALL_CORRECT = YES
+POST_RESTORE_NEW_TOOLCALL_COUNT = 0
+POST_RESTORE_TOKEN_CORRECT = YES (RESTORE_227DD7513F1B)
+TOOLRESULT_HISTORY_REACHED_MODEL = YES
+
+DURABLE CHAIN (complete):
+  real LLM → file.read ToolCall → real ToolResult → durable persistence
+  → process death (force-stop) → restart → DB restore → Runtime/Core hydrate
+  → next ModelRequest history → 0 new ToolCall → correct token recall
+
+TOOLRESULT_DURABLE_RESTORE = PASS
