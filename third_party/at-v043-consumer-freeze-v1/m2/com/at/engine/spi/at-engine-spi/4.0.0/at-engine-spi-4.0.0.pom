@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.at.engine.spi</groupId>
+  <artifactId>at-engine-spi</artifactId>
+  <version>4.0.0</version>
+  <packaging>jar</packaging>
+  <description>AT Engine SPI (V4, internal).</description>
+  <dependencies>
+    <dependency>
+      <groupId>com.at.engine.api</groupId>
+      <artifactId>at-engine-api</artifactId>
+      <version>4.0.0</version>
+    </dependency>
+  </dependencies>
+</project>

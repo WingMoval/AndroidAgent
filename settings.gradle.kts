@@ -24,21 +24,19 @@ dependencyResolutionManagement {
     repositories {
         mavenCentral()
         google()
-        // AG.AT-V042-CONSUMER-SYNC-0: v0.4.2 CANDIDATE repo-local Maven.
-        // AARs/JARs from AT v0.4.2 tag target 925e7ac (CANDIDATE, validation pending).
-        // See third_party/at-v042-consumer-candidate/MANIFEST.md.
-        // MUST be listed BEFORE the v0.4.0 repo so Gradle resolves the candidate
-        // bytes for the same 4.0.0 GAV (cache-collision avoidance).
+        // AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0: AT v0.4.3 FORMAL release bundle.
+        // AARs/JARs from AT v0.4.3 source commit 5517fc0 (tag v0.4.3, target 2e1cdd5).
+        // GAV 4.0.0 = stable API artifact version (independent of app release).
+        // See third_party/at-v043-consumer-freeze-v1/MANIFEST.md.
+        // MUST be listed FIRST: this is the ACTIVE consumer baseline.
         maven {
-            url = uri("third_party/at-v042-consumer-candidate/m2")
+            url = uri("third_party/at-v043-consumer-freeze-v1/m2")
         }
-        // AG.AT-V4-INTEGRATION-1: repo-local Maven for the AT V4 Consumer Freeze bundle.
-        // AARs/JARs from AT V4 freeze commit 7216d0e (AT.V4-CONSUMER-FREEZE-V1).
-        // See third_party/at-v4-consumer-freeze-v1/MANIFEST.md.
-        // Retained for rollback reference; candidate repo takes resolution priority.
-        maven {
-            url = uri("third_party/at-v4-consumer-freeze-v1/m2")
-        }
+        // HISTORICAL (v0.4.2 candidate): retained for rollback reference only.
+        // NOT in active resolution (v0.4.3 repo listed above takes priority).
+        // maven { url = uri("third_party/at-v042-consumer-candidate/m2") }
+        // HISTORICAL (V4 freeze): retained for rollback reference only.
+        // maven { url = uri("third_party/at-v4-consumer-freeze-v1/m2") }
         // LEGACY (V3, superseded): retained for rollback reference only.
         // maven { url = uri("third_party/at-consumer-freeze-v1/m2") }
     }

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.at.composition.android</groupId>
+  <artifactId>at-composition-android</artifactId>
+  <version>4.0.0</version>
+  <packaging>aar</packaging>
+  <description>AT Android Composition Root (V4). ATAndroid.create entry point.</description>
+  <dependencies>
+    <dependency>
+      <groupId>com.at.engine.api</groupId>
+      <artifactId>at-engine-api</artifactId>
+      <version>4.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.at.engine</groupId>
+      <artifactId>at-engine</artifactId>
+      <version>4.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.at.backend.local</groupId>
+      <artifactId>at-backend-local</artifactId>
+      <version>4.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.at.backend.adb</groupId>
+      <artifactId>at-backend-adb</artifactId>
+      <version>4.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.adb.engine</groupId>
+      <artifactId>adb-engine</artifactId>
+      <version>4.0.0</version>
+    </dependency>
+  </dependencies>
+</project>

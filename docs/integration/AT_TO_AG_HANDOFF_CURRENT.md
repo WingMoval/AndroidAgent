@@ -4,18 +4,21 @@ Canonical current-snapshot pointer for the AT <-> AG integration.
 Created: AG.V1-PRE-FREEZE-NORMALIZATION (2026-10-18).
 Updated: AG.V2-2.AT-INTEGRATION (2026-10-20).
 Updated: AG.AT-V4-INTEGRATION-1 (2026-10-22).
+Updated: AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0 (2026-11-05).
 
 ---
 
 ## 1. Current snapshot
 
 ```text
-AT_HANDOFF             = AT_V4_CONSUMER_HANDOFF
-SOURCE_BASELINE        = 7216d0e8131e92e8914ce7c8443e1668b1d53aca (freeze commit)
-FINAL_DOCS_COMMIT      = 7f3a7dface6e504970714631ba4fb2224052f5ef
-FREEZE_TAG             = AT.V4-CONSUMER-FREEZE-V1
-AT_CONTRACT_STATUS     = FROZEN (V4 consumer boundary)
-FINAL_API_FREEZE       = YES (V4 public contract frozen)
+AT_HANDOFF             = AT_V043_CONSUMER_HANDOFF
+AT_RELEASE             = v0.4.3
+SOURCE_BASELINE        = 5517fc0 (v0.4.3 release commit)
+ROUTING_FIX_COMMIT     = 4ebabe5
+TAG                    = v0.4.3 (annotated, target 2e1cdd5)
+CONSUMER_BUNDLE        = AT.V043-CONSUMER-FREEZE-V1
+AT_CONTRACT_STATUS     = FROZEN (v0.4.3 release)
+FINAL_API_FREEZE       = YES (GAV 4.0.0 stable, no breaking change)
 
 AG_CONSUMPTION_MODE    = VENDORED_AAR (repo-local Maven)
 FINAL_BUILD_SELF_CONTAINED = YES (no sibling AT source tree required)
@@ -42,7 +45,7 @@ LEGACY_AT_V0           = SUPERSEDED / INACTIVE
 LEGACY_V3_BUNDLE       = SUPERSEDED / INACTIVE (m2 entry commented out)
 SCREEN_AWARE           = NOT_IMPLEMENTED
 HUMAN_AGENT_SHARED_SESSION = DEFERRED
-NEXT_FORMAL_SYNC       = POST_V4_RELEASE_VALIDATION
+NEXT_FORMAL_SYNC       = POST_V043 (AT v0.4.3 is current; next sync after v0.5.0)
 ```
 
 ## 2. Historical handoff relationship
@@ -79,8 +82,8 @@ ADB_RUNTIME_OWNER         = AdbRuntime (UNIQUE, AT-internal)
 ## 5. Synchronization cadence
 
 ```text
-current = AT.V4-CONSUMER-FREEZE-V1 (consumed via vendored AAR, debug variant)
-next    = POST_V4_RELEASE_VALIDATION (AT V4 release bundle + re-validation)
+current = AT.V043-CONSUMER-FREEZE-V1 (consumed via vendored AAR, release variant)
+next    = POST_V043 (AT v0.5.0 release bundle + re-validation)
 ```
 
 ## 6. Legacy bundles (superseded)
@@ -89,7 +92,8 @@ next    = POST_V4_RELEASE_VALIDATION (AT V4 release bundle + re-validation)
 |--------|------|--------|
 | v0 AAR (0.1.0) | `third_party/at-engine-handoff-v0/` | SUPERSEDED / INACTIVE (no longer in dependency graph) |
 | v3 AAR (1.0.0) | `third_party/at-consumer-freeze-v1/` | SUPERSEDED / INACTIVE (m2 entry commented out; rollback reference only) |
-| **v4 AAR (4.0.0)** | `third_party/at-v4-consumer-freeze-v1/` | **CURRENT** |
+| v4 AAR (4.0.0) | `third_party/at-v4-consumer-freeze-v1/` | HISTORICAL (superseded by v0.4.3) |
+| **v0.4.3 AAR (4.0.0)** | `third_party/at-v043-consumer-freeze-v1/` | **CURRENT (formal release)** |
 
 ## 7. V4 consumer boundary (AG compliance)
 
