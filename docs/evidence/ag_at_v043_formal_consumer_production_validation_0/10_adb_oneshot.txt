@@ -1,0 +1,30 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+Gate ADB — ADB Secondary Production Path (all via production android_shell)
+
+ADB1 — CLI:
+  command: adb version
+  outcome=COMPLETED exit=0
+  stdout: AndroidTerminal adb CLI (app_process entrypoint, bridge protocol v1) ✓
+
+ADB2 — shell UID:
+  command: adb shell id
+  outcome=COMPLETED exit=0
+  stdout: uid=2000(shell) gid=2000(shell) groups=2000(shell),1004(input),1007(log),1011(adb),...
+  context=u:r:shell:s0
+  ADB_UID = 2000 ✓
+  Proves: Local app shell (10418) vs ADB shell (2000) are different permission domains ✓
+
+ADB3 — getprop:
+  command: adb shell getprop ro.product.model
+  stdout: ALI-AN00 ✓
+
+ADB4 — stdout / stderr / exit:
+  command: adb shell sh -c 'echo ADB_OUT; echo ADB_ERR >&2; exit 7'
+  outcome=COMPLETED exit=7
+  stdout: ADB_OUT ✓
+  stderr: ADB_ERR ✓ (plus [adb] connected status line)
+  Remote exitCode correctly propagated, no crash, no false transport failure ✓
+
+ADB_ONESHOT = PASS (4/4)

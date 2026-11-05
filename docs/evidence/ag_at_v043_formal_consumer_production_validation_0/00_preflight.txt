@@ -1,0 +1,9 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+START_HEAD = 2e9db8c (main)
+DEVICE = HONOR ALI-AN00 (APLMUT4312005935), Android 15
+AG APK = app-debug.apk (debug build, post v0.4.3 consumer sync)
+
+AT = READ ONLY (no modifications)
+Goal: Formal AT v0.4.3 consumer sync + production execution validation + network direct closure.

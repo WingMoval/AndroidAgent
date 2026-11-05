@@ -1,0 +1,38 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+Gate L — Local One-shot Production Path (all via production android_shell)
+
+L1 — Identity:
+  command: id
+  outcome=COMPLETED exit=0
+  stdout: uid=10418(u0_a418) gid=10418(u0_a418) groups=10418(u0_a418),3003(inet),9997(everybody),...
+  context=u:r:untrusted_app:s0:c162,c257,c512,c768
+  LOCAL_ONESHOT_UID = 10418 (u0_a418) — APP UID, NOT 2000(shell) ✓
+  LOCAL_ONESHOT_SELINUX = u:r:untrusted_app:s0 ✓
+
+L2 — Working Directory:
+  command: pwd
+  stdout: /data/user/0/com.androidagent.app/files
+  CWD unchanged by v0.4.3 consumer sync ✓
+
+L3 — stdout:
+  command: printf 'LOCAL_STDOUT_OK\n'
+  stdout: LOCAL_STDOUT_OK ✓
+
+L4 — stderr:
+  command: sh -c 'echo LOCAL_STDERR_OK >&2'
+  stderr: LOCAL_STDERR_OK ✓
+
+L5 — Non-zero Exit:
+  command: sh -c 'exit 7'
+  outcome=COMPLETED exit=7
+  NOT mapped to transport failure ✓
+
+L6 — Command Not Found:
+  command: definitely_not_a_real_command_xyz_12345
+  outcome=COMPLETED exit=127
+  stderr: /system/bin/sh: definitely_not_a_real_command_xyz_12345: inaccessible or not found
+  No crash ✓
+
+LOCAL_ONESHOT = PASS (6/6)

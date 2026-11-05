@@ -1,0 +1,26 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+Gate AR — Canonical ADB Routing Verification
+
+Logcat evidence (AG PID 17263, during ADB gate commands):
+
+11-05 16:23:53.014  17263  18575 I AdbCliBridge: onOneShot: ensureReady for ['getprop' 'ro.product.model']
+11-05 16:23:53.014  17263  18575 I AdbEngineJNI: executeShellLocalhost: "'getprop' 'ro.product.model'"
+11-05 16:23:53.030  17263  18575 I AdbEngineJNI: executeShellLocalhost: stream open local=2 remote=185
+11-05 16:23:53.071  17263  18575 I AdbEngineJNI: executeShellLocalhost: done exit_code=0 stdout=9 bytes stderr=0 bytes
+11-05 16:23:53.071  17263  18575 I AdbCliBridge: onOneShot: result outcome=COMPLETED exit=0
+
+11-05 16:23:53.655  17263  18602 I AdbCliBridge: onOneShot: ensureReady for ['sh' '-c' 'echo ADB_OUT; echo ADB_ERR >&2; exit 7']
+11-05 16:23:53.655  17263  18602 I AdbEngineJNI: executeShellLocalhost: "'sh' '-c' 'echo ADB_OUT; echo ADB_ERR >&2; exit 7'"
+11-05 16:23:53.671  17263  18602 I AdbEngineJNI: executeShellLocalhost: stream open local=3 remote=187
+11-05 16:23:53.722  17263  18602 I AdbEngineJNI: executeShellLocalhost: done exit_code=7 stdout=8 bytes stderr=8 bytes
+11-05 16:23:53.722  17263  18602 I AdbCliBridge: onOneShot: result outcome=COMPLETED exit=7
+
+CANONICAL_ROUTER_USED = YES (AdbOneShotBackend → AdbRuntime.executeShell → executeShellLocalhost)
+INVALID_DIRECT_ROUTER_BYPASS = 0 (no "AdbNative.executeShell" or direct AdbEngine.executeShell in log)
+ACTIVE_TRANSPORT_AT_COMMAND = LOCAL
+LOCALHOST_PRIMITIVE_OBSERVED = YES
+
+The v0.4.3 routing fix (4ebabe5) is confirmed working on real device:
+AdbOneShotBackend routes through AdbRuntime, which selects executeShellLocalhost for LOCAL transport.

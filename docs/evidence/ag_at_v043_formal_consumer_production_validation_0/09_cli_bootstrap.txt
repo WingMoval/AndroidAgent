@@ -1,0 +1,16 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+Gate A — AT CLI Bootstrap Regression
+
+command: adb version
+outcome=COMPLETED exit=0
+stdout: AndroidTerminal adb CLI (app_process entrypoint, bridge protocol v1)
+
+CLI_BOOTSTRAP_VALID = YES
+CURRENT_APK_PATH_PRESENT = YES (bootstrap uses applicationInfo.sourceDir)
+STALE_APK_PATH_PRESENT = NO
+MANUAL_BOOTSTRAP_DELETE_REQUIRED = NO
+
+No session_open(local_cli) needed before bootstrap creation.
+Previous fix (AG.AT-V4-CLI-BOOTSTRAP-LIFECYCLE-FIX) regression: PASS

@@ -1,0 +1,32 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+Evidence 1 — Repository Wiring:
+
+settings.gradle.kts (after sync):
+  maven { url = uri("third_party/at-v043-consumer-freeze-v1/m2") }   ← ACTIVE (listed first)
+  // maven { url = uri("third_party/at-v042-consumer-candidate/m2") } ← HISTORICAL (commented)
+  // maven { url = uri("third_party/at-v4-consumer-freeze-v1/m2") }   ← HISTORICAL (commented)
+
+Gradle resolution output:
+  :integration-at:dependencies --configuration debugRuntimeClasspath
+  +--- com.at.engine.api:at-engine-api:4.0.0   (resolved, no FAILED)
+  +--- com.at.cli:at-cli:4.0.0                 (resolved, no FAILED)
+
+V043_FORMAL_ACTIVE = YES
+V042_CANDIDATE_ACTIVE = NO
+V040_ACTIVE = NO
+
+Evidence 2 — Artifact Fingerprint:
+
+Verified via Python script (verify_v043.py):
+  - Walks third_party/at-v043-consumer-freeze-v1/m2/
+  - Computes SHA256 of each .aar and .jar
+  - Compares against formal v0.4.3 expected hashes
+  - Result: 6/6 PASS
+
+Shadowing check:
+  at-backend-adb-4.0.0.aar: v042 candidate vs v043 formal → DIFFERENT bytes ✓
+  adb-engine-4.0.0.aar: v042 candidate vs v043 formal → DIFFERENT bytes ✓
+
+GRADLE_RESOLUTION_UNAMBIGUOUS = YES

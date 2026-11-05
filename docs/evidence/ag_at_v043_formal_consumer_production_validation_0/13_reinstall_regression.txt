@@ -1,0 +1,21 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+Gate R — Reinstall / APK Path Regression
+
+APK_PATH_CHANGED_DURING_REINSTALL = NO
+  (install -r of same debug APK; package manager did not change sourceDir)
+
+Since path did not change, stale-path Gate is NOT triggered.
+Previous real verification (AG.AT-V4-CLI-BOOTSTRAP-LIFECYCLE-FIX) remains valid.
+
+Normal bootstrap regression:
+  - AG force-stopped and restarted with new APK
+  - First production android_shell("adb version") → PASS
+  - No EXIT_134, no SIGABRT
+  - No manual bootstrap repair needed
+
+BOOTSTRAP_AUTO_REFRESH = NOT_TRIGGERED (path unchanged)
+EXIT_134 = NO
+SIGABRT = NO
+MANUAL_BOOTSTRAP_REPAIR_REQUIRED = NO

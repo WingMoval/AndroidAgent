@@ -1,0 +1,22 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+AT_RELEASE = v0.4.3
+AT_SOURCE_COMMIT = 5517fc0 (AT v0.4.3: release canonical ADB one-shot routing fix)
+AT_ROUTING_FIX_COMMIT = 4ebabe5 (AT.LOCAL-TCP-ROUTING-FIX)
+AT_TAG = v0.4.3 (annotated)
+AT_TAG_OBJECT = 9c5543a52dbed44031fd6d29f6a9ee9417e47362
+AT_TAG_TARGET = 2e1cdd518fc7d1ead2b203cb3533a9b6a4d6a3d2
+
+CONSUMER_BUNDLE = AT.V043-CONSUMER-FREEZE-V1
+BUNDLE_SOURCE = D:\codebank\AndCode\AndroidTerminal-V4-LOCAL-TCP-042\third_party\at-v043-consumer-freeze-v1
+BUNDLE_DEST = D:\codebank\AndCode\AndroidAgent-V2\third_party\at-v043-consumer-freeze-v1
+
+GAV_VERSION = 4.0.0 (stable API artifact version, independent of app release)
+GAV_CHANGED = NO
+
+Bundle contents copied:
+  - 5 AARs (adb-engine, at-backend-adb, at-backend-local, at-cli, at-composition-android)
+  - 1 JAR (at-engine-api) from AT artifacts/
+  - POMs from at-v4-consumer-freeze-v1 (metadata unchanged between v0.4.2 and v0.4.3)
+  - at-engine aar + at-engine-spi jar from v4 freeze (unchanged modules)

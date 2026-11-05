@@ -1,0 +1,27 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+## Timeout Gate
+
+TIMEOUT_DIRECT_GATE = NOT_EXPOSED
+  Production android_shell ToolSpec does not expose a configurable timeout parameter.
+  Did NOT modify ToolSpec to add one (out of scope).
+
+G_B1_REOPENED = NO
+  Stop / child-process termination semantics are NOT in scope for this round.
+
+## Wireless
+
+Wireless direct one-shot: NOT independently isolated this round.
+This is NOT a failure. The current production active transport is LOCAL.
+Wireless execution evidence is carried forward from AT v0.4.3 freeze classification:
+  WIRELESS_EXECUTION_EVIDENCE = CARRIED_FORWARD_FROM_V042_UNCHANGED_PATH
+
+## Network Evidence Classification (updated)
+
+LOCAL_PTY_NETWORK = historically direct verified
+ADB_PTY_NETWORK = historically direct verified
+LOCAL_ONESHOT_NETWORK = DIRECTLY VERIFIED VIA AG PRODUCTION CONSUMER (this round)
+ADB_ONESHOT_NETWORK = DIRECTLY VERIFIED VIA AG PRODUCTION CONSUMER (this round)
+
+AT.NETWORK-ROOT-CAUSE-0 historical document: UNCHANGED (point-in-time evidence).

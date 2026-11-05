@@ -1,0 +1,27 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+Gate — Architecture
+
+AG_CORE_AT_DIRECT_DEPENDENCY = NO
+  (ag-core has no com.at.* or com.androidterminal.* imports)
+
+AG_RUNTIME_AT_DIRECT_DEPENDENCY = NO
+  (ag-runtime has no com.at.* or com.androidterminal.* imports)
+
+INTEGRATION_AT_CHANGED = NO (no source modifications)
+TOOL_ANDROID_SHELL_CHANGED = NO (no source modifications)
+
+AG does NOT import:
+  - AdbRuntime internals
+  - AdbClient internals
+  - native transport internals
+  - 38800 routing details
+  - mDNS implementation
+  - CNXN/AUTH implementation
+  - RX owner mechanics
+
+AG consumes only AT's external contract via:
+  - :integration-at (AtExecutionAdapter)
+  - com.at.composition.android (ATAndroid composition)
+  - com.at.engine.api (public API)

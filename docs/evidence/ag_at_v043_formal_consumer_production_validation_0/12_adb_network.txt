@@ -1,0 +1,25 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+Gate AN — ADB One-shot Network Direct Validation
+
+Historical gap (AT.NETWORK-ROOT-CAUSE-0):
+  ADB_ONESHOT = equivalence only
+
+This round: DIRECTLY VERIFIED via AG production consumer path.
+NETWORK_TOOL_USED = NO
+
+AN1 — DNS + TCP:
+  command: adb shell nc -z -w 5 example.com 443
+  outcome=COMPLETED exit=0 ✓
+
+AN2 — HTTPS:
+  command: adb shell curl -sS -o /dev/null -w '%{http_code}' https://example.com
+  stdout: 200
+  ADB_ONESHOT_HTTP_CODE = 200 ✓
+
+AN3 — Content:
+  Verified in AN2 (curl returns valid HTTP 200 from remote shell)
+  Full chain: remote shell → adbd → AT → AG shell tool → ToolResult ✓
+
+ADB_ONESHOT_NETWORK_DIRECT = PASS

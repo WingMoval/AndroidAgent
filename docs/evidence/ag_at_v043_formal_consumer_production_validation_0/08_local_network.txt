@@ -1,0 +1,27 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+Gate LN — Local One-shot Network Direct Validation
+
+Historical gap (AT.NETWORK-ROOT-CAUSE-0):
+  LOCAL_ONESHOT = NOT_DIRECTLY_EXERCISABLE / equivalence only
+
+This round: DIRECTLY VERIFIED via AG production consumer path.
+NETWORK_TOOL_USED = NO (testing shell execution network capability, NOT :tool-network)
+
+LN1 — DNS + TCP:
+  command: nc -z -w 5 example.com 443
+  outcome=COMPLETED exit=0
+  TCP connection to example.com:443 succeeded ✓
+
+LN2 — HTTPS:
+  command: curl -sS -o /dev/null -w '%{http_code}' https://example.com
+  stdout: 200
+  LOCAL_ONESHOT_HTTP_CODE = 200 ✓
+
+LN3 — Content:
+  command: curl -sS https://example.com 2>&1 | head -c 200
+  stdout: <!doctype html><html lang=en><head><meta charset=utf-8>...
+  Non-empty valid HTML returned through AndroidShellTool → ToolResult ✓
+
+LOCAL_ONESHOT_NETWORK_DIRECT = PASS

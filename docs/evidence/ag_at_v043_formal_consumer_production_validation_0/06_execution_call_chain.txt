@@ -1,0 +1,21 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+## AG Default Model-Visible Shell (Local One-Shot)
+
+android_shell → AndroidShellToolImpl → AtExecutionAdapter.executeLocal()
+→ AT localEngine → LocalOneShotBackend → /system/bin/sh -c → app UID
+
+Validation channel: DebugBridge tool_invoke (DIRECT TOOL VALIDATION, NO LLM)
+  {"type":"tool_invoke","name":"android_shell","arguments":{"command":"..."}}
+  → production ToolRegistry → AndroidShellToolImpl
+
+## Secondary ADB Shell (shell UID)
+
+android_shell (command starts with "adb") → Local one-shot → AG CLI bootstrap
+→ AT CLI → AdbOneShotBackend → AdbRuntime.executeShell()
+→ active transport router:
+    LOCAL: executeShellLocalhost() → adbd → uid=2000(shell)
+    WIRELESS: executeShell() → adbd → uid=2000(shell)
+
+AG does NOT decide LOCAL/WIRELESS. AdbRuntime is the sole router.

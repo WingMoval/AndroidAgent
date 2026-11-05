@@ -1,0 +1,21 @@
+AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0
+Date: 2026-11-05
+
+CURRENT_ACTIVE_AT_REPO (before) = third_party/at-v042-consumer-candidate/m2
+CURRENT_ACTIVE_BUNDLE (before) = AT.V042-CONSUMER-CANDIDATE
+
+V040_REPO_PRESENT = YES (third_party/at-consumer-freeze-v1, m2 entry commented out)
+V042_CANDIDATE_REPO_PRESENT = YES (active in settings.gradle.kts before sync)
+V043_FORMAL_REPO_PRESENT = NO (before sync)
+CURRENT_RESOLVED_GAV = com.at.*:4.0.0 (resolved from v042 candidate m2)
+
+Gradle wiring (before):
+  settings.gradle.kts line 32-34: maven { url = uri("third_party/at-v042-consumer-candidate/m2") }
+  settings.gradle.kts line 39-41: maven { url = uri("third_party/at-v4-consumer-freeze-v1/m2") }
+
+Both v042 candidate and v4 freeze had same GAV 4.0.0 → shadowing risk.
+v042 candidate listed FIRST → took resolution priority.
+
+integration-at/build.gradle.kts dependencies:
+  api("com.at.engine.api:at-engine-api:4.0.0")
+  api("com.at.cli:at-cli:4.0.0")
