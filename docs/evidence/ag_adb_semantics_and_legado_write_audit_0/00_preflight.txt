@@ -1,0 +1,35 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Date: 2026-11-07
+
+Gate A — Preflight
+
+BRANCH = main
+START_HEAD = 84e30b4
+WORKTREE = CLEAN (non-upload, 0 changed files)
+git diff --check = no code issues (only CRLF warnings on upload/)
+
+DEVICE = HONOR ALI-AN00 (APLMUT4312005935), Android 15
+AG PID (this round) = 16550
+PROVIDER = OpenRouter / deepseek/deepseek-v4-flash-0731 (unused; direct tool_invoke only)
+
+CURRENT AG RELEASE BASELINE:
+  AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0 = CLOSED
+  AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-CLOSEOUT-0 = PASS/CLOSED
+  CURRENT_CAPABILITY_RELEASE_BASELINE = READY
+
+AT CONSUMED BASELINE (unchanged):
+  AT_HANDOFF = AT_V043_CONSUMER_HANDOFF (v0.4.3, source baseline 5517fc0)
+  AT_CHANGED = NO
+
+LEGADO TARGET:
+  PACKAGE = io.legado.app.release
+  VERSION = 3.21.050816 (versionCode 7707)
+  targetSdk = 30
+  FIRST_INSTALL = 2024-05-30
+
+METHOD NOTE:
+  All device experiments used DebugBridge tool_invoke (direct production
+  android_shell tool, ToolRegistry.dispatch with AllowAll), bypassing the LLM
+  entirely. This gives DETERMINISTIC argv — the exact command string is what
+  the outer /system/bin/sh parses — so quoting behavior is reproduced exactly
+  as the LLM would emit it, with zero model-token cost and no model re-interpretation.

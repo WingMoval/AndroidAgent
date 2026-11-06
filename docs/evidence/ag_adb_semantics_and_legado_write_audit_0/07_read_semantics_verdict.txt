@@ -1,0 +1,41 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate D — Read semantics verdict
+
+Summary of Gate C device experiments (all via DebugBridge tool_invoke, deterministic argv):
+
+  Test  Form                                    exitCode  Result
+  ----  --------------------------------------  --------  ------------------------
+  C1    adb shell cat <path>                     0         PASS (full content)
+  C2    adb shell "cat <path>"                  127         FAIL ("cat /path" not found)
+  C3    adb shell sh -c 'cat <path>'             0         PASS (full content)
+  C4    adb shell dd if=<path> bs=1 count=512    0         PASS (full content)
+
+Classification (per required taxonomy):
+  D1 = ANDROID_PERMISSION            -> REJECTED (C1/C3/C4 read the SAME file fine)
+  D2 = AT_ADB_CLI_ARGV_SEMANTICS     -> CONTRIBUTING (parser re-serializes argv)
+  D3 = REMOTE_SHELL_QUOTING          -> ROOT CAUSE
+  D4 = COMMAND_NOT_PRESENT           -> REJECTED (cat exists; C1 proves it)
+  D5 = OTHER                         -> n/a
+
+VERDICT:
+  ADB_SHELL_CAT_UNQUOTED = PASS
+  ADB_SHELL_CAT_QUOTED   = FAIL
+  ADB_SHELL_QUOTE_DIFFERENCE_ROOT_CAUSE =
+    The outer local /system/bin/sh collapses the double-quoted string
+    "cat /path" into ONE logical argv element. AtCliMain
+    (AdbCliArgs.serializeToRemoteCommand, AT.CLI-0.1) faithfully re-serializes
+    each logical argv element with POSIX single-quotes, so that ONE element
+    becomes ONE single-quoted token '"cat /path"'. The REMOTE adbd shell then
+    parses that as a single word and attempts to exec an executable literally
+    named "cat /path" -> exit 127 (command not found).
+    This is a TWO-PASS shell-parsing consequence of the embedded adb CLI's
+    argv model (outer sh tokenizes -> single-quote re-serialization -> remote
+    sh re-parses), NOT an Android filesystem permission issue and NOT a
+    missing-binary issue.
+  ADB_SHELL_ARGUMENT_MODEL = argv list (outer sh -> "$@" -> per-element single-
+                             quote -> joinToString(" ") -> remote sh)
+  CAT_FAILURE_WAS_ANDROID_PERMISSION = NO
+
+This is the SAME mechanism that broke `adb shell "head -c 2000 <path>"` and
+`adb shell "echo 'x' > <path>"` in the original task: any double-quoted
+multi-word command becomes one remote word.

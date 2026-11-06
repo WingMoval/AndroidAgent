@@ -1,0 +1,36 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate E5 — DELETE probe + confirm + Legado integrity
+
+Step 1 — delete the probe:
+  CMD: adb shell rm <PROBE>
+  exitCode = 0
+  stdout = (empty)
+
+Step 2 — confirm removal:
+  CMD: adb shell ls <PROBE>
+  exitCode = 1
+  stderr = "ls: /storage/.../.ag_write_probe_7F3A91: No such file or directory"
+  -> PROBE_REMOVED = YES
+
+Step 3 — confirm real Legado files are intact (no collateral damage):
+  CMD: adb shell ls -l <LEGADO>/bookSource.json <LEGADO>/bookGroup.json <LEGADO>/bookshelf.json
+  exitCode = 0
+  stdout:
+    -rw-rw---- 1 u0_a224 ext_data_rw      362 2026-09-23 16:37 bookGroup.json
+    -rw-rw---- 1 u0_a224 ext_data_rw 44507557 2026-09-23 16:37 bookSource.json
+    -rw-rw---- 1 u0_a224 ext_data_rw    34550 2026-09-23 16:37 bookshelf.json
+  (sizes + mtimes UNCHANGED from pre-probe; owners still u0_a224)
+
+E5 DELETE = PASS
+PROBE_REMOVED = YES
+LEGADO_REAL_DATA_CHANGED = NO
+NO_LEFTOVER_PROBE = YES
+
+Gate E SUMMARY:
+  LEGADO_EXTERNAL_DIR_CREATE   = PASS
+  LEGADO_EXTERNAL_DIR_WRITE    = PASS
+  LEGADO_EXTERNAL_DIR_READBACK = PASS
+  LEGADO_EXTERNAL_DIR_DELETE   = PASS
+  LEGADO_RAW_FILE_WRITE_PERMISSION = YES
+  (the ADB shell principal has full CREATE/WRITE/READ/DELETE on the Legado
+   external files dir; the earlier LLM "not writable" conclusion is DISPROVEN)

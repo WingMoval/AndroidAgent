@@ -1,0 +1,37 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate — Scope audit (final)
+
+PRODUCTION_CODE_CHANGED = NO
+  - No .kt / .java / .cpp / manifest / gradle file in AndroidAgent-V2 was
+    modified. git status (non-upload) = 0 changed files.
+  - Only docs/evidence/* and docs/implementation/* (this audit) were created.
+
+AG_PRODUCTION_CHANGED = NO
+AT_CHANGED = NO
+  - AT v0.4.3 consumed baseline unchanged. No AT source modified. The AT
+    source trees read (AndroidTerminal-V3, AndroidTerminal-V4-LOCAL-TCP-042)
+    were read-only references.
+
+LEGADO_REAL_DATA_CHANGED = NO
+  - bookSource.json / bookGroup.json / bookshelf.json / config.xml and all
+    other Legado files UNTOUCHED (sizes + mtimes verified unchanged:
+    bookSource.json 44507557 @ 2026-09-23, etc.).
+  - No import / export / restore / save was performed.
+  - ReaderProvider mutating URIs (insert/delete) were NOT invoked.
+
+NO_LEFTOVER_PROBE = YES
+  - .ag_write_probe_7F3A91 deleted (confirmed "No such file or directory").
+  - /data/local/tmp/.ag_probe_src_3A91 deleted (confirmed gone).
+
+ROOT / UNINSTALL / CLEAR-DATA / REINSTALL = NONE
+READ-ONLY METHODS ONLY for Gate F/G/H (dumpsys package, content query, ls,
+dd, official Legado api.md, Legado open-source BookSource entity).
+
+NO_NEW_CAPABILITY_ADDED = NO
+NO_TOOLSPEC_CHANGED = NO
+NO_AGENT_INSTRUCTIONS_CHANGED = NO
+NO_ROOM_SCHEMA_CHANGED = NO
+NO_LEGADO_TOOL_ADDED = NO
+NO_SEARCH_BROWSER_ADDED = NO
+
+TEST_CODE_CHANGED = NO

@@ -1,0 +1,50 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate B — adb CLI parser (source-confirmed, AT v0.4.3 / AdbCliArgs.kt AT.CLI-0.1)
+
+File: at-cli/src/main/java/com/at/cli/AdbCliArgs.kt  (AT.CLI-0.1, FROZEN)
+Verified identical in AndroidTerminal-V3 and AndroidTerminal-V4-LOCAL-TCP-042.
+(AG consumes AT v0.4.3 as vendored AAR; source baseline 5517fc0 not on disk,
+ but AdbCliArgs is the frozen AT.CLI-0.1 contract, byte-stable across V3/V4.)
+
+Top-level subcommands supported (parse()):
+  shell   -> SHELL (one-shot) if rest non-empty; INTERACTIVE (PTY) if no rest
+  pair    -> PAIR (pairing bootstrap)
+  --help / -h / help -> HELP
+  version  -> VERSION
+  <other>  -> UNSUPPORTED (exit 2):
+     "adb: unsupported command: <sub> (this build supports `shell <command...>`
+      and `pair <host>:<port> <code>`) [AT.CLI-0.1]"
+
+`shell` argument collection:
+  rest = args.copyOfRange(1, args.size)   // ALL args after "shell"
+  remoteCommand = serializeToRemoteCommand(rest)
+
+serializeToRemoteCommand(args):
+  args.joinToString(" ") { quoteSingle(it) }
+
+quoteSingle(arg):
+  ''            if arg empty
+  '<arg>'       if no single-quote in arg
+  '<arg with ' -> '"'" escapes>' if arg contains a single-quote
+
+So the remote command is a SPACE-JOINED list of SINGLE-QUOTED tokens.
+Each logical argv element becomes exactly one single-quoted token.
+
+UNIT TESTS (AdbCliArgsTest.kt, existing):
+  parseShellOneShot:  parse(["shell","id"]) -> remoteCommand = "'id'"
+  parseShellNoCommand: parse(["shell"]) -> Kind.INTERACTIVE
+  parseUnsupported:   parse(["devices"]) -> UNSUPPORTED, "unsupported command: devices"
+  parseShellQuotingRoundTrip:
+     serializeToRemoteCommand(["echo","a b","x'y","\$z"])
+       -> contains 'echo', 'a b', 'x'"'"'y', '$z'
+     (proves spaces are preserved inside single quotes; the remote sh sees
+      the SAME logical values the outer sh produced)
+
+CRITICAL IMPLICATION (the audit's central question):
+  The parser does NOT re-split on spaces. It receives the LOGICAL argv
+  (already tokenized by the outer sh) and re-serializes each element.
+  Therefore:
+    outer argv ["shell","cat","/path"]   -> remote:  'cat' '/path'         (2 words)
+    outer argv ["shell","cat /path"]     -> remote:  '"cat /path"'         (1 word)
+  The second case is EXACTLY what `adb shell "cat /path"` produces, because
+  the outer sh collapses the double-quoted string into a single argv element.

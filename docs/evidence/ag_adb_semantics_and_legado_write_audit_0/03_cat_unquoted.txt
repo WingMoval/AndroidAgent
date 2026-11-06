@@ -1,0 +1,27 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate C1 — adb shell cat <path>  (UNQUOTED, the correct form)
+
+CMD (exact string passed to outer /system/bin/sh):
+  adb shell cat /storage/emulated/0/Android/data/io.legado.app.release/files/bookGroup.json
+
+outer sh tokenization:
+  adb fn argv = ["shell", "cat", "/storage/.../bookGroup.json"]
+  -> remoteCommand = 'cat' '/storage/.../bookGroup.json'
+  -> remote sh: cat /storage/.../bookGroup.json
+
+RESULT:
+  tool success = true
+  outcome = COMPLETED
+  exitCode = 0
+  stdout (344 bytes) = full bookGroup.json content:
+    [
+      { "groupId": -1, "groupName": "全部", "order": -10, "show": true },
+      { "groupId": -2, "groupName": "本地", "order": -9,  "show": true },
+      { "groupId": -3, "groupName": "音频", "order": -8,  "show": true },
+      { "groupId": -4, "groupName": "未分组", "order": -7, "show": true }
+    ]
+  stderr = "[adb] connected"
+
+ADB_SHELL_CAT_UNQUOTED = PASS
+PROOF: the file IS readable, `cat` exists, the path is valid, and the
+unquoted form works end-to-end through the embedded adb CLI.

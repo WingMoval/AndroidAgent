@@ -1,0 +1,47 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate F — Legado package surface (read-only)
+
+PACKAGE = io.legado.app.release
+  versionName = 3.21.050816
+  versionCode = 7707
+  minSdk = 21, targetSdk = 30
+  firstInstallTime / lastUpdateTime = 2024-05-30 15:52:49
+
+REGISTRED CONTENT PROVIDERS (dumpsys package):
+  io.legado.app.release/io.legado.app.api.ReaderProvider   <- the public API
+  io.legado.app.release/androidx.lifecycle.ProcessLifecycleOwnerInitializer
+  io.legado.app.release/androidx.core.content.FileProvider
+  io.legado.app.release/splitties.init.AppCtxInitProvider
+
+CONTENT PROVIDER AUTHORITIES (dumpsys package, "Authority:" lines):
+  "booksource" : -1
+  "rsssource"  : -1
+  "replace"    : -1
+  (plus several empty/WILD authorities for the other providers)
+
+IMPORTANT: the "booksource"/"rsssource"/"replace" strings are NOT the provider
+AUTHORITY — they are the provider's internal PATH segments (see Gate H). The
+ReaderProvider's actual authority is  <package>.readerProvider
+= io.legado.app.release.readerProvider  (confirmed by the official Legado
+api.md and by the live probe in Gate H).
+
+EXTERNAL FILES DIR (shell-visible):
+  /storage/emulated/0/Android/data/io.legado.app.release/files/
+    bookGroup.json     362      (2026-09-23)
+    bookSource.json  44507557   (2026-09-23)  <- 44 MB
+    bookshelf.json   34550      (2026-09-23)
+    config.xml, readConfig.json, readRecord.json, replaceRule.json,
+    rssSources.json, searchHistory.json, shareReadConfig.json,
+    themeConfig.json, txtTocRule.json, httpTTS.json
+    bookTxt/  book_cache/
+  ALL are JSON/XML flat files. NO Room/SQLite .db file is visible here.
+
+PRIVATE APP DATA DIR (shell INVISIBLE):
+  /data/data/io.legado.app.release/          -> "Permission denied" (shell)
+  /data/data/io.legado.app.release/databases -> "Permission denied" (shell)
+  => The private DB (Room) is NOT inspectable by the ADB shell principal.
+
+LISTENING PORTS:
+  No Legado-owned listening TCP socket observed (netstat/proc scan). The
+  Legado Web API (http://127.0.0.1:<port>/saveBookSource) requires the user
+  to enable "Web 服务" in settings; it is not currently running.

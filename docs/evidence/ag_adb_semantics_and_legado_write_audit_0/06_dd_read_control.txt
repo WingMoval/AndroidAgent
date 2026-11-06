@@ -1,0 +1,25 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate C4 — adb shell dd if=<path> bs=1 count=512   (control, the form that WORKED in the real task)
+
+CMD:
+  adb shell dd if=/storage/emulated/0/Android/data/io.legado.app.release/files/bookGroup.json bs=1 count=512
+
+outer sh tokenization:
+  No quotes. Each token is a separate argv element.
+  adb fn argv = ["shell","dd","if=/storage/.../bookGroup.json","bs=1","count=512"]
+  -> remoteCommand = 'dd' 'if=/storage/.../bookGroup.json' 'bs=1' 'count=512'
+  -> remote sh: dd if=... bs=1 count=512
+
+RESULT:
+  tool success = true
+  outcome = COMPLETED
+  exitCode = 0
+  stdout (344 bytes) = full bookGroup.json (dd reads 512 max, file is 362 bytes
+                      so the whole file is emitted)
+  stderr = "[adb] connected362+0 records in\n362+0 records out\n362 bytes (362 B) copied, 0.014 s, 25 K/s"
+
+This confirms the real task's successful reads used an UNQUOTED, space-
+separated argv form (no double-quotes collapsing tokens), which is why it
+worked while the quoted cat/head forms failed.
+
+ADB_SHELL_DD_CONTROL = PASS

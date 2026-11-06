@@ -1,0 +1,83 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate B — Execution chain (source-confirmed)
+
+FULL CHAIN for android_shell tool (LLM command "adb shell <args>"):
+
+  LLM ToolCall.arguments = {"command": "adb shell cat /path"}
+    |
+    v  AndroidShellToolImpl.execute  (tool-android-shell)
+  ShellToolSchema.parse -> command string
+    |
+    v  Executor.execute(command) = AtExecutionAdapter.executeLocal(command)
+  AtExecutionAdapter.executeLocal  (integration-at)
+    wrapped = "cd '<appFilesDir>' && <sourceLine> && $command"
+    -> localEngine.execute(ATExecutionRequest(wrapped))
+    |
+    v  Local backend: /system/bin/sh -c "<wrapped>"   [OUTER LOCAL SHELL, app UID]
+  The outer sh parses the whole wrapped string ONCE.
+    The `adb` token resolves to a SHELL FUNCTION (from CLI bootstrap),
+    NOT an ELF binary.
+
+  adb() shell function (LocalCliBootstrap.writeScript, com.at.cli):
+    adb() {
+      if [ "$1" = shell ] && [ "$#" -eq 1 ]; then ...interactive...; fi
+      /system/bin/app_process -Djava.class.path="$AT_APP_APK" /system/bin
+        <mainClass> "$@"
+    }
+    -> forwards the LOGICAL argv (post-outer-shell-parse) via "$@".
+    e.g. outer sh parses `adb shell cat /path` -> fn argv = ["shell","cat","/path"]
+
+    |
+    v  app_process launches AtCliMain.main(args)   (com.at.cli, pure JVM)
+  AdbCliParseResult.parse(args):
+    args[0] == "shell" -> rest = args[1..]
+    -> remoteCommand = serializeToRemoteCommand(rest)
+
+  serializeToRemoteCommand  (AdbCliArgs.kt, AT.CLI-0.1 FROZEN):
+    args.joinToString(" ") { quoteSingle(it) }
+    quoteSingle = POSIX single-quote wrap; only `'` escaped as '"'"
+    e.g. ["cat","/path"]  ->  'cat' '/path'
+        ["cat /path"]     ->  '"cat /path"'   (ONE element, whole thing quoted)
+
+    |
+    v  AtCliMain.bridgeOneShot(remoteCommand)
+  Connects Product CLI Bridge UDS, sends T_ONESHOT frame with remoteCommand
+    |
+    v  Bridge -> AdbBackend.executeShell(remoteCommand)  (at-backend-adb)
+  AdbRuntime.executeShell(command) -> AdbEngine.executeShell -> AdbNative (JNI)
+    |
+    v  C++ (adb_engine_jni.cpp):
+  service = "shell,v2,raw:" + command
+  -> opens ADB stream to adbd
+    |
+    v  adbd (on device)
+  Executes the raw command string in the REMOTE /system/bin/sh
+  (uid=2000 shell principal). The remote sh does ONE parse of the command line.
+
+KEY CONSEQUENCE (two shell parses, two owners):
+  1. OUTER local sh (app UID) parses the LLM command string -> logical argv.
+     This is where double-quotes are STRIPPED and tokens are split on spaces.
+  2. AtCliMain re-serializes each logical argv element with POSIX single-quotes.
+  3. REMOTE sh (uid 2000) parses the re-serialized command line.
+
+So a token that the OUTER sh kept as ONE argv element (because it was inside
+double-quotes) is re-emitted as ONE single-quoted token, and the REMOTE sh
+treats it as a single word (a single executable name / argument).
+
+VERDICTS:
+  ADB_SHELL_ARGUMENT_MODEL = argv list (outer sh parse -> "$@" -> per-element
+                             single-quote re-serialization -> remote sh parse)
+  QUOTE_HANDLING           = outer sh strips double-quotes (tokenization);
+                             AtCliMain re-wraps each element in single-quotes
+                             (POSIX-literal); `'` escaped as '"'"
+  REMOTE_SHELL_OWNER       = adbd remote /system/bin/sh (shell,v2,raw:<command>)
+  REDIRECTION_OWNER        = the REMOTE sh (inside the serialized command string);
+                             `>`, `|`, `;` are interpreted by the remote shell,
+                             NOT the outer local shell, because AtCliMain
+                             single-quotes each argv element (so a bare `>` that
+                             the outer sh did not consume would be quoted-literal
+                             unless the LLM used sh -c).
+
+The `adb shell cat /path` vs `adb shell "cat /path"` distinction is a PARSER-LEVEL
+difference at step 1 (outer sh tokenization): unquoted -> 2 argv elements;
+double-quoted -> 1 argv element.

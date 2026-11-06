@@ -1,0 +1,30 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate C3 — adb shell sh -c 'cat <path>'   (explicit remote shell)
+
+CMD:
+  adb shell sh -c 'cat /storage/emulated/0/Android/data/io.legado.app.release/files/bookGroup.json'
+
+outer sh tokenization:
+  The single-quotes around 'cat /path' make the outer sh pass the literal
+  string  cat /path  as ONE argv element (single quotes are literal in sh).
+  adb fn argv = ["shell", "sh", "-c", "cat /path"]
+  -> serializeToRemoteCommand(["sh","-c","cat /path"])
+     = 'sh' '-c' 'cat /path'
+  -> remote sh: sh -c 'cat /path'
+  -> the INNER remote sh -c parses "cat /path" -> runs cat with the path
+
+RESULT:
+  tool success = true
+  outcome = COMPLETED
+  exitCode = 0
+  stdout (344 bytes) = full bookGroup.json (identical to C1)
+  stderr = "[adb] connected"
+
+NOTE on host-side quoting: the command was sent through DebugBridge tool_invoke
+as a JSON string, so there is NO Windows/PowerShell layer to double-interpret
+the quotes. The exact argv reaching the outer sh is as documented above.
+
+ADB_SHELL_SH_C = PASS
+This is the RECOMMENDED form for any command needing shell features
+(redirection, pipes, ;, globs) inside the remote shell: put the whole
+remote command in ONE single-quoted -c argument.

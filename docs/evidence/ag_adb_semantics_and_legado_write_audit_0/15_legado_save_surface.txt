@@ -1,0 +1,66 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate H — Direct Legado integration surface (discovery only, NO mutating call)
+
+LIVE READ-ONLY PROBES (content query, no insert/delete):
+
+Probe A — WRONG authority guess (io.legado.app.release.booksource):
+  CMD: adb shell content query --uri content://io.legado.app.release.booksource
+  RESULT: "Could not find provider: io.legado.app.release.booksource"
+  -> confirms "booksource" is NOT the authority (it is an internal path).
+
+Probe B — package-only authority (io.legado.app.release):
+  CMD: adb shell content query --uri content://io.legado.app.release/BookSource
+  RESULT: "Could not find provider: io.legado.app.release"
+  -> confirms the authority is NOT the bare package name.
+
+Probe C — CORRECT authority (io.legado.app.release.readerProvider):
+  CMD: adb shell content query --uri content://io.legado.app.release.readerProvider/bookSources/query
+  RESULT: "No result found."   (exitCode 0, no exception)
+  -> The provider IS registered and reachable (NOT "Could not find provider").
+     It returned empty rather than throwing SecurityException. This is the
+     expected behavior when the caller (ADB shell, uid=2000) does NOT hold
+     the io.legado.READ_WRITE signature-level permission: the query is
+     denied/filtered and the provider yields no rows. (A non-existent provider
+     would have raised IllegalStateException, as in Probes A/B.)
+
+OFFICIAL API (Legado api.md, gedoor/legado):
+  - Web API:  http://127.0.0.1:<port>/saveBookSource (POST) and friends.
+              Requires the user to enable "Web 服务" in-app. Port not currently
+              listening on this device.
+  - ContentProvider API:
+        authority  = <package>.readerProvider
+                     = io.legado.app.release.readerProvider
+        permission = io.legado.READ_WRITE  (protectionLevel = signature)
+        URIs (book sources):
+          insert single : content://<auth>/bookSource/insert   (ContentValues key "json")
+          insert multi  : content://<auth>/bookSources/insert
+          query one     : content://<auth>/bookSource/query?url=xxx
+          query all     : content://<auth>/bookSources/query
+          delete multi  : content://<auth>/bookSources/delete
+  - A caller must declare <uses-permission android:name="io.legado.READ_WRITE"/>
+    AND be signed with a certificate matching Legado's (signature permission),
+    otherwise the system rejects the call before the provider logic runs.
+
+DIRECT_LEGADO_SAVE_SURFACE = YES
+
+  TYPE                = ContentProvider (primary) + in-app Web HTTP API (secondary)
+  AUTHORITY           = io.legado.app.release.readerProvider
+  PERMISSION          = io.legado.READ_WRITE (signature protectionLevel)
+  EXPORTED            = YES (registered as an accessible provider; the
+                          "No result found" on an unsigned caller is a
+                          permission-level denial, not absence)
+  CALLER_REQUIREMENT  = caller must hold io.legado.READ_WRITE, which requires
+                        the SAME signing certificate as Legado (signature
+                        permission). A plain ADB shell / a differently-signed
+                        app CANNOT invoke the mutating URIs.
+
+MUTATING API WAS NOT INVOKED (per task constraint DO NOT INVOKE MUTATING API).
+Only read-only `content query` probes were run.
+
+IMPLICATION FOR ANDROIDAGENT:
+  The ADB shell principal (uid=2000) cannot save a book source via
+  ReaderProvider (no signature permission), and the Web API is off. So on this
+  device, neither public save surface is currently reachable by the agent's
+  shell identity. The only filesystem-level write that IS possible is raw
+  editing of the external bookSource.json — but per Gate G that is a backup
+  file, not the runtime SSOT, so it is not a valid save path either.

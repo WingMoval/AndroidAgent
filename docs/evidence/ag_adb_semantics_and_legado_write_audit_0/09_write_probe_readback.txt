@@ -1,0 +1,23 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate E2 — VERIFY probe exists
+
+CMD:
+  adb shell ls -l <PROBE>
+
+RESULT:
+  exitCode = 0
+  stdout = "-rw-rw---- 1 shell ext_data_rw 0 2026-11-07 01:30 /storage/emulated/0/Android/data/io.legado.app.release/files/.ag_write_probe_7F3A91"
+
+Observations:
+  - File exists, size 0 (just created by touch).
+  - owner = shell (the ADB shell principal created it).
+  - SELinux context = ext_data_rw (the standard external-app-data writable label).
+  - mode = rw-rw---- (owner+group read/write).
+
+E2 VERIFY = PASS
+
+The Legado files dir is labeled ext_data_rw and is writable by the shell
+principal. (The real Legado files in the same dir are owned by u0_a224 with
+the same ext_data_rw context — the shell can still create new files there
+because ext_data_rw grants the shell principal write access to external
+app-data areas it can traverse.)

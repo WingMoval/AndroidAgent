@@ -1,0 +1,56 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate F/G — Legado runtime storage model
+
+EVIDENCE (read-only + official docs + source):
+
+1. Runtime book-source state = Room DB.
+   - Legado source (io.legado.app.data.entities.BookSource) is a Room @Entity:
+       @Entity(tableName = "book_sources",
+               indices = [Index(value=["bookSourceUrl"], unique=false)])
+       data class BookSource( @PrimaryKey var bookSourceUrl: String, ... )
+   - The Room database lives in the PRIVATE app dir
+     /data/data/io.legado.app.release/databases/  (shell: Permission denied).
+   - Therefore the runtime SSOT for book sources is the private Room DB,
+     NOT the external bookSource.json file.
+
+2. bookSource.json = EXPORT / LOCAL-BACKUP representation.
+   - Its content is a JSON array of book-source objects whose fields map 1:1
+     to the BookSource Room entity (bookSourceUrl, bookSourceName,
+     bookSourceGroup, bookSourceComment, bookSourceType, customOrder,
+     enabled, enabledExplore, header, lastUpdateTime, loginUrl,
+     ruleBookInfo{...}, ...).
+   - This is exactly the format Legado's "本地备份/导出" (local backup / export)
+     writes, and the format the import path consumes. It is a serialized
+     external representation, NOT the live database.
+   - Size 44 MB, mtime 2026-09-23 (last backup/export), owner u0_a224.
+
+3. The app does NOT reload bookSource.json into its live state on startup in a
+   way that makes the file the SSOT. Book sources are read/written through the
+   Room DAO; the JSON file is produced/consumed only on explicit
+   export/import operations.
+
+CONCLUSION (Q4):
+  Directly editing bookSource.json on the raw filesystem does NOT reliably
+  change Legado's runtime book-source state, because the runtime SSOT is the
+  private Room DB. Editing the JSON file would at best produce a stale export
+  file; Legado would not pick it up unless the user explicitly performs an
+  "import" (which reads the file into the Room DB) or a backup-restore.
+
+  The SUPPORTED runtime save path is the ReaderProvider ContentProvider
+  (content://io.legado.app.release.readerProvider/bookSources/insert) or the
+  Web API (http://127.0.0.1:<port>/saveBookSource) — both write into the Room
+  DB. Both are gated (signature permission / in-app Web-service toggle).
+
+  Because we could not positively prove the app's startup-load behavior from
+  the outside (private DB invisible; no source of THIS exact build on disk),
+  the strongest honest classification is:
+
+    BOOKSOURCE_JSON_ROLE = EXTERNAL_BACKUP_EXPORT_OR_MIRROR
+    (with the caveat: not provably re-consumed at runtime; the runtime SSOT
+     is the private Room DB. Direct-edit of the JSON is NOT a validated
+     save path.)
+
+  We do NOT claim RUNTIME_CANONICAL_SSOT for bookSource.json.
+  We do NOT claim the weaker "RUNTIME_CONSUMED_FILE_BUT_NOT_PROVEN_SSOT"
+  either, because the evidence points the other way: the file is a backup
+  artifact, and the live state is the Room DB.

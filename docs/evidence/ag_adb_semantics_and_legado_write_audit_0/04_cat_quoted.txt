@@ -1,0 +1,43 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate C2 — adb shell "cat <path>"  (DOUBLE-QUOTED, the form that FAILED in the real task)
+
+CMD (exact string, reproducing what the LLM emitted):
+  adb shell "cat /storage/emulated/0/Android/data/io.legado.app.release/files/bookGroup.json"
+
+outer sh tokenization (KEY):
+  The double-quotes make the outer /system/bin/sh treat the entire
+  "cat /path" as ONE argv element.
+  adb fn argv = ["shell", "cat /storage/.../bookGroup.json"]   (ONE element)
+  -> serializeToRemoteCommand(["cat /path"])
+     = quoteSingle("cat /path") = '"cat /path"'   (single-quoted, ONE token)
+  -> remoteCommand = '"cat /path"'
+  -> remote sh parses:  a single word  cat /path  (the space is INSIDE the
+     single quotes, so it is NOT a word separator)
+  -> remote sh tries to exec an executable literally named:  cat /path
+
+RESULT:
+  tool success = true        <- MECHANISM success (command ran to completion)
+  outcome = COMPLETED
+  exitCode = 127             <- "command not found"
+  stdout = (empty)
+  stderr = "[adb] connected/system/bin/sh: cat /storage/emulated/0/Android/data/io.legado.app.release/files/bookGroup.json: inaccessible or not found"
+
+ROOT-CAUSE READING OF THE ERROR STRING:
+  The remote sh reports the WHOLE string "cat /path" as the not-found target.
+  If `cat` were missing OR the path were inaccessible, the error would name
+  only the path (e.g. "cat: /path: No such file..."). Instead it names
+  "cat /path" as a unit -> the remote shell looked for an executable whose
+  name is the entire quoted string. This is the signature of argv-mis-
+  serialization, NOT of a permission or missing-binary problem.
+
+  exitCode 127 (POSIX "command not found") confirms: no executable named
+  "cat /path" exists.
+
+CONTRAST with C1:
+  Same file, same path, same `cat` binary -> C1 (unquoted) SUCCEEDS (exit 0),
+  C2 (quoted) FAILS (exit 127). The ONLY difference is the outer-sh double-
+  quotes collapsing the command into one argv element. Therefore the failure
+  is 100% attributable to argv/quoting semantics, NOT to the filesystem.
+
+ADB_SHELL_CAT_QUOTED = FAIL
+CAT_FAILURE_WAS_ANDROID_PERMISSION = NO

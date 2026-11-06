@@ -1,0 +1,18 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate G — bookSource.json role (final classification)
+
+BOOKSOURCE_JSON_ROLE = EXTERNAL_BACKUP_EXPORT_OR_MIRROR
+
+Basis:
+  - Runtime book sources are persisted in a Room DB (@Entity "book_sources")
+    under /data/data/io.legado.app.release/databases/ (shell-invisible).
+  - bookSource.json is a 44 MB JSON array whose schema matches the BookSource
+    Room entity exactly; it is the export/local-backup serialization.
+  - Legado writes it on backup/export and reads it only on explicit import.
+  - There is no evidence the app reloads this file into live state at startup.
+
+Therefore:
+  DIRECT_EDIT_BOOKSOURCE_JSON_RECOMMENDED = NO
+  (Editing the raw file does not reliably update Legado's runtime book-source
+   state; the validated save paths are the ReaderProvider ContentProvider or
+   the in-app Web API, both of which write the Room DB.)

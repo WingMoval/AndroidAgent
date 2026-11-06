@@ -1,0 +1,24 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate E1 — Legado external dir CREATE probe
+
+LEGADO_DIR = /storage/emulated/0/Android/data/io.legado.app.release/files
+PROBE = /storage/emulated/0/Android/data/io.legado.app.release/files/.ag_write_probe_7F3A91
+
+CMD:
+  adb shell touch <PROBE>
+  (touch = no redirection, no quoting complexity; isolates filesystem
+   permission from shell-quoting semantics)
+
+RESULT:
+  tool success = true
+  outcome = COMPLETED
+  exitCode = 0
+  stdout = (empty)
+  stderr = "[adb] connected"
+
+CREATE_EXIT_CODE = 0
+CREATE = PASS
+
+The file was created by the ADB shell principal (uid=2000) inside the Legado
+external files dir. This DIRECTLY DISPROVES the previous LLM claim that
+"Android/data is not writable".

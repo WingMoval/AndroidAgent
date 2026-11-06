@@ -1,0 +1,42 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate I — ToolResult semantics side audit (no change)
+
+Source: tool-android-shell/src/main/java/com/androidagent/tool/androidshell/
+  ShellResultMapper.kt (frozen AG semantics)
+  AndroidShellToolImpl.kt (ToolSpec)
+
+TOOLRESULT_SUCCESS_MEANING =
+  "tool invocation MECHANISM success", NOT "device command exit code == 0".
+
+  Mapping (ShellResultMapper.toToolResult):
+    ATExecutionOutcome.COMPLETED      -> ToolResult(success = true,  ...)
+                                         (exitCode may be ANYTHING, incl. 127)
+    ATExecutionOutcome.TRANSPORT_ERROR-> ToolResult(success = false, error=...)
+    ATExecutionOutcome.UNSUPPORTED    -> ToolResult(success = false, error=...)
+
+  The real command result (exitCode, stdout, stderr, hasError) is carried in
+  ToolResult.output as the ShellResultPayload JSON. So a command that runs to
+  completion but fails semantically (e.g. exit 127) is reported
+  success=true with exitCode=127 in the output payload.
+
+OBSERVED IN THIS AUDIT (Gate C2):
+  adb shell "cat <path>"  ->  ToolResult success=true, exitCode=127.
+  This is the exact ambiguity that misled the original task: the model saw
+  success=true and a non-empty stderr, and could not easily tell that the
+  command had actually FAILED (exit 127).
+
+The ToolSpec OUTPUT description DOES document this:
+  "A completed command reports success even when exitCode is non-zero; the
+   exitCode, stdout and stderr carry the real result. Only a tool mechanism
+   failure (transport / protocol / unsupported / timeout / cancelled) reports
+   success = false with an 'error' field."
+
+MODEL_AMBIGUITY_RISK = YES
+  The contract is correct and documented, but the success=true + exitCode!=0
+  shape is a known LLM trap: a model that keys on `success` (instead of
+  exitCode/stderr) will treat a failed command as succeeded. The original
+  task's premature "not writable" conclusion is consistent with this: the
+  model mis-read the quoted-form failures (success=true, exit 127) as
+  filesystem permission denials.
+
+No contract change made (per task constraint). Recorded only.

@@ -1,0 +1,117 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate — Final verdict
+
+STEP = AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+
+VERDICT = PASS_WITH_FINDINGS
+  (Q1-Q4 all answered with evidence or explicit UNKNOWN; two findings —
+   one tool-guidance gap, one LLM premature-conclusion — neither is a
+   production code defect; no code changed.)
+
+START_HEAD = 84e30b4
+FINAL_HEAD = 84e30b4
+BRANCH = main
+WORKTREE = CLEAN (non-upload)
+
+AG_PRODUCTION_CHANGED = NO
+AT_CHANGED = NO
+LEGADO_REAL_DATA_CHANGED = NO
+
+------------------------------------------------------------------------
+Q1 — Does `adb shell cat <path>` work under the embedded adb CLI?
+ADB_SHELL_CAT_UNQUOTED = PASS          (Gate C1, exit 0, full content)
+
+Q2 — Why does `adb shell "cat <path>"` differ from `adb shell cat <path>`?
+ADB_SHELL_CAT_QUOTED = FAIL            (Gate C2, exit 127)
+ADB_SHELL_QUOTE_DIFFERENCE_ROOT_CAUSE =
+  Outer local /system/bin/sh collapses the double-quoted "cat /path" into ONE
+  logical argv element. AtCliMain (AdbCliArgs.serializeToRemoteCommand,
+  AT.CLI-0.1) re-serializes each logical argv element with POSIX single-quotes,
+  so that one element becomes one single-quoted token '"cat /path"'. The
+  remote adbd shell parses it as a single word and tries to exec an executable
+  literally named "cat /path" -> exit 127 (command not found).
+  Root cause = D3 REMOTE_SHELL_QUOTING (via D2 argv model). NOT permission,
+  NOT missing binary.
+ADB_SHELL_ARGUMENT_MODEL =
+  argv list: outer sh tokenizes -> adb() fn "$@" -> AtCliMain per-element
+  single-quote -> joinToString(" ") -> remote adbd sh re-parses.
+CAT_FAILURE_WAS_ANDROID_PERMISSION = NO
+
+------------------------------------------------------------------------
+Q3 — Does the ADB shell identity have real CREATE/WRITE/READ/DELETE on the
+     Legado external dir?
+LEGADO_EXTERNAL_DIR_CREATE   = PASS    (Gate E1, touch exit 0)
+LEGADO_EXTERNAL_DIR_WRITE    = PASS    (Gate E3, cp, exact content)
+LEGADO_EXTERNAL_DIR_READBACK = PASS    (Gate E4, exact token match)
+LEGADO_EXTERNAL_DIR_DELETE   = PASS    (Gate E5, rm + confirmed gone)
+LEGADO_RAW_FILE_WRITE_PERMISSION = YES
+  => The previous LLM claim "Android/data is not writable" is DISPROVEN.
+
+------------------------------------------------------------------------
+Q4 — Is directly editing bookSource.json a valid Legado runtime save path?
+BOOKSOURCE_JSON_ROLE = EXTERNAL_BACKUP_EXPORT_OR_MIRROR
+  (runtime SSOT = private Room DB @Entity "book_sources", shell-invisible;
+   bookSource.json is the 44 MB export/local-backup serialization, consumed
+   only on explicit import)
+DIRECT_EDIT_BOOKSOURCE_JSON_RECOMMENDED = NO
+
+DIRECT_LEGADO_SAVE_SURFACE = YES
+  TYPE = ContentProvider (primary) + in-app Web HTTP API (secondary)
+  AUTHORITY = io.legado.app.release.readerProvider
+  PERMISSION = io.legado.READ_WRITE (signature protectionLevel)
+  EXPORTED = YES (reachable; unsigned callers get permission-level denial)
+  CALLER_REQUIREMENT = caller must hold io.legado.READ_WRITE, which requires
+     the SAME signing certificate as Legado. The ADB shell (uid=2000) does
+     NOT have it; the in-app Web API is currently off. => Neither public save
+     surface is reachable by the agent's shell identity on this device.
+
+------------------------------------------------------------------------
+Q (side) — ToolResult success semantics
+TOOLRESULT_SUCCESS_MEANING = tool invocation MECHANISM success (COMPLETED ->
+  success=true regardless of exitCode); real result in output payload.
+TOOLRESULT_MODEL_AMBIGUITY_RISK = YES
+  (success=true + exitCode=127 is a known LLM trap; the original task's
+   premature "not writable" conclusion is consistent with mis-reading this.)
+
+------------------------------------------------------------------------
+Finding attribution
+FINDING_1 (the `adb shell "..."` quoted-form failures) =
+  TOOL GUIDANCE GAP   (secondary: LLM MISUSE)
+  - The embedded adb CLI's two-pass shell-parsing (outer sh -> single-quote
+    re-serialization -> remote sh) makes double-quoted multi-word commands
+    collapse to one remote word. This is NOT an AT defect (the behavior is
+    correct, documented, and unit-tested per AT.CLI-0.1); it is a semantics
+    the model must understand. The ToolSpec already says "use `adb shell ...`"
+    but does not warn that `adb shell "<multi-word>"` is wrong and that
+    `adb shell sh -c '<cmd>'` is the correct form for redirection/pipes.
+    A minimal tool-guidance note (not a code change) would close this.
+  - AT_RUNTIME_DEFECT = NO. LIKELY_ROOT_CAUSE = the model did not understand
+    the embedded adb CLI's argv/quoting semantics.
+
+FINDING_2 (the "Android/data is not writable" + "bookSource.json = SSOT"
+  conclusions) =
+  LLM PREMATURE CONCLUSION
+  - "Not writable" is DISPROVEN (Gate E: full CREATE/WRITE/READ/DELETE PASS).
+  - "bookSource.json = editable SSOT" is NOT supported (Gate F/G: runtime
+    SSOT is the private Room DB; the JSON is a backup/export mirror). The
+    model inferred both from the quoted-form command failures (which were
+    quoting artifacts, not permission denials) and from the file's name.
+  - No AG/AT defect. No code change warranted.
+
+------------------------------------------------------------------------
+PRODUCTION_DEFECT_FOUND = NO
+
+PASS CHECKLIST (task §17):
+  Q1 answered (PASS)            : YES
+  Q2 answered (root cause)      : YES
+  Q3 answered (permission)      : YES
+  Q4 answered (role/UNKNOWN)    : YES (EXTERNAL_BACKUP_EXPORT_OR_MIRROR,
+                                       not UNKNOWN — evidence is positive)
+  No un-evidenced inference     : YES (every claim cites a gate)
+  No production code change     : YES
+  No real Legado data change    : YES
+  No leftover probe file        : YES
+
+STOP = YES
+NEXT = CONTROLLER_REVIEW (decision on minimal tool-guidance note for
+        `adb shell` quoting; NO code change in this round)

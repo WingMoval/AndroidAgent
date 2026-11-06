@@ -1,0 +1,45 @@
+AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+Gate E3/E4 — WRITE content + READ BACK (exact token match)
+
+TOKEN = AG_LEGADO_WRITE_PROBE_7F3A91
+
+To avoid any `>`-redirection quoting ambiguity (this round must isolate
+filesystem permission from shell-quoting), the write was done via cp from a
+staged source, NOT via a redirected echo into the Legado dir.
+
+Step E3a — stage the token in /data/local/tmp (shell-owned, simple):
+  CMD: adb shell sh -c "printf %s 'AG_LEGADO_WRITE_PROBE_7F3A91' > /data/local/tmp/.ag_probe_src_3A91"
+  exitCode = 0
+  (the `>` here is interpreted by the REMOTE sh via sh -c; source is /data/local/tmp,
+   NOT the Legado dir, so no Legado-permission question is involved in staging)
+
+Step E3b — verify staged source:
+  CMD: adb shell cat /data/local/tmp/.ag_probe_src_3A91
+  exitCode = 0
+  stdout = "AG_LEGADO_WRITE_PROBE_7F3A91"  (exact)
+
+Step E3c — cp staged source OVER the probe (overwrite into Legado dir):
+  CMD: adb shell cp /data/local/tmp/.ag_probe_src_3A91 <PROBE>
+  exitCode = 0
+  (cp is a plain command, unquoted argv; the remote sh runs cp with two paths)
+
+Step E4 — READ BACK the probe:
+  CMD: adb shell cat <PROBE>
+  exitCode = 0
+  stdout = "AG_LEGADO_WRITE_PROBE_7F3A91"
+
+  READBACK value  = [AG_LEGADO_WRITE_PROBE_7F3A91]
+  EXPECTED token  = [AG_LEGADO_WRITE_PROBE_7F3A91]
+  WRITE_READBACK  = PASS (exact token match)
+
+Cleanup:
+  adb shell rm /data/local/tmp/.ag_probe_src_3A91  (exitCode 0, confirmed gone)
+
+E3 WRITE = PASS
+E4 READBACK = PASS
+LEGADO_EXTERNAL_DIR_WRITE = PASS
+
+The ADB shell principal can WRITE real content into the Legado external files
+dir and read it back byte-exact. The write was performed WITHOUT any `>`
+redirection into the target dir (used cp), so this is a clean filesystem-
+permission proof, free of the quoting variable.
