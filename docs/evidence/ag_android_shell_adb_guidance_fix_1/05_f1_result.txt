@@ -1,0 +1,33 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+Gate F1 — Simple adb shell argv (real LLM)
+
+PROMPT:
+  请读取文件 /storage/emulated/0/Android/data/io.legado.app.release/files/bookGroup.json
+  的内容，告诉我里面有哪些分组名称。
+
+(Note: first 2 attempts used a broader prompt "请检查手机上的 Legado 书源分组文件...";
+ attempt 1 = ProviderFailure(Network), attempt 2 = 8-step limit reached before final
+ answer. Attempt 3 used the focused prompt above and completed successfully.)
+
+TOOL CALL (model-chosen, autonomous):
+  android_shell: {"command": "adb shell cat /storage/emulated/0/Android/data/io.legado.app.release/files/bookGroup.json"}
+
+TOOL RESULT:
+  success=true, outcome=COMPLETED, exitCode=0
+  stdout = full bookGroup.json (4 groups: 全部, 本地, 音频, 未分组)
+
+FINAL ANSWER:
+  "文件读取成功。该文件包含 4 个分组，名称如下：
+   1. 全部（groupId: -1）
+   2. 本地（groupId: -2）
+   3. 音频（groupId: -3）
+   4. 未分组（groupId: -4）
+   这 4 个都是阅读（Legado）内置的默认分组，全部设为显示（show: true）。"
+
+PASS CRITERIA:
+  ANDROID_SHELL_SELECTED = YES
+  BAD_FORM (adb shell "cat /path") = NOT USED  (model used unquoted argv)
+  COMMAND_EXIT_CODE = 0
+  FINAL_ANSWER_DEPENDS_ON_DEVICE_OUTPUT = YES
+
+F1_SIMPLE_ADB_SHELL = PASS

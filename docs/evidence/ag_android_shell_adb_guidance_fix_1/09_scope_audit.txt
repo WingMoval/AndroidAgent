@@ -1,0 +1,29 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+Gate — Scope audit (final)
+
+PRODUCTION_CHANGE = ANDROID_SHELL_MODEL_GUIDANCE_ONLY
+  File: tool-android-shell/src/main/java/com/androidagent/tool/androidshell/
+        AndroidShellToolImpl.kt
+  Change: ToolSpec description string (model-visible guidance only)
+
+TESTS_CHANGED = YES
+  File: tool-android-shell/src/test/java/com/androidagent/tool/androidshell/
+        AndroidShellToolImplTest.kt
+  Change: 5 new tests (U23-U27) verifying guidance content
+
+DOCS_EVIDENCE_CHANGED = YES
+  docs/evidence/ag_android_shell_adb_guidance_fix_1/ (this dir)
+  docs/implementation/AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1.md
+
+AT_CHANGED = NO
+AG_CORE_CHANGED = NO
+AG_RUNTIME_CHANGED = NO
+PROVIDER_CHANGED = NO
+ROOM_CHANGED = NO
+TOOLRESULT_CONTRACT_CHANGED = NO
+SHELL_RESULT_MAPPER_CHANGED = NO
+AGENT_INSTRUCTIONS_CHANGED = NO
+LEGADO_DATA_CHANGED = NO
+NO_NEW_CAPABILITY_ADDED = NO
+NO_NEW_TOOL_ADDED = NO
+NO_8STEP_LIMIT_CHANGE = NO

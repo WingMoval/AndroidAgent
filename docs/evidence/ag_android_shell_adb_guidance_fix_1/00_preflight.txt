@@ -1,0 +1,20 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+Date: 2026-11-07
+
+Gate A — Preflight
+
+BRANCH = main
+START_HEAD = 208df7b
+WORKTREE = CLEAN (non-upload, 0 changed files)
+
+IDENTITY:
+  VALIDATED_CAPABILITY_BASELINE = 84e30b4
+  ADB_SEMANTICS_AUDIT_EVIDENCE_COMMIT = 208df7b
+  CURRENT_HEAD (start) = 208df7b
+
+DEVICE = HONOR ALI-AN00 (APLMUT4312005935), Android 15
+PROVIDER = OpenRouter
+MODEL = deepseek/deepseek-v4-flash-0731
+
+APK: app-debug.apk (10,136,112 bytes) installed via adb install -r
+AG PID (this round) = 1960

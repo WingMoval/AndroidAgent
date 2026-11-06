@@ -1,0 +1,21 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+Gate G — No regression of tool routing
+
+All 3 real-LLM gates (F1, F2, F3) correctly selected android_shell:
+  F1: android_shell (adb shell cat ...)       - file read task
+  F2: android_shell (adb shell sh -c '...')   - pipeline/count task
+  F3: android_shell (adb shell sh -c '...')   - path existence check
+
+No tool routing regression observed:
+  - No refusal to use the tool
+  - No unnecessary avoidance of adb
+  - No misrouting to file/network tools
+  - No 8-step limit issues (F1 attempt 3, F2, F3 all completed in 1 step)
+
+The guidance text grew modestly (ADB section expanded, OUTPUT section
+strengthened) but did not cause the model to:
+  - refuse tool use
+  - avoid adb unnecessarily
+  - route to the wrong tool
+
+GATE_G_TOOL_ROUTING = PASS (merged with F1/F2/F3 evidence)

@@ -64,11 +64,20 @@ class AndroidShellToolImpl internal constructor(
                 "environment and return its result.\n" +
                 "CONTEXT: Commands run locally under AndroidAgent's application execution " +
                 "identity by default. File paths are relative to the app's private storage.\n" +
-                "ADB: An `adb` CLI provided by AndroidTerminal V4 is available inside this " +
-                "shell. Use `adb ...` for ADB-specific operations. Use `adb shell ...` " +
-                "to run commands under the Android shell principal (a different execution " +
-                "identity from the local app shell). Inspect with `adb shell id` when " +
-                "identity matters.\n" +
+                "ADB: An `adb` CLI (provided by AndroidTerminal) is available inside this " +
+                "shell. It is a limited embedded CLI, NOT the full desktop platform-tools " +
+                "adb: do not assume arbitrary desktop subcommands (e.g. `adb devices`) are " +
+                "available. The main execution path is `adb shell ...`, which runs under " +
+                "the Android shell principal (a different execution identity from the " +
+                "local app shell; inspect with `adb shell id`).\n" +
+                "  - Simple command: pass argv directly, e.g. `adb shell cat /path/file` " +
+                "or `adb shell getprop ro.product.model`. Do NOT wrap a multi-word command " +
+                "in double quotes like `adb shell \"cat /path/file\"` - the quoted string " +
+                "is forwarded as ONE argument, so the remote shell looks for an executable " +
+                "with that whole name and fails.\n" +
+                "  - Commands needing remote shell syntax (pipes |, redirection >, ;, " +
+                "&&, globs): use an explicit remote shell, e.g. " +
+                "`adb shell sh -c 'ls /system/bin | grep sh | wc -l'`.\n" +
                 "WHEN: Use the local shell for command execution, process operations, " +
                 "environment inspection, build/test commands, or behavior that requires " +
                 "shell semantics. Use the `adb` CLI inside this shell when the task " +
@@ -78,10 +87,13 @@ class AndroidShellToolImpl internal constructor(
                 "for example {\"command\":\"id\"}. No other fields are supported.\n" +
                 "OUTPUT: A JSON object with fields \"outcome\", \"exitCode\", \"stdout\", " +
                 "\"stderr\", \"hasError\", and \"error\" (only on a mechanism failure). " +
-                "A completed command reports success even when exitCode is non-zero; " +
-                "the exitCode, stdout and stderr carry the real result. Only a tool " +
-                "mechanism failure (transport / protocol / unsupported / timeout / " +
-                "cancelled) reports success = false with an \"error\" field.",
+                "IMPORTANT: success=true only means the execution mechanism completed; it " +
+                "does NOT mean the command succeeded. A completed command reports success " +
+                "even when exitCode is non-zero. Judge command success from exitCode " +
+                "(0 = success, non-zero = failure) and read stdout/stderr for the real " +
+                "result or the reason for failure. Only a tool mechanism failure " +
+                "(transport / protocol / unsupported / timeout / cancelled) reports " +
+                "success = false with an \"error\" field.",
     )
 
     override suspend fun execute(call: ToolCall): ToolResult = withContext(Dispatchers.IO) {

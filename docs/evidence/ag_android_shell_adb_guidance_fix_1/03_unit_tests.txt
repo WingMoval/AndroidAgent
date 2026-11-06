@@ -1,0 +1,38 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+Gate D — Unit tests
+
+New tests added to AndroidShellToolImplTest.kt:
+
+  U23_spec_states_embedded_adb_is_not_full_desktop_adb
+    Asserts: desc contains "NOT the full desktop"
+             desc contains "do not assume"
+             desc contains "adb devices"
+
+  U24_spec_guides_simple_adb_shell_argv
+    Asserts: desc contains "adb shell cat /path/file"
+             desc contains "pass argv directly"
+
+  U25_spec_warns_against_quoted_multiword_adb_shell
+    Asserts: desc contains "Do NOT wrap a multi-word command"
+             desc contains "ONE argument"
+
+  U26_spec_guides_remote_shell_sh_c_for_shell_syntax
+    Asserts: desc contains "adb shell sh -c"
+             desc contains "pipes"
+             desc contains "redirection"
+
+  U27_spec_tells_model_to_judge_success_from_exitcode
+    Asserts: desc contains "success=true only means the execution mechanism completed"
+             desc contains "Judge command success from exitCode"
+             desc contains "non-zero = failure"
+
+All 5 tests PASS.
+
+Existing tests (U1-U22) all PASS (no regression):
+  U16 (AndroidTerminal) PASS
+  U17 (adb shell + different execution identity) PASS
+  U18 (success even when exitCode is non-zero) PASS
+  U20/U21/U22 (WHEN section) PASS
+
+TOOL_ANDROID_SHELL_TOTAL = 28 (23 existing + 5 new)
+TOOL_ANDROID_SHELL_FAIL = 0

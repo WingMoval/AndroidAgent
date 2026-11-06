@@ -224,6 +224,51 @@ class AndroidShellToolImplTest {
     }
 
     @Test
+    fun U23_spec_states_embedded_adb_is_not_full_desktop_adb() {
+        // C1: model must not assume arbitrary desktop-adb subcommands exist.
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        assertTrue(desc.contains("NOT the full desktop"), "must state embedded adb != full desktop adb")
+        assertTrue(desc.contains("do not assume"), "must tell model not to assume desktop subcommands")
+        assertTrue(desc.contains("adb devices"), "must give a concrete unsupported example")
+    }
+
+    @Test
+    fun U24_spec_guides_simple_adb_shell_argv() {
+        // C2a: simple commands pass argv directly (adb shell cmd arg...).
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        assertTrue(desc.contains("adb shell cat /path/file"), "must show simple adb shell argv example")
+        assertTrue(desc.contains("pass argv directly"), "must instruct direct argv for simple commands")
+    }
+
+    @Test
+    fun U25_spec_warns_against_quoted_multiword_adb_shell() {
+        // C2b: the quoted multi-word form must be explicitly discouraged.
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        assertTrue(desc.contains("Do NOT wrap a multi-word command"), "must warn against double-quoted multi-word")
+        assertTrue(desc.contains("ONE argument"), "must explain the quoted form collapses to one argument")
+    }
+
+    @Test
+    fun U26_spec_guides_remote_shell_sh_c_for_shell_syntax() {
+        // C2c: pipes / redirection / ; / && / globs -> adb shell sh -c '...'
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        assertTrue(desc.contains("adb shell sh -c"), "must show the remote-shell sh -c form")
+        assertTrue(desc.contains("pipes"), "must mention pipes as a trigger")
+        assertTrue(desc.contains("redirection"), "must mention redirection as a trigger")
+    }
+
+    @Test
+    fun U27_spec_tells_model_to_judge_success_from_exitcode() {
+        // C3: success=true != command success; exitCode is the command verdict.
+        val desc = AndroidShellToolImpl(FakeExecutor(completed())).spec.description
+        assertTrue(desc.contains("success=true only means the execution mechanism completed"),
+            "must state success is mechanism-level")
+        assertTrue(desc.contains("Judge command success from exitCode"),
+            "must instruct the model to read exitCode for the command verdict")
+        assertTrue(desc.contains("non-zero = failure"), "must define non-zero exitCode as failure")
+    }
+
+    @Test
     fun U19_tool_name_unchanged() {
         assertEquals("android_shell", AndroidShellToolImpl(FakeExecutor(completed())).spec.name)
     }

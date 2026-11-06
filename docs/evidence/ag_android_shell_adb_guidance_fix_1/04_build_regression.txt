@@ -1,0 +1,11 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+Gate E — Build / Regression
+
+Command:
+  .\gradlew.bat :tool-android-shell:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug
+
+RESULT: BUILD SUCCESSFUL in 44s (133 actionable tasks: 11 executed, 122 up-to-date)
+
+TOOL_ANDROID_SHELL_TESTS = 28 total, 0 fail, 0 error, 0 skip
+APP_TESTS = 220 total, 0 fail, 0 error, 0 skip
+ASSEMBLE_DEBUG = PASS

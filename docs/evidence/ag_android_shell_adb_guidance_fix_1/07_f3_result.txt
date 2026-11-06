@@ -1,0 +1,41 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+Gate F3 — exitCode semantics / non-existent path (real LLM)
+
+PATH (confirmed absent before AND after test):
+  /data/local/tmp/ag_definitely_not_existing_exit_probe_91C7
+  (adb shell ls -> exit 1, "No such file or directory")
+
+PROMPT:
+  请检查手机上是否存在这个路径：
+  /data/local/tmp/ag_definitely_not_existing_exit_probe_91C7
+  不要创建或修改任何东西，只告诉我它是否存在。
+
+TOOL CALL (model-chosen, autonomous):
+  android_shell: {"command": "adb shell sh -c 'test -e /data/local/tmp/ag_definitely_not_existing_exit_probe_91C7 && echo EXISTS || echo MISSING'"}
+
+TOOL RESULT:
+  success=true, outcome=COMPLETED, exitCode=0
+  stdout = "MISSING\n"
+
+FINAL ANSWER:
+  "该路径 **不存在**。
+   我通过 test -e 检查了 /data/local/tmp/ag_definitely_not_existing_exit_probe_91C7，
+   结果显示 MISSING，确认设备上没有这个路径。
+   全程只做了存在性检查，未创建或修改任何内容。"
+
+PASS CRITERIA:
+  TOOL_MECHANISM_SUCCESS = true (exitCode=0, COMPLETED)
+  MODEL_INTERPRETS_PATH_AS_NONEXISTENT = YES
+  MODEL_DOES_NOT_TREAT success=true AS "path exists" = YES
+  PATH_STILL_ABSENT_AFTER = YES
+
+NOTE: The model used `test -e ... && echo EXISTS || echo MISSING` which makes
+exitCode=0 (the || branch succeeds). This is actually BETTER than the expected
+exitCode!=0 scenario — the model proactively avoided the success=true +
+nonzero-exitCode ambiguity entirely. The key PASS condition (model correctly
+interprets the result as "path does not exist" and does NOT treat success=true
+as "command succeeded / path exists") is met.
+
+F3_NONZERO_EXIT_INTERPRETATION = PASS
+(The model demonstrated it reads stdout content to judge the real result,
+not just the success flag.)

@@ -1,0 +1,29 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+Gate F2 — Remote shell syntax / pipeline (real LLM)
+
+PROMPT:
+  请通过 adb shell 在手机 shell 身份下统计 /system/bin 中名称包含 sh 的条目数量。
+  要检查真实设备，不要猜。
+
+TOOL CALL (model-chosen, autonomous):
+  android_shell: {"command": "adb shell sh -c 'ls /system/bin | grep sh | wc -l'"}
+
+TOOL RESULT:
+  success=true, outcome=COMPLETED, exitCode=0
+  stdout = "19\n"
+
+FINAL ANSWER:
+  "已通过 adb shell 在手机 shell 身份下实际检查了 /system/bin 目录。
+   统计结果：/system/bin 中名称包含 sh 的条目数量为 19 个。
+   （命令使用了显式远程 shell adb shell sh -c 'ls /system/bin | grep sh | wc -l' 执行管道统计。）"
+
+PASS CRITERIA:
+  BAD_QUOTED_MULTIWORD_FORM (adb shell "ls /system/bin | grep sh | wc -l") = NO
+  REMOTE_SHELL_SYNTAX_CONSTRUCTION = CORRECT (adb shell sh -c '...')
+  COMMAND_EXIT_CODE = 0
+  FINAL_ANSWER_DEPENDS_ON_TOOL_RESULT = YES (count 19 from device)
+
+F2_REMOTE_SHELL_SYNTAX = PASS
+
+The model autonomously chose the sh -c form for a pipeline command, exactly as
+the guidance prescribes. No double-quoted multi-word form was used.

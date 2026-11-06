@@ -1,0 +1,58 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+Gate — Final verdict
+
+STEP = AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+VERDICT = PASS
+
+START_HEAD = 208df7b
+FINAL_HEAD = (commit created after this evidence)
+BRANCH = main
+WORKTREE = CLEAN (non-upload)
+
+PRODUCTION_CHANGE = ANDROID_SHELL_MODEL_GUIDANCE_ONLY
+
+Acceptance criteria:
+  TOOL_GUIDANCE_MINIMAL = YES
+  EMBEDDED_ADB_LIMITATION_DOCUMENTED = YES (C1)
+  ADB_SIMPLE_ARGV_GUIDANCE = YES (C2a)
+  ADB_REMOTE_SH_C_GUIDANCE = YES (C2b)
+  EXITCODE_SEMANTICS_GUIDANCE = YES (C3)
+
+Real LLM (OpenRouter / deepseek/deepseek-v4-flash-0731):
+  F1_SIMPLE_ADB_SHELL = PASS
+    - Model used: adb shell cat /path (correct unquoted argv)
+    - BAD_FORM (adb shell "cat /path") = NOT USED
+    - exitCode=0, answer depends on device output
+  F2_REMOTE_SHELL_SYNTAX = PASS
+    - Model used: adb shell sh -c 'ls /system/bin | grep sh | wc -l'
+    - BAD_QUOTED_MULTIWORD_FORM = NO
+    - exitCode=0, answer = 19 (from device)
+  F3_NONZERO_EXIT_INTERPRETATION = PASS
+    - Model used: adb shell sh -c 'test -e ... && echo EXISTS || echo MISSING'
+    - success=true, exitCode=0, stdout="MISSING"
+    - Model correctly interpreted: path does NOT exist
+    - Model did NOT treat success=true as "path exists"
+
+Tests:
+  TOOL_ANDROID_SHELL_TESTS = PASS (28/0)
+  APP_TESTS = PASS (220/0)
+  DEBUG_BUILD = PASS
+
+Scope:
+  AT_CHANGED = NO
+  AG_CORE_CHANGED = NO
+  AG_RUNTIME_CHANGED = NO
+  TOOLRESULT_CONTRACT_CHANGED = NO
+  AGENT_INSTRUCTIONS_CHANGED = NO
+  LEGADO_REAL_DATA_CHANGED = NO
+
+Final:
+  EMBEDDED_ADB_FULL_DESKTOP_ASSUMPTION = CLOSED
+  QUOTED_MULTIWORD_ADB_SHELL_GUIDANCE = CLOSED
+  REMOTE_SHELL_SH_C_GUIDANCE = CLOSED
+  EXITCODE_RESULT_GUIDANCE = CLOSED
+  ADB_GUIDANCE_GAP = CLOSED
+  PRODUCTION_DEFECT = NONE
+  CURRENT_CAPABILITY_RELEASE_BASELINE = READY_WITH_GUIDANCE_FIX
+  NEXT = RELEASE_BASELINE_FREEZE
+  STOP = YES

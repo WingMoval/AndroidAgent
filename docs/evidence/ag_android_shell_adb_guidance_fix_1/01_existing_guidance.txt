@@ -1,0 +1,36 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+Gate B — Existing guidance summary
+
+CURRENT_GUIDANCE_SUMMARY (before change):
+
+  WHAT: Execute one non-interactive command in AndroidAgent's local shell.
+  CONTEXT: Commands run locally under AndroidAgent's application execution
+           identity by default. File paths are relative to app's private storage.
+  ADB: An `adb` CLI provided by AndroidTerminal V4 is available inside this
+       shell. Use `adb ...` for ADB-specific operations. Use `adb shell ...`
+       to run commands under the Android shell principal (a different execution
+       identity from the local app shell). Inspect with `adb shell id`.
+  WHEN: Use the local shell for command execution, process operations,
+        environment inspection, build/test commands, or shell semantics.
+        Use the `adb` CLI for ADB-specific operations, ADB shell privileges,
+        pairing, or device-side shell access.
+  INPUT: {"command":"..."}
+  OUTPUT: outcome/exitCode/stdout/stderr/hasError/error.
+          "A completed command reports success even when exitCode is non-zero;
+           the exitCode, stdout and stderr carry the real result."
+
+ALREADY PRESENT:
+  + local app shell identity
+  + adb CLI availability (AndroidTerminal V4)
+  + adb shell = different shell principal
+  + exitCode semantics (partial: "success even when exitCode is non-zero")
+
+GAPS (minimal delta needed):
+  [C1] NOT stated: embedded adb is NOT full desktop adb; do not assume
+        arbitrary desktop subcommands (e.g. adb devices).
+  [C2] NOT stated: how to construct adb shell commands:
+        - simple: adb shell cmd arg... (NOT adb shell "cmd arg...")
+        - shell syntax (|, >, ;, &&, globs): adb shell sh -c '...'
+  [C3] WEAK: exitCode guidance says "success even when non-zero" but does
+        NOT explicitly tell the model to JUDGE command success from exitCode
+        (0=success, non-zero=failure).
