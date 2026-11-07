@@ -1,0 +1,23 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1.CLOSEOUT
+Gate C — ToolResult observed
+
+TOOL_RESULTS (1):
+  [0] android_shell:
+  {
+    "outcome": "COMPLETED",
+    "exitCode": 1,
+    "stdout": "",
+    "stderr": "[adb] connectedls: /data/local/tmp/ag_nonzero_exit_probe_91C7: No such file or directory\n",
+    "hasError": false
+  }
+
+REQUIRED TOOLRESULT SHAPE:
+  ToolResult.success = true          (mechanism completed; hasError=false)
+  outcome = COMPLETED                (command ran to completion)
+  exitCode = 1                       (NONZERO - the critical observation)
+  stderr = "No such file or directory"
+
+COMMAND_EXITCODE_NONZERO = YES (exitCode = 1)
+
+This is the exact shape the closeout targets:
+  success=true (mechanism) + exitCode=1 (command failed)

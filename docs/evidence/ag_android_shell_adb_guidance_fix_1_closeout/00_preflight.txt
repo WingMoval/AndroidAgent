@@ -1,0 +1,25 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1.CLOSEOUT
+Date: 2026-11-07
+
+Gate A — Preflight
+
+BRANCH = main
+START_HEAD = 57461b8
+WORKTREE = CLEAN (non-upload, 0 changed files)
+
+IDENTITY:
+  VALIDATED_CAPABILITY_BASELINE = 84e30b4
+  ADB_SEMANTICS_AUDIT_EVIDENCE_COMMIT = 208df7b
+  ADB_GUIDANCE_FIX_COMMIT = 57461b8
+  CURRENT_HEAD (start) = 57461b8
+
+DEVICE = HONOR ALI-AN00 (APLMUT4312005935), Android 15
+PROVIDER = OpenRouter
+MODEL = deepseek/deepseek-v4-flash-0731
+AG PID (this round) = 19168
+
+PURPOSE:
+  Close the one gap in AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1:
+  prove the model correctly interprets ToolResult.success=true + exitCode!=0.
+  (F1/F2 already accepted; F3 previous attempt used test -e which made
+   exitCode=0, so the nonzero-exitCode interpretation was not directly proven.)

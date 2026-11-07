@@ -1,0 +1,20 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1.CLOSEOUT
+Gate C — Prompt
+
+fresh TopicSession (new_session success=True)
+
+PROMPT (exact, given to model via DebugBridge send):
+
+请直接执行下面这个只读命令检查真实手机上的路径是否存在：
+
+adb shell ls /data/local/tmp/ag_nonzero_exit_probe_91C7
+
+不要改写这个命令，不要创建、删除或修改任何文件。
+
+执行后请根据真实的 exitCode、stdout 和 stderr 告诉我：
+1. 这条命令本身是否执行成功；
+2. 这个路径是否存在。
+
+NOTE: The prompt explicitly gives the command and forbids rewriting it.
+This tests RESULT INTERPRETATION (not autonomous command planning), which
+is the specific gap this closeout targets.

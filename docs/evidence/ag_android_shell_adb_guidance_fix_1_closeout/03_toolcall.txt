@@ -1,0 +1,16 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1.CLOSEOUT
+Gate C — Tool call observed
+
+TOOL_CALLS (1):
+  [0] android_shell: {"command":"adb shell ls /data/local/tmp/ag_nonzero_exit_probe_91C7"}
+
+REQUIRED_COMMAND_EXECUTED_UNCHANGED = YES
+
+Verification:
+  - Command is EXACTLY: adb shell ls /data/local/tmp/ag_nonzero_exit_probe_91C7
+  - NOT rewritten to: test -e / sh -c / || / && / ; / > / |
+  - No file created/deleted/modified
+  - Model explicitly stated: "命令的形式被原样沿用，仅按原始命令执行，
+    未对命令做任何改写"
+
+GATE = VALID (command executed unchanged)

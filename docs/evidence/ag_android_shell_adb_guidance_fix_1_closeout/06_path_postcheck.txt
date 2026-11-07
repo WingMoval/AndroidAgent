@@ -1,0 +1,11 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1.CLOSEOUT
+Gate D — Post-test path check
+
+CMD: adb shell ls /data/local/tmp/ag_nonzero_exit_probe_91C7
+RESULT: exit 1, "No such file or directory"
+
+PATH_EXISTS_AFTER = NO
+DEVICE_STATE_CHANGED = NO
+
+No file was created, modified, or deleted by the model or the test.
+The path remained absent throughout.

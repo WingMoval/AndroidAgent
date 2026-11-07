@@ -1,0 +1,10 @@
+AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1.CLOSEOUT
+Gate B — Path precheck
+
+TEST PATH: /data/local/tmp/ag_nonzero_exit_probe_91C7
+
+CMD: adb shell ls /data/local/tmp/ag_nonzero_exit_probe_91C7
+RESULT: exit 1, "No such file or directory"
+
+PATH_EXISTS_BEFORE = NO
+(No file created. Read-only ls only.)
