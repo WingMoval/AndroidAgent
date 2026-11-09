@@ -1,0 +1,54 @@
+AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+Gate C — AT Pairing UI (Q6 partial)
+
+PAIRING_UI_EXISTS = YES
+
+PAIRING_UI_OWNER = AT Product (:app) — PairActivity.kt
+   File: AndroidTerminal-V4/app/src/main/java/com/androidterminal/app/PairActivity.kt
+   Entry: MainActivity -> startActivity(PairActivity)
+
+PAIRING_INPUTS:
+   - 6-digit pairing code (EditText, numeric, max 6 chars)
+   - Discovery is automatic (NSD; user does NOT enter host:port)
+   - User must have the SYSTEM "Pair device with pairing code" screen open
+
+PAIRING_STATUS_FEEDBACK:
+   On entry: shows current ATAdbBootstrapState as human-readable text:
+     READY              -> "已连接（ADB READY）"
+     PAIRING_REQUIRED   -> "ADB 尚未完成首次配对"
+     USER_ACTION_REQUIRED_WD -> "请先开启：设置 → 无线调试"
+     ENDPOINT_NOT_FOUND -> "未发现 ADB 连接端点"
+     CONNECT_FAILED     -> "未连接（可尝试重新配对）"
+     NOT_READY          -> "ADB 运行时未初始化"
+   During pairing: "正在发现配对服务..."
+
+PAIRING_SUCCESS_FLOW:
+   1. discoverPairing (auto host/port)
+   2. pairDiscovered(code) via AdbConsumerBootstrap
+   3. On SUCCESS: control.ensureReady() -> auto-connect
+   4. If READY: completeFirstUseBootstrap() (self-grant WRITE_SECURE_SETTINGS)
+   5. Display: "配对成功 — ADB READY (guid=...)（Auto-WD 权限已自举）"
+   6. Activity finishes
+
+PAIRING_FAILURE_FLOW:
+   SERVICE_NOT_FOUND  -> "未发现无线调试配对服务\n请确认系统窗口仍处于打开状态"
+   MULTIPLE_ENDPOINTS -> "发现多个配对端点，请在高级模式下手动选择 host:port"
+   REJECTED           -> "配对被拒绝（配对码错误或已过期）：<error>"
+   FAILED             -> "配对失败：<error>"
+
+AT_PAIRING_UI_REUSABLE_FOR_AG = YES
+   The PairActivity is a self-contained Activity that:
+   - Uses the SAME AdbConsumerBootstrap (single pairing boundary)
+   - Handles all 0/1/N endpoint cases
+   - Shows honest bootstrap state
+   - Does NOT call AdbEngine.pair directly
+   - Is a NORMAL Activity (no overlay/accessibility/freeform)
+   
+   AG can reuse/adapt this pattern for a sidebar "ADB Connection" entry:
+   - Same AdbConsumerBootstrap.pairDiscovered(code) call
+   - Same state display logic
+   - Same 6-digit code input
+   Missing for AG:
+   - Integration into AGA sidebar layout
+   - AGA-specific styling
+   - No protocol change needed (reuses existing bootstrap)

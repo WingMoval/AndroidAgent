@@ -1,0 +1,32 @@
+AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+Gate G — Error Semantics Matrix
+
+| Scenario | AT state/error | integration-at | android_shell ToolResult | LLM can understand? |
+|---|---|---|---|---|
+| Local shell normal | N/A (no ADB involved) | N/A | success=true, outcome=COMPLETED, exitCode=0, stdout=<result> | YES |
+| ADB ready (adb shell id) | AdbRuntimeState.READY | AtAdbReadiness.READY | success=true, outcome=COMPLETED, exitCode=0, stdout="uid=2000...", stderr="[adb] connected" | YES |
+| ADB unpaired (no identity) | AdbBootstrapState.PAIRING_REQUIRED | AtAdbBootstrap.PAIRING_REQUIRED | success=true, outcome=COMPLETED, exitCode=1, stdout="", stderr="[adb] pairing required: no ADB identity found\n[adb] open Settings -> Wireless Debugging -> Pair device..." | YES |
+| ADB offline (identity present, not connected) | AdbRuntimeState.DISCONNECTED / CONNECT_FAILED | AtAdbBootstrap.CONNECT_FAILED | success=true, outcome=COMPLETED, exitCode=1, stdout="", stderr="[adb] not connected (identity present)" | YES |
+| ADB connecting | AdbRuntimeState.CONNECTING | AtAdbReadiness.CONNECTING | (transient; ensureReady blocks until resolved) | YES (eventually resolves to one of above) |
+| ADB transport lost | AdbRuntimeState.TRANSPORT_LOST | AtAdbReadiness.DISCONNECTED (collapsed) | success=true, outcome=COMPLETED, exitCode=1, stdout="", stderr="[adb] not connected (identity present)" | PARTIAL (same message as offline; recovery is automatic) |
+| ADB WD off (user must enable) | AdbRuntimeState.USER_ACTION_REQUIRED | AtAdbBootstrap (collapsed to DISCONNECTED) | success=true, outcome=COMPLETED, exitCode=1, stdout="", stderr="[adb] not connected (identity present)" | PARTIAL (message doesn't say "enable Wireless Debugging"; auto-WD may handle it) |
+| ADB endpoint not found | AdbRuntimeState.ENDPOINT_NOT_FOUND | AtAdbReadiness (collapsed) | success=true, outcome=COMPLETED, exitCode=1, stdout="", stderr="[adb] not connected (identity present)" | PARTIAL |
+| ADB transport error (execution) | ATExecutionOutcome.TRANSPORT_ERROR | ATExecutionResult(outcome=TRANSPORT_ERROR) | success=FALSE, error="shell execution failed: TRANSPORT_ERROR" | YES (mechanism failure clearly indicated) |
+| ADB unsupported | ATExecutionOutcome.UNSUPPORTED | ATExecutionResult(outcome=UNSUPPORTED) | success=FALSE, error="shell execution failed: UNSUPPORTED" | YES |
+
+KEY FINDING:
+- The 3 PRIMARY states (READY / PAIRING_REQUIRED / CONNECT_FAILED) are CLEARLY
+  distinguishable by the LLM via the stderr text.
+- The 6 SECONDARY states (TRANSPORT_LOST, USER_ACTION_REQUIRED, ENDPOINT_NOT_FOUND,
+  RECOVERING, RECOVERY_FAILED, NOT_READY) are COLLAPSED into "not connected
+  (identity present)" at the CLI bridge level.
+- This is ACCEPTABLE because:
+  1. Auto-recovery (AdbRuntime recovery cycle) handles TRANSPORT_LOST/RECOVERING
+  2. Auto-WD handles USER_ACTION_REQUIRED (self-grant WRITE_SECURE_SETTINGS)
+  3. ENDPOINT_NOT_FOUND is rare (WD on + identity present + no endpoint)
+  4. The LLM's actionable response is the same: "ADB not available, try later or
+     check pairing"
+- The one gap: USER_ACTION_REQUIRED (WD off) produces the same message as
+  generic "not connected". If auto-WD fails, the LLM won't know to tell the
+  user to enable Wireless Debugging. However, auto-WD is the primary mechanism
+  and manual WD enablement is a rare fallback.

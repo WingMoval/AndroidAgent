@@ -1,0 +1,39 @@
+AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+Gate F — Safe Device Validation
+
+DEVICE = HONOR ALI-AN00 (APLMUT4312005935), Android 15
+AG PID (this round) = 14705
+adbState = READY (from snapshot)
+
+TEST 1: Local shell (no ADB dependency)
+  Command: id
+  Result:  success=true, exitCode=0
+           stdout="uid=10418(u0_a418) gid=10418(u0_a418) groups=... context=u:r:untrusted_app:s0"
+           stderr=""
+  VERDICT: LOCAL_SHELL_WORKS_WITHOUT_PAIRING = YES
+
+TEST 2: Local shell pwd
+  Command: pwd
+  Result:  success=true, exitCode=0
+           stdout="/data/user/0/com.androidagent.app/files"
+           stderr=""
+  VERDICT: LOCAL_SHELL_CWD_CORRECT = YES
+
+TEST 3: ADB shell (paired, uid=2000)
+  Command: adb shell id
+  Result:  success=true, exitCode=0
+           stdout="uid=2000(shell) gid=2000(shell) groups=... context=u:r:shell:s0"
+           stderr="[adb] connected"
+  VERDICT: ADB_SHELL_WORKS_WHEN_PAIRED = YES
+
+TEST 4: ADB unpaired scenario
+  NOT_RUN (device is currently paired; would require breaking pairing to test)
+  SOURCE-VERIFIED: See 03_at_error_model.txt (exact stderr messages)
+  The unpaired path is covered by source code analysis:
+  - AtExecutionAdapter.cliExecution.ensureReady() explicitly checks hasIdentity()
+  - Emits "pairing required: no ADB identity found" + instructions
+  - Returns false -> bridge sends exit 1 with no command execution
+
+NO DEVICE STATE CHANGED = YES
+NO PAIRING MODIFIED = YES
+NO SIDE EFFECTS = YES

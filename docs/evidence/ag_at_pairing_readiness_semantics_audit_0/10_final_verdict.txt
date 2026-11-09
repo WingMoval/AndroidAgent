@@ -1,0 +1,64 @@
+AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+Gate — Final Verdict
+
+STEP = AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+VERDICT = PASS_WITH_FINDINGS
+
+START_HEAD = 8828893
+FINAL_HEAD = (docs-only audit commit)
+BRANCH = main
+WORKTREE = CLEAN (non-upload)
+
+AT:
+  PAIRING_OWNER = AdbConsumerBootstrap (com.adb.engine)
+  READINESS_OWNER = AdbRuntime.readinessState() (com.adb.engine)
+  CONNECTION_STATE_OWNER = AdbRuntime (com.adb.engine, 9-state AdbRuntimeState)
+  AT_PAIRING_UI_EXISTS = YES (PairActivity in :app)
+  AT_PAIRING_UI_REUSABLE_FOR_AG = YES
+
+Execution:
+  LOCAL_SHELL_REQUIRES_ADB_PAIRING = NO
+  LOCAL_EXECUTION_WITHOUT_PAIRING = SUPPORTED
+  LOCAL_SHELL_IDENTITY = uid=10418(u0_a418) [app UID]
+  ADB_SHELL_IDENTITY = uid=2000(shell) [requires pairing]
+
+Semantics:
+  AT_DISTINGUISHES_UNPAIRED = YES (PAIRING_REQUIRED, evidence-backed)
+  AT_DISTINGUISHES_OFFLINE = YES (DISCONNECTED / CONNECT_FAILED / TRANSPORT_LOST)
+  AT_DISTINGUISHES_TRANSPORT_LOSS = YES (TRANSPORT_LOST, distinct state)
+  INTEGRATION_PRESERVES_PAIRING_REASON = PARTIAL
+    (3 primary states preserved: PAIRING_REQUIRED / CONNECT_FAILED / READY;
+     6 secondary states collapsed)
+  ANDROID_SHELL_PRESERVES_PAIRING_REASON = YES (for the 3 primary cases)
+    (stderr text is specific and actionable)
+  LLM_CAN_DISTINGUISH_UNPAIRED = YES
+    ("pairing required: no ADB identity found" + instructions)
+
+Product conclusion:
+  SHOULD_AG_REQUIRE_PAIRING_AT_FIRST_RUN = NO
+  ADB_PAIRING_IS_OPTIONAL_CAPABILITY_SETUP = YES
+  AG local capabilities remain fully usable without pairing.
+  Pairing is required ONLY for the ADB execution path (uid=2000).
+
+Decision:
+  PAIRING_ERROR_SEMANTICS = SUFFICIENT
+  (The 3 primary states are clearly distinguishable by the LLM.
+   The 6 secondary states are collapsed but auto-recovery handles them.
+   No production change required.)
+  AG_SEMANTICS_CHANGE_REQUIRED = NO
+  SEMANTICS_FIX_REQUIRED = NO
+
+  NEXT_PRODUCT_WORK = ADB connection/sidebar UI only
+  (Future: AGA sidebar "ADB Connection" entry reusing AT PairActivity pattern)
+
+FINDINGS (non-blocking):
+  1. USER_ACTION_REQUIRED (WD off) is collapsed into "not connected (identity present)"
+     at the CLI bridge level. If auto-WD fails, the LLM cannot tell the user to
+     manually enable Wireless Debugging. RISK = LOW (auto-WD is primary).
+  2. TRANSPORT_LOST / RECOVERING / RECOVERY_FAILED are collapsed. Auto-recovery
+     handles them transparently. RISK = LOW.
+  3. AG AtAdbReadiness has PAIRING_REQUIRED as a value but it is never set by the
+     current mapping (bootstrapState uses AtAdbBootstrap which has it). Minor
+     inconsistency, no functional impact.
+
+STOP = YES

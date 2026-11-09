@@ -1,0 +1,47 @@
+AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+Gate E — Local Shell Independence Proof
+
+LOCAL_SHELL_REQUIRES_ADB_PAIRING = NO
+
+PROOF (source + device):
+
+SOURCE:
+  AndroidShellToolImpl constructor:
+    Executor { command -> adapter.executeLocal(command) }
+  
+  AtExecutionAdapter.executeLocal():
+    val sourceLine = ensureCliBootstrapCurrent()?.trimEnd('\n', ' ')
+    val sourcePrefix = sourceLine?.let { "$it && " } ?: ""
+    val wrapped = "cd ${shellQuote(appFilesDir.absolutePathPath)} && ${sourcePrefix}$command"
+    localEngine.execute(ATExecutionRequest(wrapped, timeoutMs))
+
+  Key: localEngine is a SEPARATE ATEngine instance (Local backend).
+  It does NOT call ensureReady(). It does NOT check ADB pairing.
+  The `adb` shell function bootstrap is sourced (so `adb` is available),
+  but if the user's command is `id` or `pwd`, the adb function is never called.
+  Even if `adb` IS called and fails (unpaired), the local shell still works —
+  it just gets exitCode=1 from the adb function.
+
+DEVICE VERIFICATION (this session):
+  Command: id
+  Result:  uid=10418(u0_a418) gid=10418(u0_a418) ... context=u:r:untrusted_app:s0
+           exitCode=0, stdout has the uid info, stderr empty
+  -> LOCAL SHELL WORKS, NO ADB PAIRING NEEDED
+
+  Command: pwd
+  Result:  /data/user/0/com.androidagent.app/files
+           exitCode=0
+  -> LOCAL SHELL WORKS, NO ADB PAIRING NEEDED
+
+  Command: adb shell id (ADB path, currently paired)
+  Result:  uid=2000(shell) ... exitCode=0, stderr="[adb] connected"
+  -> ADB PATH WORKS (requires pairing, currently paired)
+
+LOCAL_SHELL_IDENTITY = uid=10418(u0_a418) = AndroidAgent app UID
+ADB_SHELL_IDENTITY = uid=2000(shell) = Android shell principal
+
+CONCLUSION:
+  The two execution paths are INDEPENDENT:
+  - Local shell: always works, app UID, no pairing needed
+  - adb shell: requires AT pairing, uid=2000, separate ATEngine instance
+  ADB_UNPAIRED != AG_UNAVAILABLE

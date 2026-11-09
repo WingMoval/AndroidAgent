@@ -1,0 +1,58 @@
+AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+Gate D — android_shell LLM-Visible Mapping (Q6)
+
+FULL CHAIN (what the LLM actually sees):
+
+SCENARIO: Model issues `adb shell id` while ADB is UNPAIRED
+
+1. AT (AdbCliBridgeServer.onOneShot):
+   ensureReady -> execution.ensureReady -> AtExecutionAdapter.cliExecution.ensureReady
+   -> hasIdentity() = false
+   -> onStatusLine("pairing required: no ADB identity found")
+   -> onStatusLine("open Settings -> Wireless Debugging -> Pair device with pairing code,
+      then run: adb pair <host>:<port> <code>")
+   -> returns false
+   -> sends T_OUT(empty) + T_ERR(empty) + T_EXIT(1)
+
+2. integration-at (AtExecutionAdapter.executeLocal):
+   The command is wrapped: "cd '<filesDir>' && . '<bootstrap>' && adb shell id"
+   The local shell executes this. The `adb` function calls the bridge.
+   The bridge's response (status + exit 1) becomes the shell's output.
+   ATExecutionResult:
+     outcome = COMPLETED (the local shell process ran to completion)
+     exitCode = 1 (the `adb` function exited 1)
+     stdout = ""
+     stderr = "[adb] pairing required: no ADB identity found\n[adb] open Settings -> Wireless Debugging -> Pair device with pairing code, then run: adb pair <host>:<port> <code>"
+     hasError = false
+     error = null
+
+3. android_shell (ShellResultMapper + ShellResultPayload):
+   ToolResult:
+     success = true (COMPLETED -> mechanism success)
+     output = {"outcome":"COMPLETED","exitCode":1,"stdout":"","stderr":"[adb] pairing required: no ADB identity found\n[adb] open Settings -> Wireless Debugging -> Pair device with pairing code, then run: adb pair <host>:<port> <code>","hasError":false}
+
+4. LLM sees:
+   success: true
+   output: {"outcome":"COMPLETED","exitCode":1,"stdout":"","stderr":"[adb] pairing required: no ADB identity found\n[adb] open Settings -> Wireless Debugging -> Pair device with pairing code, then run: adb pair <host>:<port> <code>","hasError":false}
+
+CONCRETE EXAMPLE (SCENARIO: ADB READY):
+
+1. AT: ensureReady -> "connected" -> execute -> result
+2. integration-at:
+   ATExecutionResult(outcome=COMPLETED, exitCode=0,
+     stdout="uid=2000(shell) gid=2000(shell)...",
+     stderr="[adb] connected", hasError=false, error=null)
+3. android_shell:
+   ToolResult(success=true,
+     output={"outcome":"COMPLETED","exitCode":0,
+       "stdout":"uid=2000(shell) gid=2000(shell)...",
+       "stderr":"[adb] connected","hasError":false})
+4. LLM sees: success=true, exitCode=0, stdout has the uid info
+
+LLM_CAN_DISTINGUISH_UNPAIRED = YES
+  The stderr text explicitly says "pairing required: no ADB identity found"
+  and gives actionable instructions. Combined with exitCode=1 and empty stdout,
+  the LLM can clearly understand:
+  - The command did NOT execute (exitCode=1, no stdout)
+  - The reason is ADB pairing is required
+  - What to do about it (open Settings -> Wireless Debugging)

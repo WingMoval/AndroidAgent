@@ -1,0 +1,56 @@
+AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+Gate D — AG Integration Mapping (Q5)
+
+MAPPING CHAIN:
+
+AT AdbRuntimeState (9 values)
+    ↓ (1:1 projection)
+AT ATAdbReadinessState (9 values, com.at.composition.android)
+    ↓ (simplified)
+AG AtAdbReadiness (5 values: READY, DISCONNECTED, CONNECTING, PAIRING_REQUIRED, UNKNOWN)
+    ↓ (simplified)
+AG AtAdbBootstrap (3 values: PAIRING_REQUIRED, CONNECT_FAILED, READY)
+    ↓ (used by)
+AG AtExecutionAdapter.isAdbReady() / bootstrapState()
+
+KEY OBSERVATION: The AG integration-at layer SIMPLIFIES the AT state:
+- AT has 9 AdbRuntimeState values
+- AG AtAdbReadiness has only 5 (READY, DISCONNECTED, CONNECTING, PAIRING_REQUIRED, UNKNOWN)
+- AG AtAdbBootstrap has only 3 (PAIRING_REQUIRED, CONNECT_FAILED, READY)
+
+States LOST in AG simplification:
+- ENDPOINT_NOT_FOUND -> collapses into DISCONNECTED or UNKNOWN
+- USER_ACTION_REQUIRED (WD off) -> collapses into DISCONNECTED or UNKNOWN
+- TRANSPORT_LOST -> collapses into DISCONNECTED
+- RECOVERING -> collapses into CONNECTING
+- RECOVERY_FAILED -> collapses into DISCONNECTED or UNKNOWN
+- NOT_READY -> collapses into UNKNOWN
+
+HOWEVER: This simplification does NOT affect the LLM-visible path because:
+- The LLM only sees the RESULT of `adb shell ...` commands
+- The status lines emitted by ensureReady() are the LLM's only signal
+- Those status lines ARE specific:
+  "pairing required: no ADB identity found"
+  "not connected (identity present)"
+  "connected"
+
+ERROR_CODE_PRESERVED = PARTIAL
+  (The rich AT state enum is simplified, but the human-readable status
+   messages in the CLI bridge output DO distinguish the key cases)
+
+ERROR_TYPE_PRESERVED = PARTIAL
+  (PAIRING_REQUIRED vs CONNECT_FAILED vs READY are preserved in
+   AtAdbBootstrap; but ENDPOINT_NOT_FOUND / USER_ACTION_REQUIRED /
+   TRANSPORT_LOST / RECOVERING are collapsed)
+
+HUMAN_MESSAGE_PRESERVED = YES
+  (The status lines emitted to stderr carry specific, actionable messages)
+
+CRITICAL: The LLM never sees the enum values directly. It sees:
+  stderr = "[adb] pairing required: no ADB identity found\n[adb] open Settings..."
+  or
+  stderr = "[adb] not connected (identity present)"
+  or
+  stderr = "[adb] connected"
+
+These text messages ARE sufficient for the LLM to understand the situation.

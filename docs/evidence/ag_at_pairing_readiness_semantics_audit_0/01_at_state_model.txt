@@ -1,0 +1,56 @@
+AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+Gate B — AT State Model (Q1)
+
+REAL ENUM / TYPE FROM SOURCE:
+
+1. AdbRuntimeState (com.adb.engine.AdbRuntimeState)
+   File: AndroidTerminal-V4/adb-engine/src/main/java/com/adb/engine/AdbRuntimeState.kt
+   Values: DISCONNECTED, CONNECTING, READY, CONNECT_FAILED, ENDPOINT_NOT_FOUND,
+           USER_ACTION_REQUIRED, TRANSPORT_LOST, RECOVERING, RECOVERY_FAILED
+   Ownership: ADB Engine lifecycle (post-trust; pairing excluded)
+   Note: This is the INTERNAL ADB connection lifecycle. 9 states.
+
+2. AdbBootstrapState (com.adb.engine.AdbBootstrapState)
+   File: AndroidTerminal-V4/adb-engine/src/main/java/com/adb/engine/AdbConsumerBootstrap.kt
+   Values: READY, PAIRING_REQUIRED, USER_ACTION_REQUIRED_WD, CONNECT_FAILED,
+           ENDPOINT_NOT_FOUND, NOT_READY
+   Ownership: Consumer-facing bootstrap PROJECTION (read-only)
+   Note: 6 states. Adds PAIRING_REQUIRED + USER_ACTION_REQUIRED_WD (not in AdbRuntimeState).
+   Key: PAIRING_REQUIRED = "no usable identity (evidence-backed, no key material)"
+   Key: USER_ACTION_REQUIRED_WD = "Wireless Debugging is OFF, human must enable"
+   Key: CONNECT_FAILED = "identity exists but no usable connection (does NOT assert must pair)"
+
+3. ATAdbReadinessState (com.at.composition.android.ATAdbReadinessState)
+   File: AndroidTerminal-V4/at-composition-android/src/main/java/com/at/composition/android/ATAdbSemantic.kt
+   Values: DISCONNECTED, CONNECTING, READY, CONNECT_FAILED, ENDPOINT_NOT_FOUND,
+           USER_ACTION_REQUIRED, TRANSPORT_LOST, RECOVERING, RECOVERY_FAILED
+   Mapping: 1:1 projection of AdbRuntimeState (no reclassification)
+
+4. ATAdbBootstrapState (com.at.composition.android.ATAdbBootstrapState)
+   Same file as above.
+   Values: READY, PAIRING_REQUIRED, USER_ACTION_REQUIRED_WD, CONNECT_FAILED,
+           ENDPOINT_NOT_FOUND, NOT_READY
+   Mapping: 1:1 projection of AdbBootstrapState
+
+5. ATCliPairingState (com.at.cli.ATCliPairingState)
+   File: AndroidTerminal-V4/at-cli/src/main/java/com/at/cli/ATCliPairing.kt
+   Values: READY, PAIRING_REQUIRED, CONNECT_FAILED, NOT_READY
+   Note: CLI-level 4-state simplification (no USER_ACTION_REQUIRED_WD / ENDPOINT_NOT_FOUND)
+
+6. AdbPairingResultV2.Outcome (com.adb.engine)
+   Values: SUCCESS, REJECTED, SERVICE_NOT_FOUND, MULTIPLE_ENDPOINTS, FAILED
+
+AG integration-at MIRROR types (V4 consumer boundary):
+   AtAdbReadiness: READY, DISCONNECTED, CONNECTING, PAIRING_REQUIRED, UNKNOWN (5 values)
+   AtAdbBootstrap: PAIRING_REQUIRED, CONNECT_FAILED, READY (3 values)
+   AtPairingResult.PairingOutcome: SUCCESS, REJECTED, SERVICE_NOT_FOUND, MULTIPLE_ENDPOINTS, FAILED
+
+OWNERSHIP:
+   PAIRING_OWNER = AdbConsumerBootstrap (com.adb.engine) — the SINGLE pairing boundary
+   CONNECTION_STATE_OWNER = AdbRuntime (com.adb.engine) — UNIQUE ADB lifecycle owner
+   READINESS_OWNER = AdbRuntime.readinessState() projected via AdbBootstrapState
+   DIAGNOSTIC_OWNER = AdbConsumerBootstrap.bootstrapState() (consumer projection)
+
+CONCLUSION: AT has RICH, DISTINCT state model. 9 runtime states + 6 bootstrap states.
+Unpaired (PAIRING_REQUIRED) is DISTINCT from offline (DISCONNECTED/CONNECT_FAILED),
+WD-off (USER_ACTION_REQUIRED), transport-lost (TRANSPORT_LOST), etc.

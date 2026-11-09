@@ -1,0 +1,66 @@
+AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+Gate B/C/D — AT Error Model + What Happens When Unpaired (Q2, Q3, Q4)
+
+Q2: What happens when executing `adb shell id` while UNPAIRED?
+
+TRACING THE PATH (source-verified):
+
+1. Local shell runs `adb shell id`
+2. The `adb` shell function (bootstrap) calls the CLI bridge (UDS socket)
+3. AdbCliMain parses: Kind.SHELL -> bridgeOneShot("shell id")
+4. AdbCliBridgeServer.onOneShot():
+   - Calls ensureReady(fd)
+   - ensureReady delegates to execution.ensureReady(sid) { line -> sendStatus(fd, "[adb] $line") }
+5. In AG's AtExecutionAdapter.cliExecution.ensureReady():
+   - if isAdbReady() -> "connected" -> return true
+   - if !hasIdentity() -> "pairing required: no ADB identity found"
+                       -> "open Settings -> Wireless Debugging -> Pair device..."
+                       -> return false
+   - else (identity present but not ready) -> adbSemantic.ensureReady
+        if !ready -> "not connected (identity present)" -> return false
+6. Back in AdbCliBridgeServer.onOneShot():
+   - if !ok: sends T_OUT(empty) + T_ERR(empty) + T_EXIT(1)
+   - NO command is executed
+7. AdbCliMain receives:
+   - res.status = "[adb] pairing required: no ADB identity found\n[adb] open Settings -> Wireless Debugging -> Pair device with pairing code, then run: adb pair <host>:<port> <code>"
+   - res.stdout = ""
+   - res.stderr = ""
+   - res.exitCode = 1
+   - Prints status to stderr, then exit(1)
+
+So the LOCAL SHELL sees:
+   stdout: (empty)
+   stderr: [adb] pairing required: no ADB identity found
+           [adb] open Settings -> Wireless Debugging -> Pair device with pairing code,
+           then run: adb pair <host>:<port> <code>
+   exitCode: 1
+
+Q3: Is "paired but unavailable/offline" distinguishable from "unpaired"?
+
+YES. Source-verified:
+- !hasIdentity() -> "pairing required: no ADB identity found" (UNPAIRED)
+- hasIdentity() + !ready -> "not connected (identity present)" (OFFLINE/CONNECT_FAILED)
+- hasIdentity() + ready -> "connected" (READY)
+
+These are THREE DISTINCT messages. The LLM can distinguish:
+- "pairing required" = never paired
+- "not connected (identity present)" = was paired but lost connection
+
+Q4: Transport loss / connect failure — independent semantics?
+
+YES. AT distinguishes (source-verified in AdbRuntimeState):
+- DISCONNECTED: no connection (initial or explicit disconnect)
+- CONNECTING: connect attempt in flight
+- CONNECT_FAILED: connect attempt failed (bounded)
+- TRANSPORT_LOST: previously READY connection was lost
+- RECOVERING: recovery cycle in flight
+- RECOVERY_FAILED: recovery exhausted
+- ENDPOINT_NOT_FOUND: discovery found nothing
+- USER_ACTION_REQUIRED: WD is OFF
+
+These are all DISTINCT states. However, the CLI bridge collapses them into:
+- ensureReady returns true/false
+- Status lines differentiate: "connected" / "pairing required..." / "not connected (identity present)"
+
+The RICH state (9 AdbRuntimeState values) exists at the ADB Engine level.
+The CLI bridge only exposes a simplified 3-way: connected / pairing-required / not-connected.

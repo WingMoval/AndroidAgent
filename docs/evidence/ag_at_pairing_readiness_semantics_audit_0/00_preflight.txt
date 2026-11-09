@@ -1,0 +1,11 @@
+AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+Gate A — Preflight
+
+BRANCH = main
+START_HEAD = 8828893 (freeze commit, tag ag-current-capability-release-baseline-v1)
+WORKTREE = CLEAN (non-upload, 0 changed files)
+
+AT_CONSUMER_VERSION = v0.4.3
+FREEZE_TAG = ag-current-capability-release-baseline-v1 (unchanged)
+
+PREFLIGHT = PASS

@@ -1,0 +1,20 @@
+AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0
+Gate — Scope Audit
+
+PRODUCTION_CODE_CHANGED = NO
+TEST_CODE_CHANGED = NO
+AG_CHANGED = NO
+AT_CHANGED = NO
+TOOLSPEC_CHANGED = NO
+AGENT_INSTRUCTIONS_CHANGED = NO
+AT_CONSUMER_VERSION = v0.4.3 (unchanged)
+PAIRING_STATE_CHANGED_ON_DEVICE = NO
+DEPENDENCY_CHANGED = NO
+AT_V044_UPGRADE = NO
+DOCS_EVIDENCE_ONLY = YES
+
+New files:
+  docs/evidence/ag_at_pairing_readiness_semantics_audit_0/ (11 files)
+  docs/implementation/AG.AT-PAIRING-READINESS-SEMANTICS-AUDIT-0.md
+
+FREEZE_TAG = ag-current-capability-release-baseline-v1 (unchanged, still -> 8828893)
