@@ -1,0 +1,30 @@
+AG.CURRENT-CAPABILITY-RELEASE-BASELINE-FREEZE-0
+Gate — Canonical Commit Identity
+
+CAPABILITY_VALIDATION_COMMIT = 84e30b4
+  Role: AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0 + CLOSEOUT-0
+  Content: Full test baseline, session switching, ToolResult restore,
+           force-stop restore. Current capability baseline READY.
+
+ADB_SEMANTICS_AUDIT_EVIDENCE_COMMIT = 208df7b
+  Role: AG.ADB-SEMANTICS-AND-LEGADO-WRITE-AUDIT-0
+  Content: docs/evidence only. ADB argv/quoting semantics, Legado write model.
+  Production change: NONE
+
+ADB_GUIDANCE_PRODUCTION_COMMIT = 57461b8
+  Role: AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1
+  Content: ToolSpec description (model-visible guidance) + 5 unit tests.
+  Production change: AndroidShellToolImpl.kt description string ONLY
+
+ADB_GUIDANCE_CLOSEOUT_EVIDENCE_COMMIT = 72d30e1
+  Role: AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1.CLOSEOUT
+  Content: docs/evidence only. Proves model handles success=true + exitCode!=0.
+  Production change: NONE
+
+FREEZE_SOURCE_HEAD = 72d30e1
+FREEZE_COMMIT = <this freeze commit>
+FREEZE_TAG = ag-current-capability-release-baseline-v1
+TAG_TARGET = FREEZE_COMMIT
+
+NOTE: 72d30e1 is an EVIDENCE commit, not a production commit.
+      The only production change in this baseline chain is 57461b8.

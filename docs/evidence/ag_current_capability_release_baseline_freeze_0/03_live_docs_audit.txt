@@ -1,0 +1,28 @@
+AG.CURRENT-CAPABILITY-RELEASE-BASELINE-FREEZE-0
+Gate — Live Docs Consistency Audit
+
+Searched docs/implementation/*.md for stale status markers:
+
+  "NEXT = RELEASE_BASELINE_FREEZE"       → found in 3 historical CLOSED docs
+  "READY_WITH_GUIDANCE_FIX"              → found in 2 historical CLOSED docs
+  "ADB guidance pending"                 → NOT FOUND
+
+Files containing these markers:
+  - AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1.md          (CLOSED, historical)
+  - AG.ANDROID-SHELL-ADB-GUIDANCE-FIX-1.CLOSEOUT.md (CLOSED, historical)
+  - AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-0.md   (CLOSED, historical)
+  - AG.CURRENT-CAPABILITY-RELEASE-VALIDATION-CLOSEOUT-0.md (CLOSED, historical)
+
+DECISION:
+  All 4 files are CLOSED task reports (historical evidence).
+  Their "NEXT = RELEASE_BASELINE_FREEZE" correctly reflected the state
+  at the time of writing. They are NOT live SSOT status documents.
+
+  PRINCIPLE: historical evidence = immutable
+  No modification made to these files.
+
+  The new freeze document (docs/freeze/AG.CURRENT-CAPABILITY-RELEASE-BASELINE-V1.md)
+  is the new live SSOT for baseline status.
+
+LIVE_DOCS_UPDATED = NO (no live SSOT doc required update)
+HISTORICAL_EVIDENCE_TAMPERED = NO

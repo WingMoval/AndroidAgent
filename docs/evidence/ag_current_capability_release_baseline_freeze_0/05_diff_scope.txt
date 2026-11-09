@@ -1,0 +1,22 @@
+AG.CURRENT-CAPABILITY-RELEASE-BASELINE-FREEZE-0
+Gate — Diff Scope
+
+git diff --check:
+  Only CRLF line-ending warnings on pre-existing tracked upload/ files.
+  NO whitespace errors in new/modified docs files.
+
+git status (non-upload, untracked):
+  docs/evidence/ag_current_capability_release_baseline_freeze_0/  (6 new files)
+  docs/freeze/AG.CURRENT-CAPABILITY-RELEASE-BASELINE-V1.md         (1 new file)
+
+git status (non-upload, modified tracked):
+  NONE
+
+Production source files changed:
+  0
+
+TEST_CODE_CHANGED = NO
+PRODUCTION_CODE_CHANGED = NO
+DOCS_ONLY = YES
+
+DIFF_SCOPE = PASS

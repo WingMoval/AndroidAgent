@@ -1,0 +1,45 @@
+AG.CURRENT-CAPABILITY-RELEASE-BASELINE-FREEZE-0
+Gate — Freeze Document Check
+
+FREEZE_DOC = docs/freeze/AG.CURRENT-CAPABILITY-RELEASE-BASELINE-V1.md
+CREATED = YES
+
+Structure verification:
+  1. Freeze Identity              = PRESENT
+  2. Frozen Architecture          = PRESENT
+  3. Frozen Capabilities          = PRESENT (Agent/Session/Run, Interrupt, android_shell, network.fetch, file)
+  4. Frozen Tool Routing          = PRESENT (Policy B)
+  5. Validation Evidence          = PRESENT (4 commits referenced)
+  6. Real-Work Evidence           = PRESENT (Legado task)
+  7. Known Limitations            = PRESENT (G-b1, G-b2, G-b3, G-b4)
+  8. AT Consumer Identity         = PRESENT (v0.4.3)
+  9. Explicit Non-Claims          = PRESENT (11 items)
+  10. Post-Freeze Change Policy   = PRESENT
+  11. Final Freeze Verdict        = PRESENT
+
+Identity check:
+  CAPABILITY_VALIDATION_COMMIT = 84e30b4          PRESENT
+  ADB_SEMANTICS_AUDIT_EVIDENCE_COMMIT = 208df7b   PRESENT
+  ADB_GUIDANCE_PRODUCTION_COMMIT = 57461b8        PRESENT
+  ADB_GUIDANCE_CLOSEOUT_EVIDENCE_COMMIT = 72d30e1 PRESENT
+  FREEZE_SOURCE_HEAD = 72d30e1                    PRESENT
+  FREEZE_TAG = ag-current-capability-release-baseline-v1  PRESENT
+
+  "VALIDATED_PRODUCTION_COMMIT = 72d30e1" = NOT PRESENT (correct)
+  "57461b8 = the only production change"  = EXPLICITLY STATED
+
+Known limitations recorded:
+  G-b1 (child process survival)       = YES
+  G-b2 (mutation approval)            = YES
+  G-b3 (web capability boundary)      = YES
+  G-b4 (8-step budget)                = YES
+
+Real-work evidence recorded:
+  REAL_WORK_AUTONOMY = STRONG         = YES
+  REAL_TASK_E2E = INCOMPLETE          = YES
+  ADB gap exposure + closure          = YES
+
+AT_CONSUMER_VERSION = v0.4.3          = YES
+AT v0.4.4 = POST-FREEZE               = YES
+
+FREEZE_DOCUMENT_CHECK = PASS

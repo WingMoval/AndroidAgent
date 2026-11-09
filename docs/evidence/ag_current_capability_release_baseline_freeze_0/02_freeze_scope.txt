@@ -1,0 +1,56 @@
+AG.CURRENT-CAPABILITY-RELEASE-BASELINE-FREEZE-0
+Gate — Frozen Capability Scope
+
+AGENT_SESSION_RUN:
+  TopicSession durable conversation       = FROZEN / VALIDATED
+  Run = one user request                  = FROZEN / VALIDATED
+  Max 1 active Run per session            = FROZEN / VALIDATED
+  Multi-session independence              = FROZEN / VALIDATED
+  Room DB durable SSOT                    = FROZEN / VALIDATED
+  Historical session switching            = FROZEN / VALIDATED
+  Switch-back transcript correctness      = FROZEN / VALIDATED
+  Force-stop restore (no replay)          = FROZEN / VALIDATED
+  ToolResult durable restore              = FROZEN / VALIDATED
+
+INTERRUPT_STOP:
+  Host Stop → interruptActiveRun() → Job cancel → Interrupted
+  Interrupted != Failure
+  G-b1: long-running child may survive Stop = DEFERRED / NON-BLOCKING
+
+ANDROID_SHELL:
+  MODEL_VISIBLE = YES
+  Default mode = Local one-shot
+  Identity = app execution identity
+  adb shell identity = uid 2000
+  Embedded adb = limited CLI (NOT full desktop)
+  Guidance = FROZEN (C1+C2+C3 at 57461b8)
+  ToolResult.success = mechanism completed only
+  Command success = exitCode == 0
+  ADB_GUIDANCE_GAP = CLOSED
+
+NETWORK_FETCH:
+  MODEL_VISIBLE = YES
+  HTTPS GET, SSRF protection, redirect revalidation, bounded, HTML→text
+  NOT: Search, Browser, POST, JS, anti-bot
+  Status = FROZEN
+
+FILE:
+  REALM = APP_SELF
+  read   = FROZEN / autonomous-LLM validated
+  search = IMPLEMENTED (no autonomous-LLM validation recorded)
+  list   = IMPLEMENTED (no autonomous-LLM validation recorded)
+  stat   = IMPLEMENTED (no autonomous-LLM validation recorded)
+  Security: canonical confinement, traversal/outside-root/symlink rejection
+  Status = FROZEN
+
+ROUTING:
+  Policy B = Realm + Intent
+  NOT strict specialized-tool-first
+
+AGENT_INSTRUCTIONS:
+  V1 frozen (use tools, don't guess, continue as needed, stop when done)
+  No modification this round
+
+AT_CONSUMER:
+  v0.4.3 (frozen)
+  v0.4.4 update = POST-FREEZE SEPARATE TASK

@@ -1,0 +1,25 @@
+AG.CURRENT-CAPABILITY-RELEASE-BASELINE-FREEZE-0
+Gate — Freeze Commit
+
+START_HEAD = 72d30e1
+FREEZE_COMMIT = (see 07_tag.txt for exact SHA)
+BRANCH = main
+
+COMMIT MESSAGE:
+  docs(release): freeze current capability baseline v1
+
+COMMITTED FILES (10):
+  docs/freeze/AG.CURRENT-CAPABILITY-RELEASE-BASELINE-V1.md
+  docs/evidence/ag_current_capability_release_baseline_freeze_0/00_preflight.txt
+  docs/evidence/ag_current_capability_release_baseline_freeze_0/01_identity.txt
+  docs/evidence/ag_current_capability_release_baseline_freeze_0/02_freeze_scope.txt
+  docs/evidence/ag_current_capability_release_baseline_freeze_0/03_live_docs_audit.txt
+  docs/evidence/ag_current_capability_release_baseline_freeze_0/04_freeze_document_check.txt
+  docs/evidence/ag_current_capability_release_baseline_freeze_0/05_diff_scope.txt
+  docs/evidence/ag_current_capability_release_baseline_freeze_0/07_scope_audit.txt
+  docs/evidence/ag_current_capability_release_baseline_freeze_0/06_commit.txt (this file)
+  docs/evidence/ag_current_capability_release_baseline_freeze_0/08_final_verdict.txt
+  docs/implementation/AG.CURRENT-CAPABILITY-RELEASE-BASELINE-FREEZE-0.md
+
+DOCS_ONLY = YES
+PUSH = NO

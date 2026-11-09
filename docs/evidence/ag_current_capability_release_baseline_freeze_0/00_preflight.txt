@@ -1,0 +1,11 @@
+AG.CURRENT-CAPABILITY-RELEASE-BASELINE-FREEZE-0
+Gate A — Preflight
+
+BRANCH = main
+START_HEAD = 72d30e1 (72d30e13cd21d873fa326ec0c991fdd319095f8e)
+WORKTREE = CLEAN (non-upload, 0 changed files)
+
+TAG CHECK:
+  ag-current-capability-release-baseline-v1 = NOT EXISTS (good, no conflict)
+
+PREFLIGHT = PASS

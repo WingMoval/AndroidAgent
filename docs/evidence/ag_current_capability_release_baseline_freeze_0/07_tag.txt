@@ -1,0 +1,12 @@
+AG.CURRENT-CAPABILITY-RELEASE-BASELINE-FREEZE-0
+Gate — Annotated Tag
+
+TAG_NAME = ag-current-capability-release-baseline-v1
+TAG_TYPE = ANNOTATED
+TAG_NAME = ag-current-capability-release-baseline-v1
+TAG_TYPE = ANNOTATED
+TAG_MESSAGE = "AndroidAgent current capability release baseline v1"
+
+CREATED AFTER FREEZE COMMIT (see 08_final_verdict.txt for exact SHA)
+TAG_TARGET = FREEZE_COMMIT
+TAG_TARGET_MATCH = YES (verified via git rev-parse tag^{commit} == HEAD)
