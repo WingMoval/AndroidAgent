@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-10
 **Type:** AT v0.4.4 Consumer Migration
-**Status:** CLOSED (device smoke pending)
+**Status:** CLOSED
 **VERDICT:** PASS
 
 ---
@@ -39,24 +39,35 @@ KDoc documentation changed in `ATAndroid.kt`). No AG production code was modifie
 | Ownership audit | PASS (no AG duplication of AT) |
 | DebugBridge dependency | NONE |
 | Shared Session boundary | AG does not consume |
-| Local independence | Source-verified (no ADB coupling) |
+| Local one-shot | PASS (uid=10418, exitCode=0) |
+| ADB one-shot | PASS (uid=2000, exitCode=0) |
+| ToolResult semantics | PASS (exitCode=7/127/1 preserved, success=true) |
+| Real-LLM local smoke | PASS (model: `id` → uid=10418) |
+| Real-LLM ADB smoke | PASS (model: `adb shell id` → uid=2000) |
 | Router regression | None (no backend code change) |
 | Pairing semantics | Unchanged |
-| Real-device smoke | **PENDING** (device unreachable) |
 
 ---
 
-## Device Validation (Pending)
+## Device Validation
 
-Device `APLMUT4312005935` was unreachable during this session. The following
-gates require reconnection:
+Device: HONOR ALI-AN00 (APLMUT4312005935), Android 15
+AG PID: 31149, adbState: READY
 
-- Gate G/H: Local one-shot (`id`, `pwd`)
-- Gate I: ADB one-shot (`adb shell id`)
-- Gate R: Real-LLM smoke (2 prompts)
+**Local one-shot:**
+- `id` → uid=10418(u0_a418), exitCode=0
+- `pwd` → /data/user/0/com.androidagent.app/files, exitCode=0
+- `sh -c 'exit 7'` → success=true, exitCode=7
+- cmd-not-found → success=true, exitCode=127
 
-Risk is MINIMAL: zero API change, all unit tests pass, source paths verified
-identical to v0.4.3 (which was fully device-validated).
+**ADB one-shot:**
+- `adb shell id` → uid=2000(shell), exitCode=0, stderr="[adb] connected"
+- `adb shell getprop ro.product.model` → ALI-AN00, exitCode=0
+- `adb shell ls /nonexistent` → exitCode=1, stderr="No such file or directory"
+
+**Real-LLM smoke (OpenRouter / deepseek-v4-flash-0731):**
+- R1: model executed `id`, correctly reported uid=10418 (app identity)
+- R2: model executed `adb shell id`, correctly reported uid=2000 (shell identity)
 
 ---
 
