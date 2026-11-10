@@ -1,0 +1,23 @@
+﻿AG.AT-V044-CONSUMER-UPDATE-0
+Gate R — Real-LLM Smoke
+
+STATUS = PASS (device validated 2026-11-10)
+
+Provider: OpenRouter / deepseek/deepseek-v4-flash-0731
+
+R1 — Local:
+  Prompt: "请检查 AndroidAgent 当前本地执行身份，运行 id 命令查看 uid。"
+  Tool call: {"command":"id"}
+  Tool result: success=true, exitCode=0, stdout="uid=10418(u0_a418)..."
+  Final answer: 正确识别 uid=10418 (u0_a418), untrusted_app 域
+  VERDICT: REAL_LLM_LOCAL_SMOKE = PASS
+
+R2 — ADB:
+  Prompt: "请检查手机 Android shell 的执行身份，运行 adb shell id 查看 uid。"
+  Tool call: {"command": "adb shell id"}
+  Tool result: success=true, exitCode=0, stdout="uid=2000(shell)...", stderr="[adb] connected"
+  Final answer: 正确识别 uid=2000 (shell), u:r:shell:s0
+  VERDICT: REAL_LLM_ADB_SMOKE = PASS
+
+Both gates: model autonomously selected android_shell, used correct command
+form, and correctly interpreted the device output.

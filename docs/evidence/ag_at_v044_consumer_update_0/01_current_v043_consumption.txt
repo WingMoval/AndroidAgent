@@ -1,0 +1,37 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate B — Current v0.4.3 Consumption Audit
+
+CURRENT_AT_DEPENDENCY =
+  integration-at: api("com.at.engine.api:at-engine-api:4.0.0")
+  integration-at: api("com.at.cli:at-cli:4.0.0")
+  app: implementation("com.at.composition.android:at-composition-android:4.0.0")
+  Resolved from: third_party/at-v043-consumer-freeze-v1/m2 (repo-local Maven)
+
+CURRENT_CONSUMER_ENTRY =
+  ATAndroid.create(context, ATAndroidConfig(identityProfile))
+  -> ATAndroidComposition { localEngine, adbEngine, adbControl }
+  Called in: ChatCompositionRoot.kt (Host/Composition Root)
+
+CURRENT_COMPOSITION_OWNER =
+  ChatCompositionRoot (Host) creates the composition.
+  The adapter (AtExecutionAdapter) receives INJECTED engine instances.
+
+CURRENT_LOCAL_ENGINE_ACQUISITION =
+  atComposition.localEngine (ATEngine interface, injected to adapter)
+
+CURRENT_ADB_ENGINE_ACQUISITION =
+  atComposition.adbEngine (ATEngine interface, injected to adapter)
+
+CURRENT_ADB_CONTROL_ACQUISITION =
+  atComposition.adbControl (ATAndroidAdbControl)
+  Wrapped by CompositionAdbSemantic (Host-layer bridge)
+  Injected as AdbSemantic interface to adapter
+
+CONSUMPTION_MODE =
+  Formal consumer entry (ATAndroid.create) via vendored AAR.
+  NOT: DebugBridge, internal module import, direct engine construction.
+
+BORDERLINE COMPLIANCE =
+  integration-at imports: com.at.engine.* (public) + com.at.cli.* (frontend) = ALLOWED
+  app imports: com.at.composition.android.* (assembly facade) = ALLOWED
+  AG Core / AG Runtime: NO AT imports = CORRECT

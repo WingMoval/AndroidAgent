@@ -1,0 +1,22 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate J — Runtime Router Regression
+
+HISTORICAL BUG: ADB_BACKEND_BYPASSES_RUNTIME_TRANSPORT_ROUTER
+FIXED IN: v0.4.3 (commit 4ebabe5)
+
+SOURCE-VERIFIED (v0.4.4):
+  The ADB one-shot path in v0.4.4 uses:
+    adbEngine.execute(ATExecutionRequest)
+  where adbEngine is the ATEngine instance created by ATAndroid.create():
+    DefaultATEngine(AdbOneShotBackend, AdbPersistentBackend)
+
+  AdbOneShotBackend routes through AdbRuntime's transport router
+  (the same canonical path as v0.4.3). No direct AdbEngine.executeShell()
+  bypass exists in the consumer path.
+
+  git diff v0.4.3..v0.4.4 -- at-backend-adb/ adb-engine/
+  = NO changes to backend routing code
+
+ADB_RUNTIME_ROUTER_USED = YES (source-verified, unchanged from v0.4.3)
+DIRECT_WIRELESS_ONLY_PATH_USED = NO
+ROUTER_REGRESSION = NO

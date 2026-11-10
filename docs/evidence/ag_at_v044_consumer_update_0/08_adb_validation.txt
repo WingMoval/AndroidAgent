@@ -1,0 +1,28 @@
+﻿AG.AT-V044-CONSUMER-UPDATE-0
+Gate I — ADB One-Shot Validation
+
+STATUS = PASS (device validated 2026-11-10)
+
+DEVICE = HONOR ALI-AN00 (APLMUT4312005935)
+AG PID (v0.4.4 build) = 31149
+adbState = READY
+
+Test 1: adb shell id
+  Result:  success=true, outcome=COMPLETED, exitCode=0
+           stdout="uid=2000(shell) gid=2000(shell) groups=... context=u:r:shell:s0"
+           stderr="[adb] connected"
+  VERDICT: ADB_SHELL_IDENTITY = uid=2000(shell) CORRECT
+
+Test 2: adb shell getprop ro.product.model
+  Result:  success=true, exitCode=0, stdout="ALI-AN00"
+  VERDICT: ADB_GETPROP = PASS
+
+Test 3: adb shell ls /nonexistent_path_v044_probe
+  Result:  success=true, outcome=COMPLETED, exitCode=1
+           stdout=""
+           stderr="[adb] connectedls: /nonexistent_path_v044_probe: No such file or directory"
+  VERDICT: ADB_NONZERO_EXIT = PASS (exit 1, success=true, stderr has reason)
+
+ADB_ONE_SHOT = PASS
+ADB_RUNTIME_ROUTER_USED = YES (stderr shows "[adb] connected" = router path)
+DIRECT_WIRELESS_ONLY_PATH_USED = NO

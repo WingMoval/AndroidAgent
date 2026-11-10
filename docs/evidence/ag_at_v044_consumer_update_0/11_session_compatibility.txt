@@ -1,0 +1,14 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate M — Persistent Session Compatibility
+
+SOURCE-VERIFIED:
+  ATEngine.openSession / ATTerminalSession API is UNCHANGED in v0.4.4.
+  git diff v0.4.3..v0.4.4 -- at-engine-api/ = EMPTY (no changes)
+
+  AtExecutionAdapter.openAdbSession / openLocalSession / openBootstrappedLocalSession
+  all use the same ATEngine interface. No code change needed.
+
+  Existing tests (integration-at, tool-android-shell) PASS after migration.
+
+PERSISTENT_SESSION_COMPATIBILITY = PASS (source + build verified)
+NO NEW SESSION BEHAVIOR INTRODUCED = YES

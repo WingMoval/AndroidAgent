@@ -24,14 +24,16 @@ dependencyResolutionManagement {
     repositories {
         mavenCentral()
         google()
-        // AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0: AT v0.4.3 FORMAL release bundle.
-        // AARs/JARs from AT v0.4.3 source commit 5517fc0 (tag v0.4.3, target 2e1cdd5).
+        // AG.AT-V044-CONSUMER-UPDATE-0: AT v0.4.4 FORMAL release bundle.
+        // AARs/JARs from AT v0.4.4 source commit e2f2d7b (tag v0.4.4).
         // GAV 4.0.0 = stable API artifact version (independent of app release).
-        // See third_party/at-v043-consumer-freeze-v1/MANIFEST.md.
+        // See third_party/at-v044-consumer-freeze-v1/MANIFEST.md.
         // MUST be listed FIRST: this is the ACTIVE consumer baseline.
         maven {
-            url = uri("third_party/at-v043-consumer-freeze-v1/m2")
+            url = uri("third_party/at-v044-consumer-freeze-v1/m2")
         }
+        // HISTORICAL (v0.4.3): retained for rollback reference only.
+        // maven { url = uri("third_party/at-v043-consumer-freeze-v1/m2") }
         // HISTORICAL (v0.4.2 candidate): retained for rollback reference only.
         // NOT in active resolution (v0.4.3 repo listed above takes priority).
         // maven { url = uri("third_party/at-v042-consumer-candidate/m2") }

@@ -1,0 +1,43 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate C — AT v0.4.4 Consumer Contract Audit
+
+V044_FORMAL_ENTRY =
+  ATAndroid.create(context, config) -> ATAndroidComposition
+  (IDENTICAL to v0.4.3; only KDoc documentation changed)
+
+V044_CONSUMER_ARTIFACTS =
+  com.at.engine.api:at-engine-api:4.0.0 (JAR) — UNCHANGED
+  com.at.cli:at-cli:4.0.0 (AAR) — UNCHANGED
+  com.at.composition.android:at-composition-android:4.0.0 (AAR) — KDoc only
+  Transitive: at-engine, at-engine-spi, at-backend-*, adb-engine
+
+V044_LOCAL_EXECUTION_API =
+  ATEngine.execute(ATExecutionRequest) -> ATExecutionResult
+  ATEngine.openSession(ATSessionLaunch) -> ATOpenSessionResult
+  (IDENTICAL to v0.4.3)
+
+V044_ADB_EXECUTION_API =
+  Same ATEngine interface (adbEngine instance)
+  Requires ATAndroidAdbControl.ensureReady() first
+  (IDENTICAL to v0.4.3)
+
+V044_READINESS_API =
+  ATAndroidAdbControl.readinessState() -> ATAdbReadinessState
+  ATAndroidAdbControl.bootstrapState() -> ATAdbBootstrapState
+  (IDENTICAL to v0.4.3)
+
+V044_PAIRING_API =
+  ATAndroidAdbControl.pairDiscovered(code) -> ATAdbPairingResult
+  ATAndroidAdbControl.pair(host, port, code) -> ATAdbPairingResult
+  ATAndroidAdbControl.discoverPairing(timeoutMs) -> ATAdbPairingDiscovery
+  (IDENTICAL to v0.4.3)
+
+DEBUGBRIDGE_REQUIRED = NO
+
+API_DELTA =
+  git diff v0.4.3..v0.4.4 -- at-engine-api/ at-cli/ at-composition-android/
+  = ONLY at-composition-android/ATAndroid.kt (68 lines of KDoc changes)
+  = ZERO public API signature changes
+  = ZERO behavioral changes
+
+CONCLUSION: v0.4.4 is a drop-in replacement for v0.4.3 at the consumer boundary.

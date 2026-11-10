@@ -1,0 +1,27 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate D — Migration Plan
+
+FILES_TO_CHANGE =
+  1. settings.gradle.kts
+     - Point maven repo from at-v043-consumer-freeze-v1/m2
+       to at-v044-consumer-freeze-v1/m2
+     - Comment out v0.4.3 (historical)
+  2. third_party/at-v044-consumer-freeze-v1/ (NEW)
+     - MANIFEST.md
+     - artifacts/ (8 AARs/JARs built from e2f2d7b)
+     - m2/ (POM + artifacts for Gradle resolution)
+
+FILES_NOT_TO_CHANGE =
+  - integration-at/src/** (NO code change; API identical)
+  - tool-android-shell/src/** (NO change)
+  - app/src/** (NO change; ATAndroid.create signature unchanged)
+  - ag-core/** (NO change)
+  - ag-runtime/** (NO change)
+  - tool-network/** (NO change)
+  - tool-file/** (NO change)
+  - Any Room/Session/Provider/AgentInstructions code
+
+RISK = MINIMAL
+  The only change is swapping the vendored AAR source from v0.4.3 to v0.4.4.
+  Since the public API is byte-identical (verified via git diff), this is a
+  pure artifact replacement with zero code modification.

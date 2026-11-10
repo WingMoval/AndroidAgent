@@ -1,0 +1,22 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate N — Shared Session Boundary Audit
+
+v0.4.4 NEW (host-level, :app only):
+  AppSessionRegistry (AndroidTerminal :app)
+  SharedSessionHandle (AndroidTerminal :app)
+  InputSource.HUMAN / InputSource.DEBUG
+
+These are INTERNAL to the AndroidTerminal product app. They are NOT part of:
+  - at-engine-api (public contract)
+  - at-composition-android (consumer facade)
+  - at-cli (CLI frontend)
+
+AG does NOT consume these types. AG's AtExecutionAdapter only uses:
+  ATEngine.execute / openSession
+  ATAndroidAdbControl (via AdbSemantic)
+
+SHARED_SESSION_API_AVAILABLE = YES (in AT product, not in consumer boundary)
+AG_DEFAULT_EXECUTION_CHANGED_TO_SHARED_SESSION = NO
+DEBUGBRIDGE_USED_BY_AG = NO
+AG_IMPLICITLY_ATTACHES_HUMAN_SESSION = NO
+AG_CREATES_MULTI_CONSUMER_OWNERSHIP = NO

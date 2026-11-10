@@ -1,0 +1,23 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate O — No DebugBridge Dependency
+
+SEARCH: "DebugBridge" in AG production source
+
+  grep -r "DebugBridge" --include="*.kt" app/src/main/ integration-at/src/main/ tool-android-shell/src/main/
+
+  Result: DebugBridge exists ONLY in :app (ChatActivity + DebugBridge.kt)
+  as a DEBUG-ONLY feature (build variant gated).
+
+  The AG production AT consumption path:
+    ChatCompositionRoot -> ATAndroid.create -> ATEngine -> AdbRuntime
+  does NOT involve DebugBridge.
+
+  DebugBridge is a PC-to-device JSONL debug transport for AG's own
+  AgentRuntime (for development observation). It is NOT an AT integration
+  mechanism.
+
+PRODUCTION_DEBUGBRIDGE_DEPENDENCY = NO
+AT_CONSUMED_VIA = Formal consumer entry (ATAndroid.create) + vendored AAR
+DEBUGBRIDGE_USED_FOR_AT = NO
+
+HARD GATE = PASS

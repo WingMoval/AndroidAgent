@@ -1,0 +1,37 @@
+﻿AG.AT-V044-CONSUMER-UPDATE-0
+Gate G+H — Local One-Shot Validation + Local Shell Semantics
+
+STATUS = PASS (device validated 2026-11-10)
+
+DEVICE = HONOR ALI-AN00 (APLMUT4312005935)
+AG PID (v0.4.4 build) = 31149
+adbState = READY
+
+Gate G — Local One-Shot:
+  Command: id
+  Result:  success=true, outcome=COMPLETED, exitCode=0
+           stdout="uid=10418(u0_a418) gid=10418(u0_a418) ... context=u:r:untrusted_app:s0"
+           stderr=""
+  VERDICT: LOCAL_ONE_SHOT = PASS
+  LOCAL_SHELL_IDENTITY = uid=10418(u0_a418) [app UID]
+  LOCAL_REQUIRES_PAIRING = NO
+
+  Command: pwd
+  Result:  success=true, exitCode=0
+           stdout="/data/user/0/com.androidagent.app/files"
+  VERDICT: LOCAL_SHELL_CWD_CORRECT = YES
+
+Gate H — Local Shell Semantics:
+  Command: sh -c 'echo error_msg >&2; exit 7'
+  Result:  success=true, outcome=COMPLETED, exitCode=7, stdout="", stderr="error_msg"
+  VERDICT: NONZERO_EXIT_PRESERVED = YES (success=true + exitCode=7)
+
+  Command: definitely_nonexistent_cmd_xyz
+  Result:  success=true, outcome=COMPLETED, exitCode=127, stderr="inaccessible or not found"
+  VERDICT: CMD_NOT_FOUND = PASS (exit 127, success=true)
+
+  Command: printf 'hello_v044'
+  Result:  success=true, exitCode=0, stdout="hello_v044"
+  VERDICT: STDOUT_CORRECT = YES
+
+TOOLRESULT_SEMANTICS_PRESERVED = YES (frozen contract unchanged)

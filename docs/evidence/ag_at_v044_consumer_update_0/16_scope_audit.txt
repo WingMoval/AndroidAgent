@@ -1,0 +1,30 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate S — Scope Audit
+
+AT_CONSUMER_VERSION = v0.4.4 (upgraded from v0.4.3)
+
+AG_CORE_CHANGED = NO
+AG_RUNTIME_CHANGED = NO
+TOOLRESULT_CONTRACT_CHANGED = NO
+AGENT_INSTRUCTIONS_CHANGED = NO
+FILE_TOOL_CHANGED = NO
+NETWORK_TOOL_CHANGED = NO
+ROOM_CHANGED = NO
+SESSION_MODEL_CHANGED = NO
+8_STEP_LIMIT_CHANGED = NO
+MUTATION_APPROVAL_CHANGED = NO
+ANDROID_SHELL_TOOL_CHANGED = NO (no code change)
+INTEGRATION_AT_CODE_CHANGED = NO (no code change)
+APP_CODE_CHANGED = NO (no code change)
+
+FILES_CHANGED:
+  1. settings.gradle.kts (maven repo path: v043 -> v044)
+  2. third_party/at-v044-consumer-freeze-v1/ (NEW vendor bundle)
+  3. docs/evidence/ag_at_v044_consumer_update_0/ (this evidence)
+  4. docs/implementation/AG.AT-V044-CONSUMER-UPDATE-0.md
+  5. docs/integration/AT_TO_AG_HANDOFF_CURRENT.md (SSOT update)
+
+AT_V043_BUNDLE_STATUS = HISTORICAL (retained for rollback)
+
+SUBAGENTS_USED = NO
+DELEGATED_WORKERS_USED = NO

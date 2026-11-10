@@ -1,0 +1,17 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate P — Tool Routing Regression
+
+SOURCE-VERIFIED:
+  - AndroidShellToolImpl: NO CHANGE (same ToolSpec, same executor)
+  - NetworkToolImpl: NO CHANGE (no AT dependency)
+  - FileToolImpl: NO CHANGE (no AT dependency)
+  - Routing Policy B (Realm + Intent): UNCHANGED
+
+  The only AG code change is settings.gradle.kts (maven repo path).
+  No tool implementation, routing logic, or ToolSpec was modified.
+
+android_shell local command -> android_shell = UNCHANGED
+adb shell command -> android_shell = UNCHANGED
+file / network.fetch = NO production diff
+
+TOOL_ROUTING_REGRESSION = NO

@@ -1,0 +1,19 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate Q — Build / Unit Regression
+
+COMMANDS:
+  .\gradlew.bat :integration-at:assembleDebug :tool-android-shell:assembleDebug :app:assembleDebug
+  .\gradlew.bat :integration-at:testDebugUnitTest :tool-android-shell:testDebugUnitTest
+  .\gradlew.bat :app:testDebugUnitTest
+
+RESULTS:
+  :integration-at:assembleDebug = PASS
+  :tool-android-shell:assembleDebug = PASS
+  :app:assembleDebug = PASS (BUILD SUCCESSFUL in 21s)
+  :integration-at:testDebugUnitTest = PASS (BUILD SUCCESSFUL)
+  :tool-android-shell:testDebugUnitTest = PASS (BUILD SUCCESSFUL)
+  :app:testDebugUnitTest = PASS (BUILD SUCCESSFUL in 14s)
+
+FAIL = 0
+BUILD = PASS
+DEBUG_BUILD = PASS (app-debug.apk generated)

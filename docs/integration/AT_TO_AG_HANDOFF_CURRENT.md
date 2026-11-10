@@ -1,24 +1,25 @@
-# AT_TO_AG_HANDOFF_CURRENT
+﻿# AT_TO_AG_HANDOFF_CURRENT
 
 Canonical current-snapshot pointer for the AT <-> AG integration.
 Created: AG.V1-PRE-FREEZE-NORMALIZATION (2026-10-18).
 Updated: AG.V2-2.AT-INTEGRATION (2026-10-20).
 Updated: AG.AT-V4-INTEGRATION-1 (2026-10-22).
 Updated: AG.AT-V043-FORMAL-CONSUMER-PRODUCTION-VALIDATION-0 (2026-11-05).
+Updated: AG.AT-V044-CONSUMER-UPDATE-0 (2026-11-10).
 
 ---
 
 ## 1. Current snapshot
 
 ```text
-AT_HANDOFF             = AT_V043_CONSUMER_HANDOFF
-AT_RELEASE             = v0.4.3
-SOURCE_BASELINE        = 5517fc0 (v0.4.3 release commit)
+AT_HANDOFF             = AT_V044_CONSUMER_HANDOFF
+AT_RELEASE             = v0.4.4
+SOURCE_BASELINE        = e2f2d7b (v0.4.4 release commit)
 ROUTING_FIX_COMMIT     = 4ebabe5
-TAG                    = v0.4.3 (annotated, target 2e1cdd5)
-CONSUMER_BUNDLE        = AT.V043-CONSUMER-FREEZE-V1
-AT_CONTRACT_STATUS     = FROZEN (v0.4.3 release)
-FINAL_API_FREEZE       = YES (GAV 4.0.0 stable, no breaking change)
+TAG                    = v0.4.4 (annotated, target e2f2d7b)
+CONSUMER_BUNDLE        = AT.V044-CONSUMER-FREEZE-V1
+AT_CONTRACT_STATUS     = FROZEN (v0.4.4 release)
+FINAL_API_FREEZE       = YES (GAV 4.0.0 stable, no breaking change from v0.4.3)
 
 AG_CONSUMPTION_MODE    = VENDORED_AAR (repo-local Maven)
 FINAL_BUILD_SELF_CONTAINED = YES (no sibling AT source tree required)
@@ -43,9 +44,10 @@ ADB_RUNTIME_OWNER      = AdbRuntime (UNIQUE, AT-internal; AG does not import)
 
 LEGACY_AT_V0           = SUPERSEDED / INACTIVE
 LEGACY_V3_BUNDLE       = SUPERSEDED / INACTIVE (m2 entry commented out)
+LEGACY_V043_BUNDLE     = HISTORICAL (retained for rollback)
 SCREEN_AWARE           = NOT_IMPLEMENTED
-HUMAN_AGENT_SHARED_SESSION = DEFERRED
-NEXT_FORMAL_SYNC       = POST_V043 (AT v0.4.3 is current; next sync after v0.5.0)
+HUMAN_AGENT_SHARED_SESSION = DEFERRED (AT product has SharedSession; AG does not consume)
+NEXT_FORMAL_SYNC       = POST_V044 (AT v0.5.0 release bundle + re-validation)
 ```
 
 ## 2. Historical handoff relationship
@@ -66,9 +68,9 @@ AT v0.4.3 release commit `5517fc0` (tag `v0.4.3`, target `2e1cdd5`). No sibling 
 source tree required for build.
 
 **Superseded (HISTORICAL):**
-- `third_party/at-v4-consumer-freeze-v1/` (V4, baseline 7216d0e) — rollback reference only, m2 entry commented out.
-- `third_party/at-v042-consumer-candidate/` (v0.4.2 candidate) — rollback reference only, m2 entry commented out.
-- `third_party/at-consumer-freeze-v1/` (V3, baseline c9cee21) — rollback reference only, m2 entry commented out.
+- `third_party/at-v4-consumer-freeze-v1/` (V4, baseline 7216d0e) 鈥?rollback reference only, m2 entry commented out.
+- `third_party/at-v042-consumer-candidate/` (v0.4.2 candidate) 鈥?rollback reference only, m2 entry commented out.
+- `third_party/at-consumer-freeze-v1/` (V3, baseline c9cee21) 鈥?rollback reference only, m2 entry commented out.
 
 ## 4. Identity
 
@@ -95,7 +97,8 @@ next    = POST_V043 (AT v0.5.0 release bundle + re-validation)
 | v0 AAR (0.1.0) | `third_party/at-engine-handoff-v0/` | SUPERSEDED / INACTIVE (no longer in dependency graph) |
 | v3 AAR (1.0.0) | `third_party/at-consumer-freeze-v1/` | SUPERSEDED / INACTIVE (m2 entry commented out; rollback reference only) |
 | v4 AAR (4.0.0) | `third_party/at-v4-consumer-freeze-v1/` | HISTORICAL (superseded by v0.4.3) |
-| **v0.4.3 AAR (4.0.0)** | `third_party/at-v043-consumer-freeze-v1/` | **CURRENT (formal release)** |
+| v0.4.3 AAR (4.0.0) | 	hird_party/at-v043-consumer-freeze-v1/ | HISTORICAL (superseded by v0.4.4) |
+| **v0.4.4 AAR (4.0.0)** | 	hird_party/at-v044-consumer-freeze-v1/ | **CURRENT (formal release)** |
 
 ## 7. V4 consumer boundary (AG compliance)
 

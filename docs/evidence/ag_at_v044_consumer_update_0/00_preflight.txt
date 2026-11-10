@@ -1,0 +1,14 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate A — Preflight
+
+BRANCH = main
+START_HEAD = 508041f
+WORKTREE = CLEAN (non-upload, 0 changed files)
+
+FREEZE_TAG = ag-current-capability-release-baseline-v1
+TAG_TARGET = 8828893 (verified, unchanged)
+
+AT_V044_SOURCE = e2f2d7b (tag v0.4.4 in AndroidTerminal-V4)
+AT_V043_SOURCE = 9c5543a (tag v0.4.3 in AndroidTerminal-V4)
+
+PREFLIGHT = PASS

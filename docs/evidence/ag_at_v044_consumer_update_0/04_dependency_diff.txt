@@ -1,0 +1,18 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate E — Dependency Diff
+
+BEFORE (v0.4.3):
+  settings.gradle.kts: maven { url = uri("third_party/at-v043-consumer-freeze-v1/m2") }
+  integration-at: api("com.at.engine.api:at-engine-api:4.0.0") + api("com.at.cli:at-cli:4.0.0")
+  app: implementation("com.at.composition.android:at-composition-android:4.0.0")
+
+AFTER (v0.4.4):
+  settings.gradle.kts: maven { url = uri("third_party/at-v044-consumer-freeze-v1/m2") }
+  integration-at: api("com.at.engine.api:at-engine-api:4.0.0") + api("com.at.cli:at-cli:4.0.0") [UNCHANGED]
+  app: implementation("com.at.composition.android:at-composition-android:4.0.0") [UNCHANGED]
+
+GAV VERSIONS: UNCHANGED (all 4.0.0)
+ARTIFACT SOURCE: v0.4.3 (5517fc0) -> v0.4.4 (e2f2d7b)
+CODE CHANGES IN AG: settings.gradle.kts only (repo path + comment)
+
+BUILD RESULT: BUILD SUCCESSFUL (assembleDebug + all tests)

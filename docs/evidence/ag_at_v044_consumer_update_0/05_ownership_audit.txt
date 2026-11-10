@@ -1,0 +1,35 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate F — Ownership Audit After Migration
+
+ADB_LIFECYCLE_OWNER = AT Runtime (AdbRuntime, com.adb.engine) — UNCHANGED
+
+AG_DUPLICATES_ADB_RUNTIME = NO
+  - AG does not import com.adb.engine.*
+  - AG does not implement pairing/TLS/transport/recovery
+  - AG uses ATAndroidAdbControl (facade) via CompositionAdbSemantic
+
+AG_CORE_DIRECT_AT_DEPENDENCY = NO
+  - ag-core has zero AT imports (verified in AGENTS.md boundary rules)
+
+AG_RUNTIME_DIRECT_AT_DEPENDENCY = NO
+  - ag-runtime has zero AT imports
+
+INTEGRATION_AT_IS_SINGLE_AT_CONSUMPTION_POINT = YES
+  - AtExecutionAdapter is the only class that holds ATEngine instances
+  - tool-android-shell consumes via AtExecutionAdapter (thin consumer)
+  - app (Host) creates composition and injects into adapter
+
+AG_OWNED:
+  - AdbSemantic interface (read-only projection)
+  - AtAdbReadiness / AtAdbBootstrap / AtPairingResult (AG-owned mirror types)
+  - AtExecutionAdapter (thin execution abstraction)
+  - CompositionAdbSemantic (Host bridge to ATAndroidAdbControl)
+
+AT_OWNED:
+  - AdbRuntime (lifecycle, pairing, TLS, transport, recovery)
+  - AdbConsumerBootstrap (pairing protocol)
+  - ATAndroid / ATAndroidComposition (assembly)
+  - ATAndroidAdbControl (consumer facade)
+  - ATEngine implementation (DefaultATEngine + backends)
+
+OWNERSHIP = CORRECT (unchanged from v0.4.3)

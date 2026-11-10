@@ -1,0 +1,20 @@
+AG.AT-V044-CONSUMER-UPDATE-0
+Gate K — Pairing / Readiness Compatibility Regression
+
+SOURCE-VERIFIED:
+  git diff v0.4.3..v0.4.4 -- adb-engine/ at-composition-android/
+  = NO changes to pairing/readiness state model
+  = NO changes to AdbConsumerBootstrap
+  = NO changes to ATAndroidAdbControl
+  = NO changes to AdbRuntime state machine
+
+PAIRING_REASON_PRESERVED = YES (unchanged from v0.4.3 audit)
+OFFLINE_REASON_PRESERVED = YES (unchanged)
+
+LLM-VISIBLE MESSAGES (unchanged):
+  "pairing required: no ADB identity found"
+  "not connected (identity present)"
+  "connected"
+
+NO PAIRING STATE MODIFIED ON DEVICE = YES
+NO UNPAIR ATTEMPTED = YES
