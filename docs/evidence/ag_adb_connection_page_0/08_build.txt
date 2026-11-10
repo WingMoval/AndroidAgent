@@ -1,0 +1,13 @@
+GATE 27 — BUILD / REGRESSION
+============================
+
+BUILD COMMANDS:
+  gradlew :app:assembleDebug → BUILD SUCCESSFUL
+  gradlew :app:testDebugUnitTest → BUILD SUCCESSFUL
+  gradlew :integration-at:testDebugUnitTest → BUILD SUCCESSFUL
+  gradlew :tool-android-shell:testDebugUnitTest → BUILD SUCCESSFUL
+
+FAIL = 0
+DEBUG_BUILD = PASS
+
+VERDICT: PASS

@@ -1,0 +1,25 @@
+GATE — AT CONTROL OWNERSHIP
+===========================
+
+ADB_CONNECTION_UI_OWNER = app / Host (AdbConnectionActivity)
+ADB_CONTROL_OWNER = existing ATAndroidComposition (via SessionHolder.root)
+PAIRING_PROTOCOL_OWNER = AT
+ADB_RUNTIME_OWNER = AT
+
+STATE SOURCE:
+  SessionHolder.root?.shell?.readiness() → AtAdbBootstrap enum
+  (NOT: executing adb shell commands, parsing stderr, checking key files, checking ports)
+
+PAIRING:
+  SessionHolder.root?.shell?.adapter?.pairDiscovered(code) → AtPairingResult
+  (NOT: direct adb pair command, not DebugBridge)
+
+RECONNECT:
+  SessionHolder.root?.shell?.connect() → AtExecutionAdapter.ensureAdbReady()
+  (NOT: deleting identity, not auto-re-pairing)
+
+AG_CORE_CHANGED = NO
+AG_RUNTIME_CHANGED = NO
+TOOL_ANDROID_SHELL_CHANGED = NO
+
+VERDICT: PASS

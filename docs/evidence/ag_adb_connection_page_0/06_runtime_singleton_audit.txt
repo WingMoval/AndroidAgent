@@ -1,0 +1,26 @@
+GATE 26 — AT RUNTIME SINGLETON AUDIT
+=====================================
+
+AT_RUNTIME_INSTANCE_POLICY = SINGLE EXISTING COMPOSITION
+NEW_ATANDROID_CREATE_FOR_ADB_PAGE = NO
+
+AUDIT:
+grep -r "ATAndroid.create" app/src/main/ → 1 occurrence (ChatCompositionRoot.kt only)
+
+AdbConnectionActivity accesses AT via:
+  SessionHolder.root?.shell?.readiness()
+  SessionHolder.root?.shell?.adapter?.pairDiscovered(code)
+  SessionHolder.root?.shell?.connect()
+
+SessionHolder.root is the process-scoped ChatCompositionRoot, which owns:
+  - The single ATAndroid.create() composition
+  - The single AdbRuntime
+  - The single identity lifecycle
+  - The single connection owner
+  - The single transport/recovery
+
+NO second ATAndroid.create() exists.
+NO second AdbRuntime exists.
+NO second identity lifecycle exists.
+
+VERDICT: PASS (HARD GATE)

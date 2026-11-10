@@ -1,0 +1,28 @@
+GATE 33 — LOCAL INDEPENDENCE REGRESSION
+=======================================
+
+ADB_PAGE_GATES_LOCAL_EXECUTION = NO
+
+SOURCE VERIFICATION:
+- AdbConnectionActivity does NOT modify any execution path
+- ShellConnection.executeLocal() is unchanged
+- AgentRuntime is unchanged
+- ToolResult is unchanged
+- AgentInstructions is unchanged
+
+ARCHITECTURAL GUARANTEE:
+- ADB Connection page is a READ-ONLY status viewer + optional action page
+- It does NOT set any global state that gates local execution
+- It does NOT block ChatActivity or any other component
+- Local shell (/system/bin/sh, app UID) requires NO ADB pairing
+- ADB shell (uid=2000) requires pairing — this is AT's responsibility, not the page's
+
+The page's presence in the UI has ZERO effect on:
+  - android_shell executeLocal()
+  - file tool
+  - network tool
+  - Agent execution
+
+USER_CAN_IGNORE_ADB_PAGE = YES
+
+VERDICT: PASS

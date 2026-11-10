@@ -2,6 +2,7 @@
 
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
@@ -106,6 +107,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var providerSettingsEntry: View
     private lateinit var providerStatusLabel: TextView
     private lateinit var currentSessionLabel: TextView
+    private lateinit var adbPageEntry: View
 
     private var root: ChatCompositionRoot? = null
     private var runtime: AgentRuntime? = null
@@ -157,6 +159,7 @@ class ChatActivity : AppCompatActivity() {
         providerSettingsEntry = findViewById(R.id.sidebar_provider_settings)
         providerStatusLabel = findViewById(R.id.sidebar_provider_status)
         currentSessionLabel = findViewById(R.id.sidebar_current_session)
+        adbPageEntry = findViewById(R.id.sidebar_adb_page_entry)
 
         // ---- Composer actions
         send.setOnClickListener { onSend() }
@@ -173,6 +176,9 @@ class ChatActivity : AppCompatActivity() {
         sidebarScrim.setOnClickListener { closeSidebar() }
         providerSettingsEntry.setOnClickListener { showProviderSettings() }
         currentSessionLabel.setOnClickListener { showSessionSwitcher() }
+        adbPageEntry.setOnClickListener {
+            startActivity(Intent(this, AdbConnectionActivity::class.java))
+        }
 
         // ---- AG.UI-TRANSCRIPT-CARDS-1: RecyclerView card renderer
         cardAdapter = TranscriptCardAdapter(

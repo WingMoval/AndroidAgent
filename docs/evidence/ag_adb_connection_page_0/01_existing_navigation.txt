@@ -1,0 +1,16 @@
+GATE B — EXISTING HOST NAVIGATION AUDIT
+========================================
+
+CURRENT_MAIN_ACTIVITY = ChatActivity
+CURRENT_NAVIGATION_MODEL = Single Activity + sidebar (XML LinearLayout drawer)
+SIDEBAR_EXISTS = YES
+SESSION_BROWSER_ENTRY = YES (currentSessionLabel → showSessionSwitcher)
+CURRENT_SETTINGS_ENTRY = YES (providerSettingsEntry → showProviderSettings)
+
+EXISTING_ADB_UI_IN_SIDEBAR = YES (status text + reconnect + pair inline)
+EXISTING_ADB_PAGE_ACTIVITY = NO
+
+DECISION: Add dedicated AdbConnectionActivity, sidebar entry navigates to it.
+Keep existing inline sidebar ADB controls unchanged.
+
+VERDICT: PASS

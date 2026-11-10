@@ -47,6 +47,13 @@
             </intent-filter>
         </activity>
 
+        <!-- AG.ADB-CONNECTION-PAGE-0: Dedicated ADB Connection / Pairing page. -->
+        <activity
+            android:name=".AdbConnectionActivity"
+            android:exported="false"
+            android:parentActivityName=".ChatActivity"
+            android:windowSoftInputMode="adjustResize" />
+
     </application>
 
 </manifest>

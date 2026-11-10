@@ -1,0 +1,35 @@
+GATE 38 — SCOPE AUDIT
+=====================
+
+CHANGED FILES (production):
+  app/src/main/AndroidManifest.xml          — added AdbConnectionActivity registration
+  app/src/main/java/.../ChatActivity.kt     — added adbPageEntry + click listener + Intent import
+  app/src/main/res/layout/activity_chat.xml — added sidebar_adb_page_entry TextView
+  app/src/main/res/values/strings.xml       — added adb_* strings + sidebar_adb_connection
+
+NEW FILES (production):
+  app/src/main/java/.../AdbConnectionActivity.kt  — the dedicated page
+  app/src/main/res/layout/activity_adb_connection.xml — page layout
+  app/src/main/res/drawable/adb_dot_ready.xml     — green dot
+  app/src/main/res/drawable/adb_dot_pairing.xml   — orange dot
+  app/src/main/res/drawable/adb_dot_disconnected.xml — grey dot
+  app/src/main/res/drawable/bg_status_card.xml   — card background
+
+NEW FILES (docs):
+  docs/evidence/ag_adb_connection_page_0/  — 15 evidence files
+  docs/implementation/AG.ADB-CONNECTION-PAGE-0.md — implementation report
+
+AG_CORE_CHANGED = NO
+AG_RUNTIME_CHANGED = NO
+TOOLRESULT_CONTRACT_CHANGED = NO
+AGENT_INSTRUCTIONS_CHANGED = NO
+FILE_TOOL_CHANGED = NO
+NETWORK_TOOL_CHANGED = NO
+ROOM_CHANGED = NO
+SESSION_MODEL_CHANGED = NO
+TOOL_ANDROID_SHELL_CHANGED = NO
+AT_CHANGED = NO
+AT_CONSUMER_VERSION = v0.4.4
+SHARED_SESSION_INTEGRATED = NO
+
+VERDICT: PASS

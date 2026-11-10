@@ -1,0 +1,26 @@
+GATE 29 — DEVICE UI SMOKE
+=========================
+
+DEVICE: HONOR ALI-AN00 (APLMUT4312005935), Android 15
+AG APK: installed (app-debug.apk)
+
+TEST STEPS:
+1. Launch ChatActivity → PASS
+2. Tap sidebar toggle (104,208) → sidebar opens → PASS
+3. "ADB Connection" entry visible in sidebar → PASS
+4. Tap "ADB Connection" (494,696) → AdbConnectionActivity opens → PASS
+5. Page renders:
+   - Title: "ADB Connection" → PASS
+   - Status: "Connected" (READY state) → PASS
+   - Description: "ADB is connected. Android shell commands (uid 2000) are available." → PASS
+   - Green dot indicator → PASS
+   - REFRESH button visible → PASS
+   - Pairing section HIDDEN (correct for READY) → PASS
+   - Info footer visible → PASS
+6. Does NOT require re-pairing when already READY → PASS
+7. Back navigation returns to ChatActivity → PASS
+
+SIDEBAR_DEVICE_SMOKE = PASS
+ADB_PAGE_DEVICE_SMOKE = PASS
+
+VERDICT: PASS

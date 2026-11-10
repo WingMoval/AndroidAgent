@@ -347,6 +347,18 @@
                         android:textColor="@color/ws_primary" />
                 </LinearLayout>
 
+                <!-- AG.ADB-CONNECTION-PAGE-0: dedicated page entry -->
+                <TextView
+                    android:id="@+id/sidebar_adb_page_entry"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/ws_spacing_xs"
+                    android:background="?attr/selectableItemBackground"
+                    android:padding="@dimen/ws_spacing_sm"
+                    android:text="@string/sidebar_adb_connection"
+                    android:textColor="@color/ws_primary"
+                    android:textSize="@dimen/ws_text_caption" />
+
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"

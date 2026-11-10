@@ -1,0 +1,31 @@
+GATE — UI CONTRACT
+==================
+
+ADB_CONNECTION_PAGE = AdbConnectionActivity (new, AG-owned)
+SIDEBAR_ADB_ENTRY = "ADB Connection" TextView (sidebar_adb_page_entry)
+NAVIGATION = ChatActivity → startActivity(AdbConnectionActivity)
+
+PAGE STRUCTURE:
+- Header: back button + title "ADB Connection"
+- Status card: dot indicator + title + description
+- Action buttons: Reconnect / Open Settings / Refresh (state-dependent)
+- Pairing section: instructions + 6-digit input + pair button (hidden unless PAIRING_REQUIRED)
+- Info footer: "ADB connection enables... Without ADB, local shell, file, and network tools remain fully available."
+
+STATE RENDERING:
+- READY: "Connected" + green dot + Refresh only
+- PAIRING_REQUIRED: "Not yet paired" + orange dot + Open Settings + Refresh + Pairing section VISIBLE
+- USER_ACTION_REQUIRED_WD: "Wireless Debugging off" + grey dot + Open Settings + Refresh
+- CONNECT_FAILED: "Not connected" + grey dot + Reconnect + Open Settings + Refresh
+- ENDPOINT_NOT_FOUND: "No endpoint found" + grey dot + Reconnect + Open Settings + Refresh
+- NOT_READY: "Initializing" + grey dot + Reconnect + Refresh
+
+PAIRING INPUT: numeric only, exactly 6 digits, button disabled until valid
+
+LIFECYCLE:
+- onResume → renderState() (auto-refresh on return from Settings)
+- After pairing → ensureReady + renderState
+- After reconnect → renderState
+- Manual Refresh → renderState
+
+VERDICT: PASS

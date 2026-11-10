@@ -1,0 +1,30 @@
+GATE — STATE MAPPING
+====================
+
+READY → "Connected" / "ADB is connected. Android shell commands (uid 2000) are available."
+       Green dot, Refresh only, NO pairing section, NO reconnect required
+
+PAIRING_REQUIRED → "Not yet paired" / "ADB pairing is required before shell commands can run.
+                    This does not affect local execution or normal chat."
+       Orange dot, Open Settings + Refresh, Pairing section VISIBLE
+
+USER_ACTION_REQUIRED_WD → "Wireless Debugging off" / "Please enable Wireless Debugging in
+                    Android system settings first."
+       Grey dot, Open Settings + Refresh, NO pairing section
+
+CONNECT_FAILED → "Not connected" / "Identity exists but ADB connection could not be
+                    established. Try reconnecting."
+       Grey dot, Reconnect + Open Settings + Refresh, NO pairing section
+       (does NOT ask for re-pairing)
+
+ENDPOINT_NOT_FOUND → "No endpoint found" / "Wireless Debugging is on but no ADB connection
+                    endpoint was discovered."
+       Grey dot, Reconnect + Open Settings + Refresh
+
+NOT_READY → "Initializing" / "ADB runtime is initializing or temporarily unavailable."
+       Grey dot, Reconnect + Refresh
+
+UNKNOWN → "Unknown" / raw code
+       Grey dot, Reconnect + Refresh
+
+VERDICT: PASS (all 6 states + unknown handled distinctly)

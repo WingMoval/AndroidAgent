@@ -1,0 +1,20 @@
+GATE — PAIRING RESULT MAPPING
+=============================
+
+SUCCESS → "Paired. Connecting…" → auto-calls shell.connect() (ensureReady) → renderState()
+REJECTED → "Pairing rejected. Check the code is correct and not expired."
+           Input cleared, button re-enabled, user can retry
+SERVICE_NOT_FOUND → "Pairing service not found. Make sure the system pairing screen is still open."
+           Input cleared, button re-enabled
+MULTIPLE_ENDPOINTS → "Multiple pairing endpoints found. Cannot determine target automatically."
+           No auto-selection, honest reporting, input cleared
+FAILED → "Pairing failed." + AT error description (safe, no stack trace)
+           Input cleared, button re-enabled
+
+ALL RESULTS:
+- No stack traces shown
+- No TLS key material shown
+- No internal exception dumps
+- Safe error descriptions only
+
+VERDICT: PASS

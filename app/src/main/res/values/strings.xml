@@ -2,12 +2,12 @@
 <resources>
     <string name="app_name">AndroidAgent</string>
 
-    <!-- AG.UI-SHELL-1 — workspace a11y + labels -->
+    <!-- AG.UI-SHELL-1 鈥?workspace a11y + labels -->
     <string name="ws_open_sidebar">Open sidebar</string>
     <string name="ws_close_sidebar">Close sidebar</string>
     <string name="ws_send">Send message</string>
     <string name="ws_stop">Stop run</string>
-    <string name="ws_input_hint">Message…</string>
+    <string name="ws_input_hint">Message</string>
     <string name="ws_model_placeholder">Model</string>
     <string name="ws_new_session">New Session</string>
     <string name="ws_section_adb">ADB</string>
@@ -43,4 +43,41 @@
     <string name="ws_cancel">Cancel</string>
     <string name="ws_save">Save</string>
     <string name="ws_saved">Saved</string>
+
+    <!-- AG.ADB-CONNECTION-PAGE-0 -->
+    <string name="adb_page_title">ADB Connection</string>
+    <string name="adb_back">Back</string>
+    <string name="adb_state_checking">Checking...</string>
+    <string name="adb_state_ready">Connected</string>
+    <string name="adb_state_ready_desc">ADB is connected. Android shell commands (uid 2000) are available.</string>
+    <string name="adb_state_pairing_required">Not yet paired</string>
+    <string name="adb_state_pairing_required_desc">ADB pairing is required before shell commands can run. This does not affect local execution or normal chat.</string>
+    <string name="adb_state_wd_off">Wireless Debugging off</string>
+    <string name="adb_state_wd_off_desc">Please enable Wireless Debugging in Android system settings first.</string>
+    <string name="adb_state_connect_failed">Not connected</string>
+    <string name="adb_state_connect_failed_desc">Identity exists but ADB connection could not be established. Try reconnecting.</string>
+    <string name="adb_state_endpoint_not_found">No endpoint found</string>
+    <string name="adb_state_endpoint_not_found_desc">Wireless Debugging is on but no ADB connection endpoint was discovered.</string>
+    <string name="adb_state_not_ready">Initializing</string>
+    <string name="adb_state_not_ready_desc">ADB runtime is initializing or temporarily unavailable.</string>
+    <string name="adb_state_unknown">Unknown</string>
+    <string name="adb_reconnect">Reconnect</string>
+    <string name="adb_reconnecting">Reconnecting...</string>
+    <string name="adb_open_wd">Open Settings</string>
+    <string name="adb_refresh">Refresh</string>
+    <string name="adb_pair_title">ADB Pairing</string>
+    <string name="adb_pair_instructions">1. Open Settings - Developer Options - Wireless Debugging\n2. Tap Pair device with pairing code\n3. Enter the 6-digit code shown on screen</string>
+    <string name="adb_pair_code_hint">6-digit code</string>
+    <string name="adb_pair_start">Start Pairing</string>
+    <string name="adb_pair_invalid_code">Enter a 6-digit pairing code</string>
+    <string name="adb_pair_in_progress">Pairing...</string>
+    <string name="adb_pair_success">Paired. Connecting...</string>
+    <string name="adb_pair_rejected">Pairing rejected. Check the code is correct and not expired.</string>
+    <string name="adb_pair_service_not_found">Pairing service not found. Make sure the system pairing screen is still open.</string>
+    <string name="adb_pair_multiple_endpoints">Multiple pairing endpoints found. Cannot determine target automatically.</string>
+    <string name="adb_pair_failed">Pairing failed.</string>
+    <string name="adb_pair_adapter_unavailable">Adapter not available</string>
+    <string name="adb_wd_open_failed">Could not open system settings</string>
+    <string name="adb_page_info">ADB connection enables Android shell (uid 2000) execution. Without ADB, local shell, file, and network tools remain fully available.</string>
+    <string name="sidebar_adb_connection">ADB Connection</string>
 </resources>
