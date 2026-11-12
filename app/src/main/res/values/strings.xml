@@ -80,4 +80,12 @@
     <string name="adb_wd_open_failed">Could not open system settings</string>
     <string name="adb_page_info">ADB connection enables Android shell (uid 2000) execution. Without ADB, local shell, file, and network tools remain fully available.</string>
     <string name="sidebar_adb_connection">ADB Connection</string>
+
+    <!-- AG.ADB-CONNECTION-UX-1R -->
+    <string name="adb_state_connecting">Connecting</string>
+    <string name="adb_state_connecting_desc">Establishing ADB connection...</string>
+    <string name="adb_state_unknown_desc">ADB state is temporarily unavailable.</string>
+    <string name="adb_pair_entry">Pair / Re-pair</string>
+    <string name="adb_pair_entry_collapsed">Hide Pairing</string>
+    <string name="adb_pair_failed_with_detail">Pairing failed: %1$s</string>
 </resources>

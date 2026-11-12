@@ -290,74 +290,31 @@
                 android:orientation="vertical"
                 android:padding="@dimen/ws_spacing_lg">
 
-                <!-- ===== ADB section (first) ===== -->
-                <TextView
-                    android:id="@+id/sidebar_adb_section"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/ws_section_adb"
-                    android:textColor="@color/ws_text_secondary"
-                    android:textSize="@dimen/ws_text_label"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/adb_status"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/ws_spacing_xs"
-                    android:textColor="@color/ws_text_primary"
-                    android:textSize="@dimen/ws_text_caption" />
-
-                <Button
-                    android:id="@+id/reconnect"
-                    style="?android:attr/borderlessButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minHeight="@dimen/ws_touch"
-                    android:text="@string/ws_reconnect"
-                    android:textColor="@color/ws_primary" />
-
-                <!-- Pair (shown only when pairing required) -->
+                <!-- ===== ADB section (AG.ADB-CONNECTION-UX-1R: single row) ===== -->
                 <LinearLayout
-                    android:id="@+id/pair_row"
+                    android:id="@+id/sidebar_adb_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/ws_spacing_xs"
+                    android:background="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:visibility="gone">
+                    android:padding="@dimen/ws_spacing_sm">
 
-                    <EditText
-                        android:id="@+id/pairing_code"
+                    <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:hint="@string/ws_pair_hint"
-                        android:inputType="number"
-                        android:maxLength="6"
-                        android:minHeight="@dimen/ws_touch"
+                        android:text="@string/ws_adb_short"
+                        android:textColor="@color/ws_text_primary"
                         android:textSize="@dimen/ws_text_caption" />
 
-                    <Button
-                        android:id="@+id/pair"
-                        style="?android:attr/borderlessButtonStyle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:minHeight="@dimen/ws_touch"
-                        android:text="@string/ws_pair"
-                        android:textColor="@color/ws_primary" />
+                    <View
+                        android:id="@+id/sidebar_adb_dot"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@color/ws_adb_disconnected"
+                        android:contentDescription="@string/ws_adb_disconnected" />
                 </LinearLayout>
-
-                <!-- AG.ADB-CONNECTION-PAGE-0: dedicated page entry -->
-                <TextView
-                    android:id="@+id/sidebar_adb_page_entry"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/ws_spacing_xs"
-                    android:background="?attr/selectableItemBackground"
-                    android:padding="@dimen/ws_spacing_sm"
-                    android:text="@string/sidebar_adb_connection"
-                    android:textColor="@color/ws_primary"
-                    android:textSize="@dimen/ws_text_caption" />
 
                 <View
                     android:layout_width="match_parent"

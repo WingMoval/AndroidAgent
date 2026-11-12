@@ -1,0 +1,415 @@
+AG.ADB-CONNECTION-UX-1R — EVIDENCE
+============================================================
+
+--- 00_preflight.txt ---
+
+GATE A — PREFLIGHT
+==================
+BRANCH = main
+START_HEAD = 0f17f63
+WORKTREE = CLEAN (1 untracked evidence file from previous task, non-blocking)
+FREEZE_TAG = 8828893 (ag-current-capability-release-baseline-v1)
+VERDICT: PASS
+
+--- 01_previous_blocker_resolution.txt ---
+
+PREVIOUS BLOCKER RESOLUTION
+===========================
+AG.ADB-CONNECTION-UX-1 was BLOCKED because:
+  AT v0.4.4 consumer boundary does not expose disconnect API.
+
+Resolution for UX-1R:
+  DISCONNECT = OUT OF SCOPE
+  The management surface does NOT include a Disconnect button.
+  ShellConnection.disconnect() (no-op placeholder) is NOT called.
+  The UI only offers: Reconnect, Pair/Re-pair, Open Settings, Refresh.
+
+VERDICT: RESOLVED (scope reduction)
+
+--- 02_current_ui_audit.txt ---
+
+CURRENT UI AUDIT (before UX-1R)
+===============================
+Sidebar had:
+  - "ADB" section header
+  - "ADB connected" status text
+  - RECONNECT button
+  - Pairing row (hidden unless pairing required)
+  - "ADB Connection" text entry (navigates to AdbConnectionActivity)
+
+AdbConnectionActivity (READY state) showed:
+  - "Connected" + description
+  - REFRESH button only
+  - Pairing section HIDDEN
+  - Open Settings HIDDEN
+
+Problems:
+  1. Sidebar mixed status + actions + navigation
+  2. READY state hid Pair/Re-pair and Settings
+  3. Three separate ADB UI surfaces (header, sidebar, page)
+
+--- 03_target_ux.txt ---
+
+TARGET UX
+=========
+Sidebar:
+  ADB + status square (single row, clickable)
+  No inline actions, no status text
+
+Management Surface (Activity):
+  - Status card (dot + title + description)
+  - Reconnect (state-dependent)
+  - Pair / Re-pair (ALWAYS visible, click to expand)
+  - Open Wireless Debugging Settings (ALWAYS visible)
+  - Refresh (ALWAYS visible)
+  - NO Disconnect
+
+MANAGEMENT_SURFACE = ACTIVITY
+REASON = Project uses XML layouts + AppCompat (not Compose).
+         Existing AdbConnectionActivity already registered in manifest.
+         Dialog/BottomSheet would require new dependency or complex
+         custom view. Activity provides full-screen management with
+         proper lifecycle (onResume refresh).
+
+--- 04_sidebar_refactor.txt ---
+
+SIDEBAR REFACTOR
+================
+REMOVED:
+  - sidebar_adb_section (header "ADB")
+  - adb_status (TextView "ADB connected")
+  - reconnect (Button)
+  - pair_row (LinearLayout with EditText + Button)
+  - sidebar_adb_page_entry (TextView "ADB Connection")
+
+ADDED:
+  - sidebar_adb_row (LinearLayout, clickable)
+    - TextView "ADB" (weight=1)
+    - sidebar_adb_dot (View 10dp square, tinted by state)
+
+SIDEBAR_ADB_SINGLE_ROW = YES
+SIDEBAR_INLINE_ACTION_COUNT = 0
+SIDEBAR_ADB_ROW_COUNT = 1
+
+--- 05_management_surface.txt ---
+
+MANAGEMENT SURFACE
+==================
+ADB_MANAGEMENT_SURFACE_COUNT = 1 (AdbConnectionActivity, refactored)
+
+FUNCTIONS:
+  - Current status: dot + title + description (from AT bootstrap state)
+  - Reconnect: visible only when reconnectVisible=true (CONNECT_FAILED, ENDPOINT_NOT_FOUND, NOT_READY)
+  - Pair / Re-pair: ALWAYS visible; click toggles pairing panel
+  - Open Wireless Debugging Settings: ALWAYS visible
+  - Refresh: ALWAYS visible
+  - Disconnect: ABSENT (AT v0.4.4 has no formal disconnect API)
+
+PAIRING PANEL (collapsed by default):
+  - Instructions (3 steps)
+  - 6-digit numeric input
+  - START PAIRING button (disabled until 6 digits)
+  - Status text for results
+
+--- 06_shared_state_presentation.txt ---
+
+SHARED STATE PRESENTATION
+=========================
+NEW FILE: app/src/main/java/com/androidagent/app/AdbUiPresentation.kt
+
+CONTENTS:
+  - AdbIndicator data class (colorRes, textRes, pairOffered)
+  - adbIndicator(atStatusText, bootstrapCode) → AdbIndicator
+  - AdbManagementPresentation data class (titleRes, descRes, colorRes,
+    reconnectVisible, pairVisible, settingsVisible, refreshVisible)
+  - adbManagementPresentation(bootstrapCode, atStatusText) → AdbManagementPresentation
+  - adbPairingResultMessage(outcome, error) → Int (string resource)
+
+CONSUMERS:
+  - ChatActivity.updateAdbIndicator() → uses adbIndicator() for header + sidebar
+  - AdbConnectionActivity.renderBootstrapState() → uses adbManagementPresentation()
+  - AdbConnectionActivity.onPair() → uses adbPairingResultMessage()
+
+OLD workspaceAdbIndicator() retained for backward compatibility with existing tests.
+Production code uses the new adbIndicator().
+
+ONE presentation mapping → header indicator, sidebar indicator, management surface.
+
+--- 07_pairing_ui.txt ---
+
+PAIRING UI
+==========
+ENTRY: "Pair / Re-pair" button (always visible)
+EXPAND: click → pairing panel appears with instructions + input
+COLLAPSE: click again → "Hide Pairing" → panel hides
+
+INPUT: numeric only, max 6, button disabled until exactly 6 digits
+API: adapter.pairDiscovered(code) (AT v0.4.4 consumer)
+RESULTS:
+  SUCCESS → message + auto ensureReady + refresh
+  REJECTED → "Pairing rejected..."
+  SERVICE_NOT_FOUND → "Pairing service not found..."
+  MULTIPLE_ENDPOINTS → "Multiple pairing endpoints found..."
+  FAILED → "Pairing failed." + safe error
+
+--- 08_runtime_ownership.txt ---
+
+AT RUNTIME OWNERSHIP
+====================
+ATAndroid.create() occurrences in production: 1 (ChatCompositionRoot only)
+NEW_ATANDROID_CREATE_FOR_PAGE = NO
+SECOND_AT_RUNTIME_CREATED = NO
+
+Management surface accesses AT via:
+  SessionHolder.root?.shell?.readiness()
+  SessionHolder.root?.shell?.adapter?.pairDiscovered(code)
+  SessionHolder.root?.shell?.connect()
+
+ADB_RUNTIME_OWNER = AT
+PAIRING_OWNER = AT
+RECONNECT_OWNER = AT
+MANAGEMENT_UI_OWNER = AG Host
+DEBUGBRIDGE_USED = NO
+AT_APP_INTERNAL_DEPENDENCY = NO
+
+--- 09_unit_tests.txt ---
+
+UNIT TESTS
+==========
+NEW FILE: app/src/test/java/com/androidagent/app/AdbUiPresentationTest.kt
+TEST COUNT: 28 tests
+
+COVERAGE:
+  adbIndicator:
+    - READY → green
+    - PAIRING_REQUIRED → gray + pair offer
+    - CONNECT_FAILED → gray + pair offer
+    - Connecting → orange
+    - null → gray
+    - USER_ACTION_REQUIRED_WD → gray + pair offer
+    - ENDPOINT_NOT_FOUND → gray + pair offer
+    - NOT_READY → gray + pair offer
+
+  adbManagementPresentation:
+    - READY → reconnect hidden, pair visible, settings visible, refresh visible
+    - PAIRING_REQUIRED → reconnect hidden, orange color
+    - CONNECT_FAILED → reconnect visible
+    - USER_ACTION_REQUIRED_WD → reconnect hidden
+    - ENDPOINT_NOT_FOUND → reconnect visible
+    - NOT_READY → reconnect visible
+    - null → safe defaults
+    - Connecting → transient state
+    - pair ALWAYS visible (all 7 states)
+    - settings ALWAYS visible (all 7 states)
+    - refresh ALWAYS visible (all 7 states)
+
+  adbPairingResultMessage:
+    - SUCCESS → success message
+    - REJECTED → rejected message
+    - SERVICE_NOT_FOUND → service not found message
+    - MULTIPLE_ENDPOINTS → multiple endpoints message
+    - FAILED (no error) → generic failed
+    - FAILED (blank error) → generic failed
+    - FAILED (with error) → failed with detail
+
+  Consistency:
+    - READY color consistent between indicator and management
+    - PAIRING_REQUIRED non-green in both
+
+ALL TESTS: PASS (BUILD SUCCESSFUL)
+
+--- 10_build.txt ---
+
+BUILD
+=====
+:app:testDebugUnitTest → PASS
+:integration-at:testDebugUnitTest → PASS
+:tool-android-shell:testDebugUnitTest → PASS
+:app:assembleDebug → PASS
+
+FAIL = 0
+DEBUG_BUILD = PASS
+
+--- 11_sidebar_device_smoke.txt ---
+
+SIDEBAR DEVICE SMOKE
+====================
+DEVICE: HONOR ALI-AN00 (APLMUT4312005935), Android 15
+
+RESULTS:
+  Old RECONNECT in sidebar: ABSENT (PASS)
+  Old 'ADB connected' text: ABSENT (PASS)
+  Old 'ADB Connection' entry: ABSENT (PASS)
+  ADB single row: PRESENT at (477, 397) (PASS)
+  ADB status dot: PRESENT (PASS)
+
+SIDEBAR_DEVICE_SMOKE = PASS
+
+--- 12_management_device_smoke.txt ---
+
+MANAGEMENT DEVICE SMOKE
+=======================
+Device: HONOR ALI-AN00, READY state
+
+RESULTS:
+  Page opens: YES (PASS)
+  Title "ADB Connection": YES (PASS)
+  Status "Connected": YES (PASS)
+  Description text: YES (PASS)
+  PAIR / RE-PAIR button: YES (PASS)
+  OPEN SETTINGS button: YES (PASS)
+  REFRESH button: YES (PASS)
+  Disconnect: ABSENT (PASS)
+  Reconnect: ABSENT (correct for READY) (PASS)
+
+MANAGEMENT_DEVICE_SMOKE = PASS
+
+--- 13_pair_repair_device.txt ---
+
+PAIR/RE-PAIR UI DEVICE SMOKE
+============================
+Device: HONOR ALI-AN00, READY state
+
+RESULTS:
+  Tap "PAIR / RE-PAIR": panel expands (PASS)
+  Button changes to "HIDE PAIRING": YES (toggle works) (PASS)
+  Instructions visible: "1. Open Settings - Developer Options - Wireless Debugging..." (PASS)
+  6-digit input field: PRESENT (PASS)
+  START PAIRING button: PRESENT (PASS)
+  No actual pairing submitted: CORRECT (PASS)
+
+PAIR_REPAIR_UI_DEVICE_SMOKE = PASS
+
+--- 14_settings_roundtrip_device.txt ---
+
+SETTINGS ROUNDTRIP DEVICE
+=========================
+Device: HONOR ALI-AN00, READY state
+
+RESULTS:
+  Tap "OPEN SETTINGS": System Settings opens (PASS)
+  Back from Settings: Management surface resumes (PASS)
+  State refreshes: YES (PASS)
+  Back to Chat: YES (PASS)
+  No crash/ANR: PASS
+
+SETTINGS_ROUNDTRIP_DEVICE = PASS
+
+--- 15_indicator_consistency.txt ---
+
+ADB INDICATOR CONSISTENCY
+=========================
+Top-right header: "ADB" + green dot (content-desc "ADB connected")
+Sidebar: "ADB" + green dot (sidebar_adb_dot)
+
+Both use the same adbIndicator() mapping from AdbUiPresentation.kt.
+READY → both green (R.color.ws_adb_ready = #188038)
+Non-READY → both non-green
+
+ADB_INDICATOR_CONSISTENCY = PASS
+
+--- 16_reconnect_validation.txt ---
+
+RECONNECT VALIDATION
+====================
+RECONNECT_DEVICE_FLOW = NOT_RUN_READY_STATE
+
+Device was in READY state throughout testing.
+Reconnect button correctly hidden for READY state.
+No artificial disconnection performed.
+Reconnect logic uses ShellConnection.connect() → AT ensureReady (unchanged).
+
+--- 17_scope_audit.txt ---
+
+SCOPE AUDIT
+===========
+CHANGED FILES (production):
+  app/src/main/java/.../AdbUiPresentation.kt (NEW)
+  app/src/main/java/.../AdbConnectionActivity.kt (REWRITTEN)
+  app/src/main/java/.../ChatActivity.kt (sidebar refactor)
+  app/src/main/res/layout/activity_chat.xml (sidebar ADB section)
+  app/src/main/res/layout/activity_adb_connection.xml (management layout)
+  app/src/main/res/values/strings.xml (new strings)
+
+NEW FILES (tests):
+  app/src/test/.../AdbUiPresentationTest.kt
+
+NEW FILES (docs):
+  docs/evidence/ag_adb_connection_ux_1r/
+  docs/implementation/AG.ADB-CONNECTION-UX-1R.md
+
+AG_CORE_CHANGED = NO
+AG_RUNTIME_CHANGED = NO
+TOOL_ANDROID_SHELL_CHANGED = NO
+INTEGRATION_AT_CHANGED = NO
+TOOL_FILE_CHANGED = NO
+TOOL_NETWORK_CHANGED = NO
+ROOM_CHANGED = NO
+PROVIDER_CHANGED = NO
+
+--- 18_final_verdict.txt ---
+
+FINAL VERDICT
+=============
+STEP = AG.ADB-CONNECTION-UX-1R
+VERDICT = PASS
+
+START_HEAD = 0f17f63
+FINAL_HEAD = (pending commit)
+BRANCH = main
+WORKTREE = CLEAN
+
+SIDEBAR:
+  SIDEBAR_ADB_SINGLE_ROW = PASS
+  INLINE_RECONNECT_REMOVED = YES
+  CONNECTED_TEXT_REMOVED = YES
+  DUPLICATE_ADB_CONNECTION_ENTRY_REMOVED = YES
+  STATUS_INDICATOR = PASS
+
+MANAGEMENT:
+  MANAGEMENT_SURFACE = ACTIVITY
+  ADB_MANAGEMENT_SURFACE_COUNT = 1
+  CURRENT_STATUS = PASS
+  RECONNECT = PASS (hidden for READY, correct)
+  PAIR_REPAIR = PASS
+  WIRELESS_DEBUGGING_SETTINGS = PASS
+  REFRESH = PASS
+  DISCONNECT_PRESENT = NO
+
+ARCHITECTURE:
+  ADB_RUNTIME_OWNER = AT
+  PAIRING_OWNER = AT
+  RECONNECT_OWNER = AT
+  MANAGEMENT_UI_OWNER = AG Host
+  SECOND_AT_RUNTIME_CREATED = NO
+  DEBUGBRIDGE_USED = NO
+
+VALIDATION:
+  DEDICATED_STATE_PRESENTATION_TESTS = PASS (28 tests)
+  DEDICATED_PAIRING_RESULT_TESTS = PASS (7 tests)
+  DEBUG_BUILD = PASS
+  SIDEBAR_DEVICE_SMOKE = PASS
+  MANAGEMENT_DEVICE_SMOKE = PASS
+  PAIR_REPAIR_UI_DEVICE_SMOKE = PASS
+  SETTINGS_ROUNDTRIP_DEVICE = PASS
+  ADB_INDICATOR_CONSISTENCY = PASS
+  RECONNECT_DEVICE_FLOW = NOT_RUN_READY_STATE
+  REAL_FRESH_PAIRING_FLOW = NOT_RUN_SAFE_STATE_PRESERVED
+
+REGRESSION:
+  AG_CORE_CHANGED = NO
+  AG_RUNTIME_CHANGED = NO
+  TOOLRESULT_CHANGED = NO
+  AGENT_INSTRUCTIONS_CHANGED = NO
+  LOCAL_EXECUTION_DEFAULT_CHANGED = NO
+  ADB_EXECUTION_DEFAULT_CHANGED = NO
+
+PROCESS:
+  SUBAGENTS_USED = NO
+  DELEGATED_WORKERS_USED = NO
+
+FINAL:
+  AG.ADB-CONNECTION-UX-1R = PASS / CLOSED
+  RELEASE_BLOCKER = NONE
+  NEXT = CONTROLLER_REVIEW
+  STOP = YES

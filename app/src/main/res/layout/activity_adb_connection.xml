@@ -56,7 +56,7 @@
                     android:id="@+id/adb_status_dot"
                     android:layout_width="12dp"
                     android:layout_height="12dp"
-                    android:background="@drawable/adb_dot_disconnected" />
+                    android:background="@color/ws_adb_disconnected" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -84,55 +84,52 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Action buttons -->
+            <!-- Actions -->
             <LinearLayout
-                android:id="@+id/adb_action_section"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="12dp">
+                android:orientation="vertical"
+                android:layout_marginTop="16dp">
 
                 <Button
                     android:id="@+id/adb_reconnect_btn"
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:text="@string/adb_reconnect"
-                    android:layout_marginEnd="6dp" />
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/adb_pair_entry_btn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/adb_pair_entry" />
 
                 <Button
                     android:id="@+id/adb_open_wd_btn"
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/adb_open_wd"
-                    android:layout_marginEnd="6dp" />
+                    android:layout_marginTop="8dp"
+                    android:text="@string/adb_open_wd" />
 
                 <Button
                     android:id="@+id/adb_refresh_btn"
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_marginTop="8dp"
                     android:text="@string/adb_refresh" />
             </LinearLayout>
 
-            <!-- Pairing section (hidden unless PAIRING_REQUIRED) -->
+            <!-- Pairing panel (hidden until expanded) -->
             <LinearLayout
-                android:id="@+id/adb_pair_section"
+                android:id="@+id/adb_pair_panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:background="@drawable/bg_status_card"
                 android:padding="16dp"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:visibility="gone">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/adb_pair_title"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/adb_pair_hint"
@@ -140,8 +137,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/adb_pair_instructions"
                     android:textSize="13sp"
-                    android:textColor="?android:textColorSecondary"
-                    android:layout_marginTop="8dp" />
+                    android:textColor="?android:textColorSecondary" />
 
                 <EditText
                     android:id="@+id/adb_pair_code"
@@ -172,7 +168,7 @@
                     android:gravity="center" />
             </LinearLayout>
 
-            <!-- Info -->
+            <!-- Info footer -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

@@ -99,15 +99,11 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var sidebarScrim: View
     private lateinit var btnCloseSidebar: ImageButton
     private lateinit var newSession: Button
-    private lateinit var reconnect: Button
-    private lateinit var adbStatus: TextView
-    private lateinit var pairRow: View
-    private lateinit var pairingCode: EditText
-    private lateinit var pairButton: Button
+    private lateinit var sidebarAdbRow: View
+    private lateinit var sidebarAdbDot: View
     private lateinit var providerSettingsEntry: View
     private lateinit var providerStatusLabel: TextView
     private lateinit var currentSessionLabel: TextView
-    private lateinit var adbPageEntry: View
 
     private var root: ChatCompositionRoot? = null
     private var runtime: AgentRuntime? = null
@@ -151,15 +147,11 @@ class ChatActivity : AppCompatActivity() {
         sidebarScrim = findViewById(R.id.sidebar_scrim)
         btnCloseSidebar = findViewById(R.id.btn_close_sidebar)
         newSession = findViewById(R.id.sidebar_new_session)
-        reconnect = findViewById(R.id.reconnect)
-        adbStatus = findViewById(R.id.adb_status)
-        pairRow = findViewById(R.id.pair_row)
-        pairingCode = findViewById(R.id.pairing_code)
-        pairButton = findViewById(R.id.pair)
+        sidebarAdbRow = findViewById(R.id.sidebar_adb_row)
+        sidebarAdbDot = findViewById(R.id.sidebar_adb_dot)
         providerSettingsEntry = findViewById(R.id.sidebar_provider_settings)
         providerStatusLabel = findViewById(R.id.sidebar_provider_status)
         currentSessionLabel = findViewById(R.id.sidebar_current_session)
-        adbPageEntry = findViewById(R.id.sidebar_adb_page_entry)
 
         // ---- Composer actions
         send.setOnClickListener { onSend() }
@@ -167,18 +159,17 @@ class ChatActivity : AppCompatActivity() {
         composerAdd.setOnClickListener { onAddContext() }
         modelSelector.setOnClickListener { showModelSelector() }
         newSession.setOnClickListener { onNewSession() }
-        reconnect.setOnClickListener { onReconnect() }
-        pairButton.setOnClickListener { onPair() }
 
         // ---- Sidebar
         btnOpenSidebar.setOnClickListener { openSidebar() }
         btnCloseSidebar.setOnClickListener { closeSidebar() }
         sidebarScrim.setOnClickListener { closeSidebar() }
-        providerSettingsEntry.setOnClickListener { showProviderSettings() }
-        currentSessionLabel.setOnClickListener { showSessionSwitcher() }
-        adbPageEntry.setOnClickListener {
+        sidebarAdbRow.setOnClickListener {
+            closeSidebar()
             startActivity(Intent(this, AdbConnectionActivity::class.java))
         }
+        providerSettingsEntry.setOnClickListener { showProviderSettings() }
+        currentSessionLabel.setOnClickListener { showSessionSwitcher() }
 
         // ---- AG.UI-TRANSCRIPT-CARDS-1: RecyclerView card renderer
         cardAdapter = TranscriptCardAdapter(
@@ -751,67 +742,21 @@ class ChatActivity : AppCompatActivity() {
         renderStatus()
         lifecycleScope.launch {
             HostActions.adbReconnect()
-            val result = SessionHolder.root?.shell?.readiness()
-            pairRow.visibility =
-                if (result != null && result.pairingOffered) View.VISIBLE else View.GONE
             updateAdbIndicator()
             renderStatus()
         }
     }
 
-    private fun onReconnect() {
-        if (reconnecting) return
-        reconnecting = true
-        reconnect.isEnabled = false
-        connectShell()
-        lifecycleScope.launch {
-            reconnecting = false
-            reconnect.isEnabled = true
-        }
-    }
-
-    // ------------------------------------------------------------- ADB pairing
-
-    private fun onPair() {
-        val code = pairingCode.text.toString().trim()
-        if (code.length != 6) {
-            updateAtStatus("Enter the 6-digit pairing code")
-            renderStatus()
-            return
-        }
-        pairButton.isEnabled = false
-        updateAtStatus("Pairing...")
-        renderStatus()
-        lifecycleScope.launch {
-            val adapter = root?.shell?.adapter
-            if (adapter == null) {
-                updateAtStatus("Adapter not available")
-                renderStatus()
-                pairButton.isEnabled = true
-                return@launch
-            }
-            val result = adapter.pairDiscovered(code)
-            pairingCode.text.clear()
-            if (result.success) {
-                updateAtStatus("Paired. Reconnecting...")
-                connectShell()
-            } else {
-                updateAtStatus("Pairing failed: ${result.outcome.name}")
-            }
-            renderStatus()
-            updateAdbIndicator()
-            pairButton.isEnabled = true
-        }
-    }
+    // ADB pairing / reconnect is now handled in AdbConnectionActivity (management surface).
 
     // ------------------------------------------------------------- ADB indicator
 
     private fun updateAdbIndicator() {
         val shell = root?.shell
-        val ind = workspaceAdbIndicator(atStatusText, shell?.readiness()?.code)
+        val ind = adbIndicator(atStatusText, shell?.readiness()?.code)
         adbDot.background.setTint(ContextCompat.getColor(this, ind.colorRes))
         adbDot.contentDescription = getString(ind.textRes)
-        adbStatus.text = getString(ind.textRes)
+        sidebarAdbDot.background.setTint(ContextCompat.getColor(this, ind.colorRes))
     }
 
     // ------------------------------------------------------------- Status / rendering
