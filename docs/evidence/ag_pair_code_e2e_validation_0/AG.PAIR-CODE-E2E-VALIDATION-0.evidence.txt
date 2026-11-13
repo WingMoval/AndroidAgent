@@ -1,0 +1,286 @@
+AG.PAIR-CODE-E2E-VALIDATION-0 — EVIDENCE
+============================================================
+
+--- 00_preflight.txt ---
+
+GATE A — PREFLIGHT
+==================
+BRANCH = main
+START_HEAD = 0cf650e
+WORKTREE = CLEAN (1 untracked evidence file from previous task)
+BACKUP_ARCHIVE_EXISTS = YES
+BACKUP_ARCHIVE_SHA256 = 31E1852B3F33658BC60EC18E4D5411000B601B56B01CECDF9B266E519663F07C (matches)
+DEVICE = APLMUT4312005935 (HONOR ALI-AN00, Android 15)
+VERDICT: PASS
+
+--- 01_pre_reset_ready.txt ---
+
+PRE-RESET BASELINE
+==================
+
+ADB_READY_BEFORE_RESET = YES
+PRE_RESET_ADB_UID2000 = PASS (uid=2000(shell) via adb shell id)
+PRE_RESET_SESSION_ID = session-b374768e-6876-4b6d-8fb7-2c0b93719773
+PRE_RESET_PROVIDER = OpenRouter
+PRE_RESET_MODEL = deepseek/deepseek-v4-flash-0731
+API_KEY_PRESENT = YES
+PRE_RESET_BLOCK_COUNT = 23
+
+--- 02_identity_inventory.txt ---
+
+HARD GATE — AT IDENTITY AUDIT
+=============================
+
+AT_IDENTITY_ROOT = files/at-consumer/
+AT_IDENTITY_FILES:
+  identity/adbkey       (1,708 bytes - private key)
+  identity/adbkey.pub   (721 bytes - public key)
+  identity/adb_cert.pem (1,131 bytes - certificate)
+
+This is a DEDICATED AT consumer identity root.
+Contains ONLY ADB pairing identity files.
+Safe to delete entire directory for fresh-identity test.
+
+--- 03_identity_reset.txt ---
+
+IDENTITY RESET
+==============
+
+METHOD = run-as com.androidagent.app rm -rf files/at-consumer
+AT_IDENTITY_RESET = PASS
+
+SESSION_DATA_TOUCHED = NO (topic_sessions.db intact)
+PROVIDER_DATA_TOUCHED = NO (provider*.json intact)
+WORKSPACE_TOUCHED = NO
+
+POST-DELETE VERIFICATION:
+  files/at-consumer/ = ABSENT (confirmed)
+  databases/topic_sessions.db = PRESENT (327,680 bytes)
+  files/provider.local.json = PRESENT
+  files/provider.openrouter.json = PRESENT
+
+--- 04_preserve_audit.txt ---
+
+PRESERVE AUDIT (HARD GATE)
+==========================
+
+SESSION_DB_PRESENT = YES
+PROVIDER_CONFIG_PRESENT = YES
+AT_IDENTITY_PRESENT = NO (deleted)
+
+--- 05_post_reset_pairing_required.txt ---
+
+POST-RESET STATE (after app launch)
+===================================
+
+On app startup, AT regenerated NEW identity:
+  identity/adbkey       (1,704 bytes - NEW, different from old 1,708)
+  identity/adbkey.pub   (721 bytes)
+  identity/adb_cert.pem (1,131 bytes)
+  Timestamps: 16:37 (fresh generation)
+
+bootstrap_state:
+  state = PAIRING_REQUIRED
+  hasIdentity = true (new self-generated keys exist, but not yet authorized)
+
+snapshot:
+  adbState = PAIRING_REQUIRED
+
+HONOR system showed HwUsbDebuggingActivity (USB/Wireless debug auth dialog).
+This was DISMISSED (KEYCODE_BACK) to use in-app pair-code flow instead.
+
+HAS_AT_IDENTITY_BEFORE_PAIR = YES (new self-generated keys)
+ADB_READY_BEFORE_PAIR = NO
+PAIRING_REQUIRED_BEFORE_PAIR = YES
+SYSTEM_AUTO_AUTH_USED_FOR_PAIR = NO (dialog dismissed)
+
+Note: AT generates a new key pair on startup when no identity exists.
+The keys are self-signed and have NOT been authorized by the device.
+PAIRING_REQUIRED means the device hasn't accepted this identity yet.
+
+--- 06_pair_ui.txt ---
+
+PAIR UI
+=======
+
+AG_PAIR_UI = PASS
+PAIR_CODE_INPUT_VISIBLE = YES (6-digit numeric field)
+PAIR_ENTRY = AG_UI (Sidebar → ADB → Pair/Re-pair → expand)
+PAIRING_INSTRUCTIONS_VISIBLE = YES
+
+--- 07_system_pair_code_screen.txt ---
+
+SYSTEM PAIR-CODE SCREEN
+=======================
+
+PAIRING_CODE_SCREEN_OPEN = YES (user manually opened)
+USER_ACTION = Opened Settings → Developer Options → Wireless Debugging
+            → "Pair device with pairing code"
+            → 6-digit code displayed on screen
+
+PAIRING_CODE = NOT RECORDED (security: code not written to evidence)
+
+--- 08_ag_pair_submission.txt ---
+
+AG PAIR SUBMISSION
+==================
+
+PAIR_ENTRY = AG_UI
+PAIR_API = pairDiscovered (AT formal consumer)
+DESKTOP_ADB_PAIR_USED = NO
+USER_ENTERED_CODE_IN_AG_UI = YES (6-digit code entered in AG input field)
+USER_TAPPED_PAIR_BUTTON = YES
+
+--- 09_pair_result.txt ---
+
+PAIR RESULT
+===========
+
+PAIR_RESULT = SUCCESS
+
+Evidence:
+  pairing_meta file created at 16:49 (post-pair timestamp)
+  bootstrap_state transitioned: PAIRING_REQUIRED → READY
+  adbState: READY
+  No error/rejection/multiple-endpoints message displayed
+
+--- 10_identity_recreated.txt ---
+
+IDENTITY RECREATION
+===================
+
+AT_IDENTITY_PRESENT_AFTER_PAIR = YES
+AT_IDENTITY_IS_NEW = YES
+
+Proof:
+  Before pair: identity keys generated at 16:37 (fresh, unauthorized)
+  After pair:  pairing_meta created at 16:49 (pairing confirmation)
+  Identity keys are the SAME (self-generated at 16:37, paired at 16:49)
+  Old identity (from before deletion) is GONE
+
+--- 11_ready_uid2000.txt ---
+
+READY + UID=2000
+================
+
+ADB_READY_AFTER_PAIR = YES
+ADB_INDICATOR_AFTER_PAIR = PASS (GREEN)
+
+adb shell id output:
+  uid=2000(shell) gid=2000(shell) groups=2000(shell),...
+ADB_UID2000_AFTER_PAIR = PASS
+
+PAIR_CODE_CAUSAL_CHAIN = PASS
+  identity deleted → PAIRING_REQUIRED → system auth dismissed →
+  AG Pair UI → 6-digit code → pairDiscovered → SUCCESS →
+  pairing_meta created → READY → uid=2000
+
+--- 12_session_regression.txt ---
+
+SESSION REGRESSION
+==================
+
+SESSION_PRESERVED_AFTER_IDENTITY_RESET = YES
+MESSAGE_HISTORY_PRESERVED = YES
+POST_PAIR_CONTEXT_RECALL = PASS
+
+Q: "我之前让你记住的 PAIR_RESTORE_SENTINEL 是什么？"
+A: "PAIR_RESTORE_SENTINEL_7F29C1" (correct recall from durable history)
+
+SESSION_ID = session-b374768e-6876-4b6d-8fb7-2c0b93719773 (unchanged)
+
+--- 13_provider_regression.txt ---
+
+PROVIDER REGRESSION
+===================
+
+POST_PAIR_PROVIDER_CALL = PASS
+API_KEY_REENTRY_REQUIRED = NO
+
+Q: "回复 PAIR_CODE_E2E_PROVIDER_OK"
+A: "PAIR_CODE_E2E_PROVIDER_OK"
+
+--- 14_scope_audit.txt ---
+
+SCOPE AUDIT
+===========
+
+PRODUCTION_CODE_CHANGED = NO
+AG_CORE_CHANGED = NO
+AG_RUNTIME_CHANGED = NO
+AT_CHANGED = NO
+TOOL_CHANGED = NO
+
+BUILD REGRESSION:
+  :app:testDebugUnitTest → PASS
+  :integration-at:testDebugUnitTest → PASS
+  :tool-android-shell:testDebugUnitTest → PASS
+  :app:assembleDebug → PASS
+  FAIL = 0
+
+--- 15_final_verdict.txt ---
+
+FINAL VERDICT
+=============
+STEP = AG.PAIR-CODE-E2E-VALIDATION-0
+VERDICT = PASS
+
+IDENTITY RESET:
+  AT_IDENTITY_ROOT = files/at-consumer/
+  AT_IDENTITY_RESET = PASS
+  SESSION_DATA_TOUCHED = NO
+  PROVIDER_DATA_TOUCHED = NO
+  HAS_AT_IDENTITY_BEFORE_PAIR = YES (new self-generated, unauthorized)
+
+PAIR PRECONDITION:
+  ADB_READY_BEFORE_PAIR = NO
+  PAIRING_REQUIRED_BEFORE_PAIR = YES
+  SYSTEM_AUTO_AUTH_USED_FOR_PAIR = NO
+
+PAIR UI:
+  AG_PAIR_UI = PASS
+  PAIR_CODE_INPUT_VISIBLE = YES
+  PAIR_ENTRY = AG_UI
+  DESKTOP_ADB_PAIR_USED = NO
+
+PAIR:
+  PAIR_RESULT = SUCCESS
+  PAIR_CODE_CAUSAL_CHAIN = PASS
+  AT_IDENTITY_PRESENT_AFTER_PAIR = YES
+  ADB_READY_AFTER_PAIR = YES
+  ADB_UID2000_AFTER_PAIR = PASS
+
+UX:
+  ADB_INDICATOR_AFTER_PAIR = PASS
+  REPAIR_ENTRY_IN_READY = PASS (Pair/Re-pair always visible per UX-1R)
+
+REGRESSION:
+  SESSION_PRESERVED_AFTER_IDENTITY_RESET = YES
+  MESSAGE_HISTORY_PRESERVED = YES
+  POST_PAIR_CONTEXT_RECALL = PASS
+  API_KEY_REENTRY_REQUIRED = NO
+  POST_PAIR_PROVIDER_CALL = PASS
+
+SCOPE:
+  PRODUCTION_CODE_CHANGED = NO
+  AG_CORE_CHANGED = NO
+  AG_RUNTIME_CHANGED = NO
+  AT_CHANGED = NO
+  SUBAGENTS_USED = NO
+  DELEGATED_WORKERS_USED = NO
+
+FINDINGS:
+  - AT generates new self-signed keys on startup when identity is absent.
+    PAIRING_REQUIRED means keys exist but device hasn't authorized them.
+  - HONOR Android 15 shows HwUsbDebuggingActivity on first ADB connection
+    attempt. This was dismissed to test the in-app pair-code flow.
+  - pairing_meta file (152 bytes) is created upon successful pairing,
+    confirming the pairDiscovered() → SUCCESS path.
+
+FINAL:
+  AG.PAIR-CODE-E2E-VALIDATION-0 = PASS / CLOSED
+  IN_APP_6_DIGIT_PAIR_E2E = VALIDATED
+  ADB_PAIRING = CLOSED
+  RELEASE_BLOCKER = NONE
+  NEXT = FINAL CAPABILITY / RELEASE CLOSEOUT
+  STOP = YES
