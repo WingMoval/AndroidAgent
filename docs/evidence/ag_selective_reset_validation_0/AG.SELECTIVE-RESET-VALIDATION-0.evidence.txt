@@ -1,0 +1,329 @@
+AG.SELECTIVE-RESET-VALIDATION-0 — EVIDENCE
+============================================================
+
+--- 00_preflight.txt ---
+
+GATE A — PREFLIGHT
+==================
+BRANCH = main
+START_HEAD = 98b1770
+WORKTREE = CLEAN (1 untracked evidence file from previous task)
+FREEZE_TAG = 8828893
+DEVICE = APLMUT4312005935 (HONOR ALI-AN00, Android 15)
+VERDICT: PASS
+
+--- 01_persistence_inventory.txt ---
+
+GATE B — PERSISTENCE INVENTORY AUDIT
+=====================================
+
+SESSION_STORAGE = Room DB: /data/data/com.androidagent.app/databases/topic_sessions.db
+  (323,584 bytes + WAL 440,872 bytes + SHM 32,768 bytes)
+  CLASSIFICATION: PRESERVE
+
+PROVIDER_STORAGE = filesDir/provider.openrouter.json (247 bytes)
+  CLASSIFICATION: PRESERVE
+
+CUSTOM_PROVIDER_STORAGE = filesDir/provider-profiles/ (NOT PRESENT — no custom profiles)
+  CLASSIFICATION: N/A
+
+API_CREDENTIAL_STORAGE = filesDir/provider.local.json (218 bytes, EMG node)
+                       + filesDir/provider.openrouter.json (OpenRouter node)
+  CLASSIFICATION: PRESERVE
+
+CACHE_STORAGE = /data/data/com.androidagent.app/cache/
+  CLASSIFICATION: RESET (but NOT cleared this run — force-stop sufficient)
+
+TEMP_STORAGE = filesDir/at-cli-bridge/ (AT CLI UDS socket dir)
+  CLASSIFICATION: RESET (transient, auto-recreated)
+
+TRACE_DEBUG_STORAGE = N/A (DebugBridge is in-memory only)
+  CLASSIFICATION: RESET
+
+AGENT_WORKSPACE = filesDir/agent/ (File Tool root)
+  CLASSIFICATION: PRESERVE
+
+AT_IDENTITY = filesDir/at-consumer/ (ADB pairing identity)
+  CLASSIFICATION: PRESERVE (not modified)
+
+--- 02_preserve_reset_matrix.txt ---
+
+PRESERVE / RESET MATRIX
+=======================
+
+PRESERVE:
+  [x] topic_sessions.db (+ WAL + SHM)
+  [x] provider.local.json
+  [x] provider.openrouter.json
+  [x] filesDir/agent/ (workspace)
+  [x] filesDir/at-consumer/ (AT identity)
+  [x] SAF grants
+
+RESET (via process death):
+  [x] Agent Runtime instance
+  [x] In-memory Session materialization
+  [x] In-memory provider instance
+  [x] In-memory transcript projection
+  [x] Active Run (none at reset time)
+  [x] Activity state
+  [x] Transient UI state
+  [x] DebugBridge connections
+
+NOT CLEARED (not needed):
+  [x] cache/ (force-stop already invalidates process memory)
+
+--- 03_pre_reset_session.txt ---
+
+GATE B — PRE-RESET SESSION EVIDENCE
+===================================
+
+PRE_RESET_SESSION_ID = session-b374768e-6876-4b6d-8fb7-2c0b93719773
+PRE_RESET_SENTINEL = RESET_SESSION_SENTINEL_A71C29
+PRE_RESET_MESSAGE_SENT = "请记住本轮验证标记 RESET_SESSION_SENTINEL_A71C29。只回复：已记住。"
+PRE_RESET_MODEL_RESPONSE = "已记住。"
+PRE_RESET_TRANSCRIPT_BLOCK_COUNT = 6
+PRE_RESET_SENTINEL_DURABLE = YES (model processed + stored in Room via normal runtime path)
+
+--- 04_pre_reset_provider.txt ---
+
+GATE D — PROVIDER / API KEY PRE-RESET EVIDENCE
+==============================================
+
+PRE_RESET_PROVIDER = OpenRouter
+PRE_RESET_MODEL = deepseek/deepseek-v4-flash-0731
+PRE_RESET_ENDPOINT = safe (not printed)
+PRE_RESET_API_KEY_PRESENT = YES
+
+PRE_RESET_PROVIDER_LOCAL_SHA256 = 3d4f4c104c8fe3598891c3a564a6dcb9caa403b50ee9f60f12067e13a7e544af
+PRE_RESET_PROVIDER_OPENROUTER_SHA256 = 34054763a99ce7ee44604b4ea40f9ed1fc43eaa3776b32a591fb5d2149ce2c71
+
+API_KEY_VALUE = NEVER_PRINT
+
+--- 05_pre_reset_model_smoke.txt ---
+
+GATE E — PRE-RESET REAL MODEL CALL
+==================================
+
+MESSAGE = "请记住本轮验证标记 RESET_SESSION_SENTINEL_A71C29。只回复：已记住。"
+RESPONSE = Answer(content=已记住。)
+REAL_MODEL_PRE_RESET = PASS
+
+--- 06_pre_reset_process.txt ---
+
+GATE F — RUNTIME IDENTITY BEFORE RESET
+======================================
+
+PRE_RESET_PID = 5252
+PRE_RESET_SESSION_ID = session-b374768e-6876-4b6d-8fb7-2c0b93719773
+PRE_RESET_RUNTIME_BUSY = false
+PRE_RESET_ADB_STATE = READY
+
+--- 07_reset_execution.txt ---
+
+GATE G — EXECUTE SELECTIVE RESET
+================================
+
+METHOD = adb shell am force-stop com.androidagent.app
+NOT pm clear. NOT uninstall. NOT data clear.
+
+PRE_STOP_PID = 5252
+POST_STOP_PID = (none — process terminated)
+PROCESS_TERMINATED = YES
+
+DURABLE FILES POST-STOP:
+  topic_sessions.db: EXISTS (323,584 bytes)
+  provider.local.json: EXISTS, SHA-256 UNCHANGED
+  provider.openrouter.json: EXISTS, SHA-256 UNCHANGED
+  filesDir/agent/: EXISTS
+  filesDir/at-consumer/: EXISTS
+
+PM_CLEAR_USED = NO
+APP_DATA_CLEAR_USED = NO
+UNINSTALL_USED = NO
+
+--- 08_cold_start.txt ---
+
+GATE H — COLD START
+===================
+
+COMMAND = adb shell am start -n com.androidagent.app/.ChatActivity
+POST_RESET_PID = 8042
+PRE_RESET_PID = 5252
+POST_RESET_PID_CHANGED = YES
+NEW_PROCESS_CREATED = YES
+
+--- 09_passive_restore.txt ---
+
+GATE I — RESTORE MUST BE PASSIVE (HARD GATE)
+============================================
+
+POST-RESTORE SNAPSHOT:
+  runtimeReady = true
+  busy = false
+  currentSessionId = session-b374768e-6876-4b6d-8fb7-2c0b93719773 (SAME)
+  activeProvider = OpenRouter
+  activeModel = deepseek/deepseek-v4-flash-0731
+  adbState = READY
+  transcriptBlockCount = 6 (SAME as pre-reset)
+  lastBlockType = Assistant (SAME as pre-reset)
+
+RESTORE_MODEL_CALL_COUNT = 0
+RESTORE_TOOL_CALL_COUNT = 0
+UNKNOWN_SIDE_EFFECT_REPLAY = NO
+ACTIVE_RUN_AFTER_RESTORE = NO
+
+VERDICT: PASS (restore was purely passive — no model/tool calls triggered)
+
+--- 10_session_preservation.txt ---
+
+GATE J — SESSION LIST PRESERVATION
+==================================
+
+PRE_RESET_SESSION_ID = session-b374768e-6876-4b6d-8fb7-2c0b93719773
+POST_RESET_SESSION_ID = session-b374768e-6876-4b6d-8fb7-2c0b93719773
+SESSION_LIST_PRESERVED = YES
+CURRENT_SESSION_AFTER_RESET = PRE_RESET_SESSION_ID
+
+--- 11_message_history.txt ---
+
+GATE K — MESSAGE HISTORY PRESERVATION
+=====================================
+
+SENTINEL_PRESENT_AFTER_RESET = YES (model recalled it in Gate P)
+USER_MESSAGE_PRESERVED = YES
+MODEL_MESSAGE_PRESERVED = YES
+TOOL_HISTORY_PRESERVED = NOT_APPLICABLE (no tool calls in sentinel exchange)
+
+GATE L — NO DUPLICATE RESTORE:
+transcriptBlockCount: 6 pre-reset → 6 immediately post-restore (no duplication on restore)
+After 2 post-reset messages: 11 total (6 + 2 user + 2 assistant + 1 system/restore block)
+Sentinel occurrence count (model-verified): 2 (original message + model recall answer)
+SESSION_DUPLICATION = NO
+MESSAGE_DUPLICATION = NO
+
+--- 12_provider_preservation.txt ---
+
+GATE N — PROVIDER CONFIGURATION PRESERVATION
+============================================
+
+POST_RESET_PROVIDER = OpenRouter (unchanged)
+POST_RESET_MODEL = deepseek/deepseek-v4-flash-0731 (unchanged)
+PROVIDER_CONFIG_PRESERVED = YES
+API_KEY_REENTRY_REQUIRED = NO
+
+Post-reset provider file SHA-256 verification:
+  provider.local.json: 3d4f4c104c8fe3598891c3a564a6dcb9caa403b50ee9f60f12067e13a7e544af (UNCHANGED)
+  provider.openrouter.json: 34054763a99ce7ee44604b4ea40f9ed1fc43eaa3776b32a591fb5d2149ce2c71 (UNCHANGED)
+
+--- 13_post_reset_model_smoke.txt ---
+
+GATE O — POST-RESET REAL MODEL CALL
+===================================
+
+MESSAGE = "回复：POST_RESET_PROVIDER_OK"
+RESPONSE = Answer(content=POST_RESET_PROVIDER_OK)
+REAL_MODEL_POST_RESET = PASS
+
+This proves: saved provider config + saved credential + cold-start reload → valid Provider.
+
+--- 14_post_reset_context_recall.txt ---
+
+GATE P — SAME SESSION FOLLOW-UP RECALL
+======================================
+
+MESSAGE = "刚才我让你记住的 RESET_SESSION_SENTINEL 是什么？只回复标记本身。"
+RESPONSE = Answer(content=RESET_SESSION_SENTINEL_A71C29)
+POST_RESET_CONTEXT_RECALL = PASS
+NEW_TOOL_CALL_COUNT = 0
+
+This is the critical Session semantic verification: the model accessed durable
+history from the pre-reset conversation and recalled the exact sentinel token.
+
+--- 15_runtime_freshness.txt ---
+
+GATE Q — FRESH RUNTIME EVIDENCE
+===============================
+
+POST_RESET_PID = 8042
+PRE_RESET_PID = 5252
+FRESH_PROCESS = YES
+FRESH_RUNTIME = YES (new AgentRuntime instance in new process)
+ACTIVE_RUN_AFTER_RESTORE = NO
+POST_RESET_BUSY = false
+
+--- 16_scope_audit.txt ---
+
+SCOPE AUDIT
+===========
+
+PRODUCTION_CODE_CHANGED = NO
+AG_CORE_CHANGED = NO
+AG_RUNTIME_CHANGED = NO
+AT_CHANGED = NO
+TOOL_CHANGED = NO
+
+Only documentation/evidence created:
+  docs/evidence/ag_selective_reset_validation_0/
+  docs/implementation/AG.SELECTIVE-RESET-VALIDATION-0.md
+
+BUILD REGRESSION:
+  :app:testDebugUnitTest → PASS
+  :ag-runtime:test → PASS
+  :ag-core:test → PASS
+  :app:assembleDebug → PASS
+  TEST_FAILURES = 0
+
+--- 17_final_verdict.txt ---
+
+FINAL VERDICT
+=============
+STEP = AG.SELECTIVE-RESET-VALIDATION-0
+VERDICT = PASS
+
+RESET:
+  RESET_TYPE = SELECTIVE_PROCESS_RUNTIME_RESET
+  PM_CLEAR_USED = NO
+  APP_DATA_CLEAR_USED = NO
+  PRE_RESET_PID = 5252
+  POST_RESET_PID = 8042
+  FRESH_PROCESS = YES
+  FRESH_RUNTIME = YES
+
+SESSION:
+  PRE_RESET_SESSION_ID = session-b374768e-6876-4b6d-8fb7-2c0b93719773
+  SESSION_LIST_PRESERVED = YES
+  SESSION_SENTINEL_PRESERVED = YES
+  MESSAGE_HISTORY_PRESERVED = YES
+  TOOL_HISTORY_PRESERVED = NOT_APPLICABLE
+  SESSION_DUPLICATION = NO
+  MESSAGE_DUPLICATION = NO
+  POST_RESET_CONTEXT_RECALL = PASS
+
+PROVIDER:
+  PROVIDER_CONFIG_PRESERVED = YES
+  API_KEY_PRESERVED = YES
+  API_KEY_REENTRY_REQUIRED = NO
+  REAL_MODEL_PRE_RESET = PASS
+  REAL_MODEL_POST_RESET = PASS
+
+RESTORE SAFETY:
+  RESTORE_MODEL_CALL_COUNT = 0
+  RESTORE_TOOL_CALL_COUNT = 0
+  UNKNOWN_SIDE_EFFECT_REPLAY = NO
+  ACTIVE_RUN_AFTER_RESTORE = NO
+
+SECURITY NON-GOAL:
+  API_KEY_AT_REST_ENCRYPTION = NOT_AUDITED_THIS_STEP
+  API_KEY_SECURITY_REDESIGN = OUT_OF_SCOPE
+
+SCOPE:
+  PRODUCTION_CODE_CHANGED = NO
+  ADB_PAIRING_STATE_MODIFIED = NO
+  SUBAGENTS_USED = NO
+  DELEGATED_WORKERS_USED = NO
+
+FINAL:
+  AG.SELECTIVE-RESET-VALIDATION-0 = PASS / CLOSED
+  RELEASE_BLOCKER = NONE
+  NEXT = CONTROLLER_REVIEW
+  STOP = YES
