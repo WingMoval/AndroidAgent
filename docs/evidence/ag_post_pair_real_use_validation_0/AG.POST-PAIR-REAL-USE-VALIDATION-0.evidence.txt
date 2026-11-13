@@ -1,0 +1,320 @@
+AG.POST-PAIR-REAL-USE-VALIDATION-0 — EVIDENCE
+============================================================
+
+--- 00_preflight.txt ---
+
+GATE A — PREFLIGHT
+==================
+BRANCH = main
+START_HEAD = d959118
+WORKTREE = CLEAN (1 untracked evidence file from previous task)
+DEVICE = APLMUT4312005935 (HONOR ALI-AN00, Android 15)
+VERDICT: PASS
+
+--- 01_initial_adb_ready.txt ---
+
+GATE A — INITIAL ADB READINESS
+==============================
+
+App already running from previous task (PID 14684).
+bootstrap_state: READY, hasIdentity: true
+ADB_READY_BEFORE_REAL_USE = YES
+PAIR_REQUIRED_AGAIN = NO
+
+No re-pair needed. Pairing identity persisted across process lifetime.
+
+--- 02_direct_adb_sanity.txt ---
+
+GATE B — DIRECT BACKEND SANITY
+==============================
+
+Command: adb shell id (via tool_invoke android_shell)
+Result: uid=2000(shell) gid=2000(shell)
+DIRECT_ADB_SANITY = PASS
+
+--- 03_real_user_task.txt ---
+
+GATE C — REAL USER TASK (E2E-1)
+===============================
+
+USER MESSAGE (natural language, no tool hints):
+  "帮我检查这台 Android 设备的系统版本、设备型号和当前 ADB shell 身份，
+   并根据实际检测结果做一个简短总结。"
+
+MODEL BEHAVIOR:
+  Model autonomously decided to use android_shell tool.
+  Made 3 separate tool calls:
+    1. adb shell getprop ro.build.version.release → "15"
+    2. adb shell getprop ro.product.model → "ALI-AN00"
+    3. adb shell id → "uid=2000(shell) gid=2000(shell) ..."
+
+REAL_MODEL_USED = YES (OpenRouter / deepseek-v4-flash-0731)
+MODEL_AUTONOMOUS_TOOL_SELECTION = PASS
+MODEL_VISIBLE_TOOL = android_shell
+EXECUTION_REALM = ADB_SHELL
+REAL_TASK_ADB_UID2000 = PASS
+
+--- 04_real_task_trace.txt ---
+
+E2E-1 TRACE
+===========
+
+User: 帮我检查这台 Android 设备的系统版本、设备型号和当前 ADB shell 身份...
+  ↓
+Model ToolCall 1: android_shell {"command": "adb shell getprop ro.build.version.release"}
+  ↓
+ToolResult 1: {"outcome":"COMPLETED","exitCode":0,"stdout":"15\n","stderr":"[adb] connected"}
+  ↓
+Model ToolCall 2: android_shell {"command": "adb shell getprop ro.product.model"}
+  ↓
+ToolResult 2: {"outcome":"COMPLETED","exitCode":0,"stdout":"ALI-AN00\n","stderr":"[adb] connected"}
+  ↓
+Model ToolCall 3: android_shell {"command": "adb shell id"}
+  ↓
+ToolResult 3: {"outcome":"COMPLETED","exitCode":0,"stdout":"uid=2000(shell) gid=2000(shell)..."}
+  ↓
+Model Final Answer:
+  - 系统版本: Android 15
+  - 设备型号: ALI-AN00 (荣耀)
+  - ADB shell 身份: uid=2000(shell), SELinux u:r:shell:s0
+  - Groups: input, log, adb, sdcard_rw, etc.
+
+ToolResult → Final answer causality:
+  - "15" in ToolResult 1 → "Android 15" in answer ✓
+  - "ALI-AN00" in ToolResult 2 → "ALI-AN00" in answer ✓
+  - "uid=2000(shell)" in ToolResult 3 → "uid=2000(shell)" in answer ✓
+
+--- 05_real_task_grounding.txt ---
+
+GATE 13 — TOOLRESULT CAUSALITY
+==============================
+
+FINAL_ANSWER_GROUNDED_IN_TOOLRESULT = PASS
+
+All three facts in the final answer (version=15, model=ALI-AN00, uid=2000)
+are directly traceable to the corresponding ToolResults.
+No hallucinated device info.
+
+--- 06_local_adb_contrast.txt ---
+
+GATE D — LOCAL VS ADB CONTRAST
+==============================
+
+Fresh task (requires new tool calls):
+  "请执行两条命令：第一条直接运行 id（本地执行），第二条运行 adb shell id（ADB执行）..."
+
+Model autonomously called:
+  1. id → uid=10465(u0_a465) [local app UID]
+  2. adb shell id → uid=2000(shell) [ADB shell]
+
+LOCAL_EXECUTION_IDENTITY = uid=10465 (u0_a465, untrusted_app)
+ADB_EXECUTION_IDENTITY = uid=2000 (shell)
+LOCAL_ADB_IDENTITY_CONTRAST = PASS
+
+Note: App UID is 10465 (not 10418 from before) because the app was
+reinstalled during the fresh-install validation task. UID changes on
+reinstall — this is expected and not a bug.
+
+--- 07_identity_semantics.txt ---
+
+GATE 17 — IDENTITY SEMANTICS
+============================
+
+Model correctly stated:
+  - Local execution: app UID (u0_a465), untrusted_app SELinux context
+  - ADB execution: shell UID (2000), u:r:shell:s0 SELinux context
+  - They are DIFFERENT (10465 ≠ 2000)
+  - Local = normal app sandbox
+  - ADB = system shell user
+
+IDENTITY_SEMANTICS_CORRECT = PASS
+REAL_MODEL_IDENTITY_CONTRAST_TASK = PASS
+
+--- 08_pre_restart.txt ---
+
+GATE F — PRE-RESTART
+====================
+
+PRE_RESTART_PID = 14684
+ACTIVE_RUN = NO (confirmed via snapshot busy=false before force-stop)
+FORCE_STOP = executed
+OLD_PID_VERIFIED_GONE = YES
+
+--- 09_cold_restart.txt ---
+
+GATE 19 — COLD RESTART
+======================
+
+POST_RESTART_PID = 25663
+PRE_RESTART_PID = 14684
+FRESH_PROCESS_AFTER_PAIR = YES
+
+--- 10_pair_persistence.txt ---
+
+GATE G — PAIR PERSISTENCE
+=========================
+
+Post-restart bootstrap_state: READY
+ADB_READY_AFTER_RESTART = YES
+PAIR_REQUIRED_AFTER_RESTART = NO
+PAIRING_IDENTITY_PERSISTED = YES
+
+No 6-digit code re-entry needed.
+No system pair dialog appeared.
+AT identity (files/at-consumer/) persisted across process death.
+
+--- 11_post_restart_real_task.txt ---
+
+GATE H — POST-RESTART REAL TASK (E2E-2)
+=======================================
+
+USER MESSAGE (natural language, no tool hints):
+  "帮我检查当前 Android 设备的 SDK 版本和设备厂商，并告诉我当前 ADB shell 是什么身份。"
+
+MODEL BEHAVIOR:
+  Model autonomously made 3 tool calls:
+    1. adb shell getprop ro.build.version.sdk → "35"
+    2. adb shell getprop ro.product.manufacturer → "HONOR"
+    3. adb shell id → "uid=2000(shell) ..."
+
+REAL_MODEL_POST_RESTART = YES
+AUTONOMOUS_TOOL_SELECTION_POST_RESTART = PASS
+ADB_UID2000_POST_RESTART = PASS
+
+--- 12_post_restart_trace.txt ---
+
+E2E-2 TRACE
+===========
+
+User: 帮我检查当前 Android 设备的 SDK 版本和设备厂商...
+  ↓
+Model ToolCall 1: android_shell {"command": "adb shell getprop ro.build.version.sdk"}
+  ↓
+ToolResult 1: {"outcome":"COMPLETED","exitCode":0,"stdout":"35\n","stderr":"[adb] connected"}
+  ↓
+Model ToolCall 2: android_shell {"command": "adb shell getprop ro.product.manufacturer"}
+  ↓
+ToolResult 2: {"outcome":"COMPLETED","exitCode":0,"stdout":"HONOR\n","stderr":"[adb] connected"}
+  ↓
+Model ToolCall 3: android_shell {"command": "adb shell id"}
+  ↓
+ToolResult 3: {"outcome":"COMPLETED","exitCode":0,"stdout":"uid=2000(shell) gid=2000(shell)..."}
+  ↓
+Model Final Answer:
+  - SDK: 35 (Android 15)
+  - Manufacturer: HONOR (荣耀)
+  - ADB shell: uid=2000(shell), u:r:shell:s0
+
+FINAL_ANSWER_GROUNDED_POST_RESTART = PASS
+
+--- 13_provider_session_regression.txt ---
+
+PROVIDER / SESSION REGRESSION
+=============================
+
+SESSION_AVAILABLE_AFTER_RESTART = YES (same session, continued normally)
+API_KEY_REENTRY_REQUIRED = NO
+REAL_MODEL_CALL_AFTER_RESTART = PASS (E2E-2 succeeded)
+
+No pair UI opened during post-restart task.
+No pair code entered.
+No system pair dialog.
+
+PAIR_CODE_ENTERED = NO
+SYSTEM_PAIR_DIALOG_USED = NO
+
+--- 14_build_tests.txt ---
+
+BUILD / TEST REGRESSION
+=======================
+
+:app:testDebugUnitTest → PASS
+:integration-at:testDebugUnitTest → PASS
+:tool-android-shell:testDebugUnitTest → PASS
+:app:assembleDebug → PASS
+TEST_FAILURES = 0
+DEBUG_BUILD = PASS
+
+--- 15_scope_audit.txt ---
+
+SCOPE AUDIT
+===========
+
+PRODUCTION_CODE_CHANGED = NO
+AG_CORE_CHANGED = NO
+AG_RUNTIME_CHANGED = NO
+AT_CHANGED = NO
+TOOL_CHANGED = NO
+
+Only docs/evidence created.
+
+--- 16_final_verdict.txt ---
+
+FINAL VERDICT
+=============
+STEP = AG.POST-PAIR-REAL-USE-VALIDATION-0
+VERDICT = PASS
+
+INITIAL:
+  ADB_READY_BEFORE_REAL_USE = YES
+  PAIR_REQUIRED_AGAIN = NO
+  DIRECT_ADB_SANITY = PASS
+
+REAL-USE E2E-1:
+  REAL_MODEL_USED = YES
+  MODEL_AUTONOMOUS_TOOL_SELECTION = PASS
+  MODEL_VISIBLE_TOOL = android_shell
+  EXECUTION_REALM = ADB_SHELL
+  REAL_TASK_ADB_UID2000 = PASS
+  FINAL_ANSWER_GROUNDED_IN_TOOLRESULT = PASS
+
+CONTRAST:
+  LOCAL_EXECUTION_IDENTITY = uid=10465 (u0_a465)
+  ADB_EXECUTION_IDENTITY = uid=2000 (shell)
+  LOCAL_ADB_IDENTITY_CONTRAST = PASS
+  REAL_MODEL_IDENTITY_CONTRAST_TASK = PASS
+  IDENTITY_SEMANTICS_CORRECT = PASS
+
+RESTART:
+  PRE_RESTART_PID = 14684
+  POST_RESTART_PID = 25663
+  FRESH_PROCESS_AFTER_PAIR = YES
+  ADB_READY_AFTER_RESTART = YES
+  PAIR_REQUIRED_AFTER_RESTART = NO
+  PAIRING_IDENTITY_PERSISTED = YES
+
+POST-RESTART E2E-2:
+  REAL_MODEL_POST_RESTART = YES
+  AUTONOMOUS_TOOL_SELECTION_POST_RESTART = PASS
+  ADB_UID2000_POST_RESTART = PASS
+  FINAL_ANSWER_GROUNDED_POST_RESTART = PASS
+  PAIR_CODE_ENTERED = NO
+  SYSTEM_PAIR_DIALOG_USED = NO
+
+REGRESSION:
+  SESSION_AVAILABLE_AFTER_RESTART = YES
+  API_KEY_REENTRY_REQUIRED = NO
+  REAL_MODEL_CALL_AFTER_RESTART = PASS
+
+SCOPE:
+  PRODUCTION_CODE_CHANGED = NO
+  AG_CORE_CHANGED = NO
+  AG_RUNTIME_CHANGED = NO
+  AT_CHANGED = NO
+  SUBAGENTS_USED = NO
+  DELEGATED_WORKERS_USED = NO
+
+E2E SUMMARY:
+  E2E-1: Device info task → 3 autonomous ADB calls → grounded answer ✓
+  E2E-2: Post-restart task → 3 autonomous ADB calls → grounded answer ✓
+  Contrast: Local id vs adb shell id → correct semantic distinction ✓
+
+FINAL:
+  AG.POST-PAIR-REAL-USE-VALIDATION-0 = PASS / CLOSED
+  PAIRING = CLOSED
+  ADB_CONNECTION = CLOSED
+  ADB_REAL_USE = CLOSED
+  POST_PAIR_RESTART_USABILITY = CLOSED
+  RELEASE_BLOCKER = NONE
+  NEXT = FINAL CAPABILITY / RELEASE CLOSEOUT
+  STOP = YES
