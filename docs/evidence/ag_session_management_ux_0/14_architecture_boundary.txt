@@ -1,0 +1,37 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 14: Architecture Boundary
+==============================================================
+
+Boundary compliance:
+  - AG Core: UNCHANGED (no new dependencies, no new contracts)
+  - AG Runtime: additive changes only (enterBlankDraft, materializeDraft,
+    renameCurrentSession, deleteSession, DeleteResult, normalizeTitle,
+    blankDraft flag)
+  - Tool Layer: UNCHANGED
+  - Provider: UNCHANGED
+  - AT Engine: UNCHANGED
+  - Host/Product (:app): SessionManagementActivity, SessionHolder,
+    HostActions, ChatActivity sidebar wiring, Room schema v2
+
+Dependency direction (frozen):
+  ag-core -> ag-runtime: FORBIDDEN (not violated)
+  ag-runtime -> tool-*: FORBIDDEN (not violated)
+  ag-core -> Android/Room/AT: FORBIDDEN (not violated)
+
+Frontend boundary:
+  - Session management UI in :app (SessionManagementActivity)
+  - Session lifecycle semantics in :ag-runtime (AgentRuntime)
+  - No frontend-owned reusable runtime semantics
+  - No second UI->DB path
+
+No new modules added.
+No new 3rd-party dependencies added.
+No AgentEvent added.
+No streaming protocol change.
+No Provider/Tool contract change.
+No Architecture v1.0 change.
+
+Core contract: NO USER MESSAGE = NO SESSION
+  - Blank draft: non-durable, non-listed, no title
+  - First message: materializes durable session
+  - Delete current: blank draft (no replacement row)
+  - Delete non-current: row removed (FK CASCADE)

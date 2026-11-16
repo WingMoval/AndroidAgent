@@ -1,0 +1,38 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 08: Delete Current -> Blank Draft
+=====================================================================
+
+E2E: delete the current session -> blank draft -> first message re-materialization
+
+From delete_current.py:
+  before_total = 59
+  before_current_session = session-44c0f147-21ce-4d68-8963-9972463f87cd
+  delete_current_focus = com.androidagent.app.ChatActivity (activity finished)
+  after_delete_current_session = '' (blank draft)
+  after_delete_is_blank = True
+  after_delete_transcript = 0
+
+DELETE_CURRENT -> BLANK DRAFT:
+  - SessionManagementActivity.finish() called (back to ChatActivity)
+  - AgentRuntime.sessionId = null (blank draft)
+  - AgentRuntime.blankDraft = true
+  - Transcript = 0 blocks (empty)
+  - NO replacement durable row created
+
+RE-MATERIALIZATION (first message after delete):
+  first msg: "重新测试 Session 自动命名"
+  rematerialized_session = session-07c27184-365c-40c7-a397-929e08e1fcbc
+  rematerialized = True
+  rematerialized_new_id = True (different from deleted session)
+  rematerialized_title = '重新测试 Session 自动命名'
+  rematerialized_origin = 0 (AUTO_FIRST_MESSAGE)
+  title_is_first_msg = True
+  origin_is_auto = True
+
+DELETE_CURRENT_REMATERIALIZES = YES
+DELETE_CURRENT_NO_REPLACEMENT_ROW = YES (blank draft, not a new durable row)
+DELETE_CURRENT_NEW_SESSION_ID = YES (fresh UUID, not reusing deleted id)
+DELETE_CURRENT_TITLE_FROM_FIRST_MSG = YES
+
+Note: The "current_session_exists=True" in the intermediate DB check
+was a timing artifact (DB pull before async Room commit). The final
+DB count (58 after re-materialization) confirms the deletion.

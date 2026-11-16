@@ -1,0 +1,67 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 15: Device E2E Summary
+============================================================
+
+Device: HONOR ALI-AN00 (APLMUT4312005935), Android 15
+App: com.androidagent.app (debug build)
+Provider: OpenRouter / deepseek/deepseek-v4-flash-0731
+ADB: paired + READY (uid=2000, no re-pair)
+
+E2E Test Matrix:
+
+1. ADB REGRESSION: PASS
+   - bootstrap_state = READY
+   - direct_adb_uid2000 = True
+   - pair_required_again = False
+
+2. BLANK DRAFT: PASS
+   - new_session_success = True
+   - blank_current_session = '' (null)
+   - blank_draft_transcript_count = 0
+   - BLANK_DRAFT_PERSISTED = NO
+   - BLANK_DRAFT_LISTED = NO
+
+3. FIRST MESSAGE MATERIALIZATION: PASS
+   - first_materialized = True
+   - session-44c0f147 created
+   - title = first user message
+   - title_origin = 0 (AUTO_FIRST_MESSAGE)
+
+4. TITLE STABILITY: PASS
+   - title_stable_same_session = True
+   - same session after second message
+
+5. PROVIDER REGRESSION: PASS
+   - real model responded to both messages
+   - run_finished = True
+
+6. RENAME: PASS (unit tests + UI flow)
+   - title_origin changed 0 -> 1 (USER_RENAMED)
+   - UI flow verified (dialog, save, list refresh)
+   - HARNESS ARTIFACT: garbled title (IME text insertion)
+
+7. DELETE NON-CURRENT: PASS
+   - 10 sessions deleted over test runs (69 -> 59)
+   - FK CASCADE verified (messages removed)
+
+8. DELETE CURRENT -> BLANK DRAFT: PASS
+   - after_delete_is_blank = True
+   - after_delete_transcript = 0
+   - NO replacement row
+   - activity finished -> ChatActivity
+
+9. RE-MATERIALIZATION: PASS
+   - new session created (session-07c27184)
+   - title = first message
+   - origin = 0 (AUTO_FIRST_MESSAGE)
+
+10. COLD RESTART PERSISTENCE: PASS
+    - SESSION_SURVIVED = True
+    - TITLE_PRESERVED = True
+    - TITLE_ORIGIN_PRESERVED = True
+    - HISTORY_PRESERVED = True
+    - NO_DUPLICATE_SESSION = True
+    - BOOTSTRAP_READY = True
+    - TRANSCRIPT_RESTORED = True
+    - RESTORE = PASSIVE (0 model/tool calls)
+
+DEVICE E2E OVERALL: PASS

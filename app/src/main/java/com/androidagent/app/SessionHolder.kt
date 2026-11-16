@@ -230,25 +230,79 @@ object SessionHolder {
     }
 
     /**
-     * Reset to a fresh durable Session (user tapped "New Session").
+     * Enter a transient BLANK DRAFT (user tapped "New Session").
      *
-     * Suspend: the Runtime durably creates the new TopicSession row before
-     * making it current. If the store fails, the exception propagates and the
-     * old session remains current — and the old transcript is PRESERVED (no
-     * premature clear). On success, the (empty) new session is projected.
+     * AG.SESSION-MANAGEMENT-UX-0: NO USER MESSAGE = NO SESSION. This does NOT
+     * create a durable TopicSession row. The Runtime clears the live Core
+     * Session to an empty, untitled draft; the durable session is created
+     * lazily on the first non-blank User Message.
+     *
+     * On success the (empty) draft is projected (clearing the old transcript
+     * ONLY after the draft was entered). On rejection (busy) the old session
+     * and transcript are preserved.
      */
-    suspend fun newSession(): Boolean {
+    fun newSession(): Boolean {
         val r = root?.runtime ?: return false
-        val switched = r.newSession()
-        if (switched) {
-            // New session is current: project its (empty) history. This clears
-            // the old projection ONLY after the durable switch succeeded.
+        val entered = r.enterBlankDraft()
+        if (entered) {
+            // Blank draft is current: project its empty history.
             projectCurrentHistory()
             runStatusText = "New session started."
         }
-        // On failure the old session remains current and the old transcript is
-        // unchanged (no premature clear).
-        return switched
+        return entered
+    }
+
+    /**
+     * Durably rename the CURRENT session (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * Metadata-only: delegates to [AgentRuntime.renameCurrentSession] (Room
+     * durable title + USER_RENAMED origin). No model/tool call, no transcript
+     * mutation. The UI disables this for busy sessions.
+     *
+     * @return true if renamed, false if rejected (no current session / busy).
+     */
+    suspend fun renameSession(newTitle: String): Boolean {
+        val r = root?.runtime ?: return false
+        val renamed = r.renameCurrentSession(newTitle)
+        if (renamed) {
+            // Refresh the live presentation (title change is metadata only; the
+            // transcript history is untouched).
+            notifyUiUpdate()
+            runStatusText = "Session renamed."
+        }
+        return renamed
+    }
+
+    /**
+     * Permanently delete a durable session (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * Delegates to [AgentRuntime.deleteSession]. If the deleted session is the
+     * current one, the runtime enters a blank draft and the transcript is
+     * projected empty. No replacement durable row is created.
+     *
+     * @return the [AgentRuntime.DeleteResult].
+     */
+    suspend fun deleteSession(sessionId: String): com.androidagent.runtime.AgentRuntime.DeleteResult {
+        val r = root?.runtime ?: return com.androidagent.runtime.AgentRuntime.DeleteResult.Rejected("runtime not ready")
+        val result = r.deleteSession(sessionId)
+        when (result) {
+            is com.androidagent.runtime.AgentRuntime.DeleteResult.Deleted -> {
+                // Re-project: if a blank draft was entered the transcript clears;
+                // if a non-current session was deleted the current transcript is
+                // unchanged.
+                projectCurrentHistory()
+                runStatusText = "Session deleted."
+            }
+            is com.androidagent.runtime.AgentRuntime.DeleteResult.Rejected -> {
+                runStatusText = if (result.reason == "busy") {
+                    "Cannot delete a session while a run is in progress."
+                } else {
+                    "Session not found."
+                }
+            }
+        }
+        notifyUiUpdate()
+        return result
     }
 
     /**

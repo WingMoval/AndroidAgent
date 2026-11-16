@@ -12,13 +12,40 @@ package com.androidagent.runtime.persistence
  */
 
 /**
+ * Origin of a Session's [TopicSessionRecord.title] (AG.SESSION-MANAGEMENT-UX-0).
+ *
+ * This is the durable "title ownership" seam: it lets the system distinguish
+ * an automatic initial title (derived from the first User Message) from a
+ * manual user rename. The frozen rule:
+ *
+ *  - [AUTO_FIRST_MESSAGE] : title was set once, from the first non-blank User
+ *    Message, at materialization. The automatic title runs exactly ONCE and is
+ *    never auto-updated again by later messages.
+ *  - [USER_RENAMED] : the user manually renamed the Session. Once set, the
+ *    automatic title can NEVER overwrite it again (MANUAL_RENAME_OVERRIDDEN =
+ *    NO), and legacy normalization must not touch it.
+ *
+ * [null] means the session has no title yet (a not-yet-materialized or
+ * legacy session whose title has not been derived).
+ */
+enum class TitleOrigin {
+    /** Title set once from the first User Message at materialization. */
+    AUTO_FIRST_MESSAGE,
+
+    /** Title set by an explicit user rename (wins permanently). */
+    USER_RENAMED,
+}
+
+/**
  * A durable TopicSession row.
  *
  * [model] / [provider] carry the LAST_USED_MODEL semantic: a snapshot of the
  * model/provider the session last ran against (creation snapshot, updated on
  * switch). They are NOT session identity.
  *
- * [title] is optional display metadata.
+ * [title] is optional display metadata. [titleOrigin] records how [title] came
+ * to be (automatic first-message vs. manual rename) so the automatic title can
+ * never silently overwrite a manual rename.
  */
 data class TopicSessionRecord(
     val id: String,
@@ -27,6 +54,7 @@ data class TopicSessionRecord(
     val model: String? = null,
     val provider: String? = null,
     val title: String? = null,
+    val titleOrigin: TitleOrigin? = null,
 )
 
 /**

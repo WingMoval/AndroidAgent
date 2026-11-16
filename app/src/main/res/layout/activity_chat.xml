@@ -365,9 +365,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/ws_spacing_xs"
+                    android:background="?attr/selectableItemBackground"
+                    android:padding="8dp"
                     android:text="@string/ws_current_session"
                     android:textColor="@color/ws_text_primary"
                     android:textSize="@dimen/ws_text_caption" />
+
+                <Button
+                    android:id="@+id/sidebar_sessions_entry"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/ws_spacing_xs"
+                    android:minHeight="@dimen/ws_touch"
+                    android:text="@string/ws_sessions_management"
+                    android:textColor="@color/ws_text_primary" />
 
                 <Button
                     android:id="@+id/sidebar_new_session"

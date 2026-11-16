@@ -113,10 +113,12 @@ object HostActions {
     // ------------------------------------------------------------- New Session
 
     /**
-     * Start a new durable Session through the SAME [SessionHolder.newSession]
-     * the UI uses. The one-active-Run-per-Session guard is preserved.
+     * Enter a transient BLANK DRAFT through the SAME [SessionHolder.newSession]
+     * the UI uses (AG.SESSION-MANAGEMENT-UX-0). NO USER MESSAGE = NO SESSION:
+     * this does NOT create a durable row. The one-active-Run-per-Session guard
+     * is preserved (rejected while busy).
      */
-    suspend fun newSession(): Boolean {
+    fun newSession(): Boolean {
         val switched = SessionHolder.newSession()
         if (switched) {
             SessionHolder.notifyUiUpdate()
@@ -125,6 +127,49 @@ object HostActions {
             SessionHolder.notifyUiUpdate()
         }
         return switched
+    }
+
+    // ------------------------------------------------- Session Rename / Delete
+
+    /**
+     * Durably rename the CURRENT session (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * Shared entry for the Session Management UI. Metadata-only (no
+     * model/tool call). The UI disables rename for busy sessions; this also
+     * rejects blank/whitespace titles.
+     *
+     * @return [SessionRenameResult].
+     */
+    suspend fun renameSession(newTitle: String): SessionRenameResult {
+        val trimmed = newTitle.trim()
+        if (trimmed.isEmpty()) return SessionRenameResult.Rejected("title must not be blank")
+        val ok = SessionHolder.renameSession(trimmed)
+        SessionHolder.notifyUiUpdate()
+        if (!ok) {
+            SessionHolder.setRunStatus("Cannot rename the session right now.")
+            SessionHolder.notifyUiUpdate()
+        }
+        return if (ok) SessionRenameResult.Ok(trimmed) else SessionRenameResult.Rejected("rename failed")
+    }
+
+    /**
+     * Permanently delete a durable session (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * Shared entry for the Session Management UI. Delegates to
+     * [SessionHolder.deleteSession]. If the current session is deleted, the
+     * runtime enters a blank draft (no replacement row).
+     *
+     * @return [SessionDeleteResult].
+     */
+    suspend fun deleteSession(sessionId: String): SessionDeleteResult {
+        val result = SessionHolder.deleteSession(sessionId)
+        SessionHolder.notifyUiUpdate()
+        return when (result) {
+            is com.androidagent.runtime.AgentRuntime.DeleteResult.Deleted ->
+                SessionDeleteResult.Deleted(currentAfter = result.currentAfter)
+            is com.androidagent.runtime.AgentRuntime.DeleteResult.Rejected ->
+                SessionDeleteResult.Rejected(result.reason)
+        }
     }
 
     // ------------------------------------------------------------ ADB Reconnect
@@ -236,10 +281,12 @@ object HostActions {
                 SessionSummary(
                     id = rec.id,
                     title = rec.title,
+                    titleOrigin = rec.titleOrigin,
                     model = rec.model,
                     provider = rec.provider,
                     createdAt = rec.createdAt,
                     lastUsedAt = rec.lastUsedAt,
+                    messageCount = store.countMessages(rec.id),
                 )
             }
         } catch (e: Exception) {
@@ -447,16 +494,31 @@ sealed interface ProviderSwitchResult {
 data class SessionSummary(
     val id: String,
     val title: String?,
+    val titleOrigin: com.androidagent.runtime.persistence.TitleOrigin? = null,
     val model: String?,
     val provider: String?,
     val createdAt: Long,
     val lastUsedAt: Long,
+    val messageCount: Int = 0,
 )
 
 /** [HostActions.switchSession] outcome. */
 sealed interface SessionSwitchResult {
     data class Ok(val sessionId: String) : SessionSwitchResult
     data class Rejected(val reason: String) : SessionSwitchResult
+}
+
+/** [HostActions.renameSession] outcome (AG.SESSION-MANAGEMENT-UX-0). */
+sealed interface SessionRenameResult {
+    data class Ok(val newTitle: String) : SessionRenameResult
+    data class Rejected(val reason: String) : SessionRenameResult
+}
+
+/** [HostActions.deleteSession] outcome (AG.SESSION-MANAGEMENT-UX-0). */
+sealed interface SessionDeleteResult {
+    /** A session was deleted. [currentAfter] is the new current durable id (null = blank draft). */
+    data class Deleted(val currentAfter: String?) : SessionDeleteResult
+    data class Rejected(val reason: String) : SessionDeleteResult
 }
 
 /** [HostActions.switchProfile] outcome (profile-based, supports custom APIs). */

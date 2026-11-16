@@ -1,0 +1,32 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 07: Legacy Audit
+=====================================================
+
+LEGACY AUDIT FINDINGS (from real device DB):
+
+All 65 pre-existing sessions had title=NULL.
+There were NO timestamp titles in the DB.
+
+"Timestamp titles" observed in the UI were a FALLBACK:
+  s.title ?: "Session" + time formatting (UI presentation only)
+  The DB column was NULL for all legacy sessions.
+
+LEGACY_TIMESTAMP_TITLE_NORMALIZED = NOT_NEEDED
+  (No timestamp titles existed in the DB to normalize)
+
+Empty legacy sessions:
+  - 21 (later 30) empty 0-message legacy sessions existed
+  - NOT auto-deleted (conservative per section 57)
+  - Ownership not provable per-row (could be user-created)
+  - No data loss: all 69 sessions survived migration 1->2
+
+Migration 1->2:
+  - Added title_origin INTEGER column
+  - All existing rows: title_origin=NULL (treated as legacy)
+  - No data loss: 69 sessions before = 69 sessions after migration
+  - No schema corruption
+  - No message loss
+
+STOP conditions honored (section 57):
+  - No legacy session auto-deleted
+  - No user custom names at risk (all legacy titles NULL)
+  - No data loss (69 sessions survived migration)

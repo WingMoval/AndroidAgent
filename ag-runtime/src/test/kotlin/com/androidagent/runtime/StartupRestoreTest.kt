@@ -428,56 +428,63 @@ class StartupRestoreTest {
     }
 
     // ================================================================
-    // NEW-G1: READY A → newSession() → durable B, current B, A preserved
+    // NEW-G1 (reworked, AG.SESSION-MANAGEMENT-UX-0):
+    // READY A → enterBlankDraft() → NO durable row; old session A preserved.
+    // (First-message materialization is covered by the dedicated
+    //  SessionDraftMaterializationTest.)
     // ================================================================
     @Test
-    fun `NEW-G1 newSession creates new durable session and preserves old`() {
+    fun `NEW-G1 blank draft creates no durable row and preserves old session`() {
         val store = FakeTopicSessionStore()
         val runtime = makeRuntime(store, "n1")
 
         val idA = runBlocking { runtime.initialize() }
         assertEquals(1, store.createdSessionIds.size)
 
-        val switched = runBlocking { runtime.newSession() }
-        assertTrue(switched, "newSession succeeds")
-        assertEquals(2, store.createdSessionIds.size, "second session created")
-        val idB = runtime.currentSessionId!!
-        assertEquals(idB, store.createdSessionIds.last())
-        assertTrue(idB != idA, "different id")
-        // Old session A still in store (not deleted).
+        // Entering the blank draft creates NO durable row.
+        assertTrue(runtime.enterBlankDraft(), "enterBlankDraft succeeds")
+        assertEquals(1, store.createdSessionIds.size, "blank draft creates no durable row")
+        assertNull(runtime.currentSessionId, "draft has no durable id")
+
+        // Old session A still in store (not deleted, only no longer current).
         assertNotNull(runBlocking { store.loadSession(idA) }, "old session preserved")
     }
 
     // ================================================================
-    // NEW-G2: B create failure → current remains A
+    // NEW-G2 (reworked): materialization failure (store create fails) →
+    // the draft is cleared and no durable current is published.
     // ================================================================
     @Test
-    fun `NEW-G2 newSession failure preserves old current`() {
+    fun `NEW-G2 materialization failure leaves no current durable session`() {
         val store = FakeTopicSessionStore()
         val runtime = makeRuntime(store, "n2")
 
         val idA = runBlocking { runtime.initialize() }
+        runtime.enterBlankDraft()
         store.failCreate = true
 
-        val thrown = runCatching { runBlocking { runtime.newSession() } }.exceptionOrNull()
-        assertTrue(thrown is PersistenceException, "expected failure, got $thrown")
-        assertEquals(idA, runtime.currentSessionId, "old session remains current")
+        // The first message attempts materialization; createSession fails.
+        val thrown = runCatching { runBlocking { runtime.send("hello") } }.exceptionOrNull()
+        assertTrue(thrown is PersistenceException, "expected create failure, got $thrown")
+        assertNull(runtime.currentSessionId, "no durable current after failed materialization")
+        assertTrue(runtime.inBlankDraft, "draft state retained for retry")
     }
 
     // ================================================================
-    // NEW-G3: newSession never restores latest
+    // NEW-G3 (reworked): the blank draft never restores the latest
+    // session — the next durable session is a NEW creation.
     // ================================================================
     @Test
-    fun `NEW-G3 newSession always creates new (never restores latest)`() {
+    fun `NEW-G3 blank draft does not restore latest (next durable session is new)`() {
         val store = FakeTopicSessionStore()
         val runtime = makeRuntime(store, "n3")
 
-        runBlocking { runtime.initialize() } // creates s-1
-        val id = runBlocking { runtime.newSession() } // creates s-2
-        // The new session has a different id (it's a NEW creation, not a restore).
-        val newId = runtime.currentSessionId!!
-        assertEquals(2, store.createdSessionIds.size, "two creations total")
-        assertTrue(newId == store.createdSessionIds[1], "current is the newly created one")
+        val idA = runBlocking { runtime.initialize() } // creates n3-1
+        runtime.enterBlankDraft()
+        // The draft does NOT restore the latest (idA); it has no durable id.
+        assertNull(runtime.currentSessionId, "draft has no durable id (no restore)")
+        // The only durable session is still the original one.
+        assertEquals(listOf(idA), store.createdSessionIds, "no new/restore creation in draft")
     }
 
     // ================================================================

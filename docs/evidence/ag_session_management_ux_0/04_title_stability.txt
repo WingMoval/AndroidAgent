@@ -1,0 +1,22 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 04: Title Stability
+========================================================
+
+E2E: second message does NOT change the title
+
+From e2e_session.py:
+  second msg: "再检查一下这个名称有没有变化"
+  after_second_current_session = 'session-44c0f147-21ce-4d68-8963-9972463f87cd'
+  title_stable_same_session = True
+
+TITLE_STABLE_AFTER_SECOND_MESSAGE = PASS (same session id)
+
+Title auto-updates ONLY ONCE (at materialization time).
+Subsequent messages do NOT trigger a title update.
+The title_origin remains AUTO_FIRST_MESSAGE (0) until
+the user explicitly renames (which sets it to USER_RENAMED=1).
+
+Title ownership rule:
+  - AUTO_FIRST_MESSAGE: set at creation, never auto-changed
+  - USER_RENAMED: set by manual rename, wins permanently
+  - No LLM-based title generation
+  - normalizeTitle = trim + collapse whitespace only

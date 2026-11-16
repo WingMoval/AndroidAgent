@@ -54,6 +54,13 @@
             android:parentActivityName=".ChatActivity"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- AG.SESSION-MANAGEMENT-UX-0: central Session Management surface. -->
+        <activity
+            android:name=".SessionManagementActivity"
+            android:exported="false"
+            android:parentActivityName=".ChatActivity"
+            android:windowSoftInputMode="adjustResize" />
+
     </application>
 
 </manifest>

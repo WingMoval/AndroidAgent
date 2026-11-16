@@ -49,7 +49,7 @@ class HostStopStateTest {
     /** Minimal in-memory TopicSessionStore for Host Stop integration tests. */
     private class NoopStore : TopicSessionStore {
         private val sessions = mutableSetOf<String>()
-        override suspend fun createSession(id: String, nowMillis: Long, model: String?, provider: String?, title: String?): TopicSessionRecord {
+        override suspend fun createSession(id: String, nowMillis: Long, model: String?, provider: String?, title: String?, titleOrigin: com.androidagent.runtime.persistence.TitleOrigin?): TopicSessionRecord {
             sessions.add(id)
             return TopicSessionRecord(id, nowMillis, nowMillis)
         }
@@ -60,6 +60,9 @@ class HostStopStateTest {
         override suspend fun loadMessages(sessionId: String): List<com.androidagent.core.Message>? = if (sessionId in sessions) emptyList() else null
         override suspend fun updateModelProviderMetadata(sessionId: String, model: String?, provider: String?) {}
         override suspend fun listSessions(): List<TopicSessionRecord> = sessions.map { TopicSessionRecord(it, 0, 0) }
+        override suspend fun renameSession(sessionId: String, newTitle: String): TopicSessionRecord = TopicSessionRecord(sessionId, 0, 0, title = newTitle)
+        override suspend fun deleteSession(sessionId: String): Boolean = sessions.remove(sessionId)
+        override suspend fun countMessages(sessionId: String): Int = 0
     }
 
     // --------------------------------------------------------------- state machine

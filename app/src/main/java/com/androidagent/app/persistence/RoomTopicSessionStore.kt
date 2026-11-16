@@ -47,6 +47,7 @@ class RoomTopicSessionStore(
         model: String?,
         provider: String?,
         title: String?,
+        titleOrigin: com.androidagent.runtime.persistence.TitleOrigin?,
     ): TopicSessionRecord {
         val entity = TopicSessionEntity(
             id = id,
@@ -55,6 +56,7 @@ class RoomTopicSessionStore(
             model = model,
             provider = provider,
             title = title,
+            titleOrigin = titleOrigin?.ordinal,
         )
         try {
             // ON CONFLICT ABORT: a duplicate id is an explicit failure, never
@@ -199,6 +201,42 @@ class RoomTopicSessionStore(
         } catch (e: Exception) {
             throw PersistenceException(e, category = "list_sessions_failed")
         }
+
+    // ---- AG.SESSION-MANAGEMENT-UX-0: rename / delete / count ----
+
+    override suspend fun renameSession(sessionId: String, newTitle: String): TopicSessionRecord {
+        val trimmed = newTitle.trim()
+        try {
+            val updated = sessionDao.updateTitle(
+                id = sessionId,
+                title = trimmed,
+                titleOrigin = com.androidagent.runtime.persistence.TitleOrigin.USER_RENAMED.ordinal,
+            )
+            if (updated == 0) throw SessionNotFoundException(sessionId)
+            // Return the fresh record (re-read) so the caller sees the durable state.
+            return sessionDao.findById(sessionId)!!.toRecord()
+        } catch (e: SessionNotFoundException) {
+            throw e
+        } catch (e: Exception) {
+            throw PersistenceException(e, category = "rename_failed")
+        }
+    }
+
+    override suspend fun deleteSession(sessionId: String): Boolean {
+        return try {
+            // Messages are removed by the FK ON DELETE CASCADE contract.
+            sessionDao.deleteById(sessionId) > 0
+        } catch (e: Exception) {
+            throw PersistenceException(e, category = "delete_session_failed")
+        }
+    }
+
+    override suspend fun countMessages(sessionId: String): Int =
+        try {
+            sessionDao.countMessagesFor(sessionId)
+        } catch (e: Exception) {
+            throw PersistenceException(e, category = "count_messages_failed")
+        }
 }
 
 private fun TopicSessionEntity.toRecord(): TopicSessionRecord =
@@ -209,4 +247,8 @@ private fun TopicSessionEntity.toRecord(): TopicSessionRecord =
         model = model,
         provider = provider,
         title = title,
+        titleOrigin = titleOrigin?.let { idx ->
+            val values = com.androidagent.runtime.persistence.TitleOrigin.values()
+            if (idx in values.indices) values[idx] else null
+        },
     )

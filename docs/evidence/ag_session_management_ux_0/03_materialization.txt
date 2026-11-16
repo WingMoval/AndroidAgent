@@ -1,0 +1,27 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 03: First Message Materialization
+=====================================================================
+
+E2E: first non-blank UserMessage materializes durable TopicSession
+
+From e2e_session.py:
+  first msg: "帮我检查当前 Session 自动命名是否正常"
+  after_first_current_session = 'session-44c0f147-21ce-4d68-8963-9972463f87cd'
+  first_materialized = True
+  first_run_finished = True
+
+FIRST_MESSAGE_MATERIALIZES_SESSION = YES
+
+DB verification (db_verify.py):
+  session-44c0f147-21ce-4d68-8963-9972463f87cd:
+    title = '帮我检查当前 Session 自动命名是否正常' (first user msg)
+    title_origin = 0 (AUTO_FIRST_MESSAGE)
+    messages = 14
+
+Title = first user message (normalized: trim + collapse whitespace)
+TitleOrigin = AUTO_FIRST_MESSAGE (0)
+Origin set at creation time; never changed by auto-update
+
+Two-step materialization:
+  1. materializeDraft() creates durable row (title=first msg, origin=AUTO)
+  2. restoreSession(id, emptyList()) so Core's D1 commits user message
+     to the real session (avoids empty-history-UNRECOVERABLE trap)

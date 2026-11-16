@@ -57,6 +57,36 @@ interface TopicSessionDao {
      */
     @Query("SELECT * FROM topic_sessions ORDER BY last_used_at DESC, created_at DESC, id")
     suspend fun listAll(): List<TopicSessionEntity>
+
+    // ---- AG.SESSION-MANAGEMENT-UX-0: rename / delete / count ----
+
+    /**
+     * Renames a session and marks the title as user-owned (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * METADATA-ONLY: updates `title` and `title_origin` (= USER_RENAMED ordinal).
+     * Deliberately does NOT touch last_used_at (frozen rule: last_used_at changes
+     * only on a successful durable message append).
+     *
+     * @param titleOrigin the [com.androidagent.runtime.persistence.TitleOrigin] ordinal
+     *   (USER_RENAMED). Stored as a nullable Int column.
+     * @return the number of updated rows (0 when the session is missing).
+     */
+    @Query("UPDATE topic_sessions SET title = :title, title_origin = :titleOrigin WHERE id = :id")
+    suspend fun updateTitle(id: String, title: String, titleOrigin: Int?): Int
+
+    /**
+     * Permanently deletes a session row. Its messages are removed by the
+     * existing FK `ON DELETE CASCADE` contract (messages.topic_session_id ->
+     * topic_sessions.id). Ownership-scoped: only this session + its messages.
+     *
+     * @return the number of deleted rows (0 when the session is missing).
+     */
+    @Query("DELETE FROM topic_sessions WHERE id = :id")
+    suspend fun deleteById(id: String): Int
+
+    /** Durable message count for one session (read-only; no last_used_at change). */
+    @Query("SELECT COUNT(*) FROM messages WHERE topic_session_id = :id")
+    suspend fun countMessagesFor(id: String): Int
 }
 
 /**

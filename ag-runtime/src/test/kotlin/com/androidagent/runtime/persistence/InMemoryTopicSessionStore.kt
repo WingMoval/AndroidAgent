@@ -32,6 +32,7 @@ class InMemoryTopicSessionStore : TopicSessionStore {
         model: String?,
         provider: String?,
         title: String?,
+        titleOrigin: TitleOrigin?,
     ): TopicSessionRecord {
         val record = TopicSessionRecord(
             id = id,
@@ -40,6 +41,7 @@ class InMemoryTopicSessionStore : TopicSessionStore {
             model = model,
             provider = provider,
             title = title,
+            titleOrigin = titleOrigin,
         )
         sessions[id] = record
         nextSequence[id] = AtomicLong(0)
@@ -99,6 +101,26 @@ class InMemoryTopicSessionStore : TopicSessionStore {
 
     override suspend fun listSessions(): List<TopicSessionRecord> =
         sessions.values.toList().sortedByDescending { it.lastUsedAt }
+
+    override suspend fun renameSession(sessionId: String, newTitle: String): TopicSessionRecord {
+        val session = sessions[sessionId]
+            ?: throw SessionNotFoundException(sessionId)
+        val updated = session.copy(title = newTitle, titleOrigin = TitleOrigin.USER_RENAMED)
+        sessions[sessionId] = updated
+        return updated
+    }
+
+    override suspend fun deleteSession(sessionId: String): Boolean {
+        val removed = sessions.remove(sessionId)
+        if (removed == null) return false
+        // FK ON DELETE CASCADE model: the session's messages are removed with it.
+        messages.remove(sessionId)
+        nextSequence.remove(sessionId)
+        return true
+    }
+
+    override suspend fun countMessages(sessionId: String): Int =
+        if (sessions.containsKey(sessionId)) messageList(sessionId).size else 0
 
     // ---- test-only inspection (NOT part of the contract) ----
 

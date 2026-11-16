@@ -34,6 +34,10 @@ interface TopicSessionStore {
      *
      * At creation: createdAt == lastUsedAt (both = [nowMillis]).
      *
+     * [title] / [titleOrigin] are optional display metadata. At materialization
+     * (first non-blank User Message) the Runtime passes title = first message and
+     * titleOrigin = [TitleOrigin.AUTO_FIRST_MESSAGE].
+     *
      * @return the persisted session record.
      * @throws PersistenceException on storage failure.
      */
@@ -43,6 +47,7 @@ interface TopicSessionStore {
         model: String? = null,
         provider: String? = null,
         title: String? = null,
+        titleOrigin: TitleOrigin? = null,
     ): TopicSessionRecord
 
     /**
@@ -112,4 +117,51 @@ interface TopicSessionStore {
      *         Empty list if no sessions exist.
      */
     suspend fun listSessions(): List<TopicSessionRecord>
+
+    // ---- AG.SESSION-MANAGEMENT-UX-0: rename / delete / message count ----
+
+    /**
+     * Durably renames a Session (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * This is a METADATA-only operation: it updates [TopicSessionRecord.title]
+     * and sets [TopicSessionRecord.titleOrigin] to [TitleOrigin.USER_RENAMED].
+     * It NEVER touches the message history, never updates last_used_at, and
+     * never triggers a model/tool call.
+     *
+     * Title ownership rule: once a session is [TitleOrigin.USER_RENAMED], the
+     * automatic first-message title can never overwrite it again.
+     *
+     * @param newTitle the trimmed, non-blank new title.
+     * @return the updated record.
+     * @throws SessionNotFoundException if [sessionId] does not exist.
+     * @throws PersistenceException on storage failure.
+     */
+    suspend fun renameSession(sessionId: String, newTitle: String): TopicSessionRecord
+
+    /**
+     * Permanently deletes a durable TopicSession and everything it owns
+     * (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * Deletion is OWNERSHIP-SCOPED: it removes the session row and, via the
+     * existing FK `ON DELETE CASCADE` contract, its messages (including durable
+     * ToolCall/ToolResult history). It does NOT touch other sessions, provider
+     * config, API keys, AT identity, or the workspace.
+     *
+     * This is a real DELETE (not hide/archive/clear-presentation).
+     *
+     * @return true if a session was deleted, false if [sessionId] did not exist.
+     * @throws PersistenceException on storage failure.
+     */
+    suspend fun deleteSession(sessionId: String): Boolean
+
+    /**
+     * Durable message count for one session (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * Used by the Session Management surface (optional count) and by the
+     * legacy empty-session cleanup (a session is proven empty only when its
+     * count is zero). Read-only: does not update last_used_at.
+     *
+     * @return the number of durable messages, or 0 when the session is missing.
+     */
+    suspend fun countMessages(sessionId: String): Int
 }

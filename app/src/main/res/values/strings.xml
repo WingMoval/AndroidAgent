@@ -30,6 +30,25 @@
     <string name="ws_provider_configured">Configured</string>
     <string name="ws_provider_not_configured">Not configured</string>
 
+    <!-- AG.SESSION-MANAGEMENT-UX-0 -->
+    <string name="ws_sessions_management">Sessions</string>
+    <string name="sm_page_title">Sessions</string>
+    <string name="sm_back">Back</string>
+    <string name="sm_new_session">+ New Session</string>
+    <string name="sm_rename">Rename</string>
+    <string name="sm_delete">Delete</string>
+    <string name="sm_rename_title">Rename Session</string>
+    <string name="sm_save">Save</string>
+    <string name="sm_delete_confirm_title">Delete Session?</string>
+    <string name="sm_delete_confirm_msg">This permanently deletes this session and its conversation history.</string>
+    <string name="sm_delete_confirm">Delete</string>
+    <string name="sm_empty">No sessions yet. Start a new one.</string>
+    <string name="sm_current">Current</string>
+    <string name="sm_open">Open</string>
+    <string name="sm_title_hint">Session title</string>
+    <string name="sm_messages">%1$d messages</string>
+    <string name="sm_title_empty">(untitled)</string>
+
     <!-- Provider Settings Dialog -->
     <string name="ws_provider_settings_title">Provider Settings</string>
     <string name="ws_provider_label">Provider</string>

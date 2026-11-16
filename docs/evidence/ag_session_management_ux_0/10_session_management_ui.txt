@@ -1,0 +1,43 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 10: Session Management UI
+==============================================================
+
+UI Structure:
+  - Single SessionManagementActivity (mirrors AdbConnectionActivity)
+  - Reached from sidebar "Sessions" entry (sidebar_sessions_entry)
+  - Old in-place switcher dialog REMOVED from ChatActivity
+  - SESSION_MANAGEMENT_SURFACE_COUNT = 1 (single surface)
+
+Session list:
+  - Durable sessions only (last_used_at DESC)
+  - Current session highlighted ("Current" label)
+  - Each row: title, date, message count
+  - Actions per row: Open / Rename / Delete
+  - Open: disabled for current session (already there)
+  - Rename: disabled for busy sessions
+  - Delete: disabled for busy sessions
+  - "+ NEW SESSION" button at top (enterBlankDraft)
+
+On-device verification:
+  session_mgmt_activity_opened = True
+  session_list_shown = True (5 sessions visible)
+  rename_dialog_completed = True (UI flow)
+  delete_dialog_opened = True ("Delete Session?" with CANCEL/DELETE)
+
+UI strings (Chinese locale):
+  - sm_title: "Sessions"
+  - sm_new_session: "+ NEW SESSION"
+  - sm_open: "Open"
+  - sm_rename: "Rename"
+  - sm_delete: "Delete"
+  - sm_rename_title: "Rename Session"
+  - sm_rename_hint: "Session title"
+  - sm_delete_confirm_title: "Delete Session?"
+  - sm_delete_confirm_msg: "This permanently deletes this session..."
+  - sm_delete_confirm: "DELETE"
+  - ws_cancel: "CANCEL"
+  - ws_save: "SAVE"
+
+Sidebar integration:
+  - btn_open_sidebar (hamburger) -> sidebar
+  - sidebar_sessions_entry -> SessionManagementActivity
+  - sidebar_new_session -> enterBlankDraft (same canonical path)

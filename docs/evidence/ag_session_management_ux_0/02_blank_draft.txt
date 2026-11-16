@@ -1,0 +1,26 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 02: Blank Draft
+=====================================================
+
+E2E: New Session -> blank draft (non-durable, non-listed, no title)
+
+From e2e_session.py:
+  new_session_success = True
+  blank_current_session = '' (empty string = null)
+  blank_draft_current_is_null = True
+  blank_draft_transcript_count = 0
+
+BLANK_DRAFT_PERSISTED = NO (currentSessionId null after New Session)
+BLANK_DRAFT_LISTED = NO (not in session list; no DB row)
+BLANK_DRAFT_TITLE = EMPTY (currentSessionId null)
+BLANK_DRAFT_TRANSCRIPT = 0 blocks
+
+DB verification (db_verify.py):
+  - No new DB row created for the blank draft
+  - Pre-existing empty legacy sessions are NOT auto-deleted
+  - 30 empty legacy sessions exist (conservative per section 57)
+
+The blank draft is a TRANSIENT in-memory state:
+  - AgentRuntime.sessionId = null
+  - AgentRuntime.blankDraft = true
+  - Core hydrated under DRAFT_CORE_ID
+  - NO durable TopicSession row

@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +28,7 @@ import kotlinx.coroutines.withContext
  */
 @Database(
     entities = [TopicSessionEntity::class, MessageEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class TopicSessionDatabase : RoomDatabase() {
@@ -35,6 +37,25 @@ abstract class TopicSessionDatabase : RoomDatabase() {
 
     companion object {
         const val DATABASE_NAME = "topic_sessions.db"
+
+        /**
+         * AG.SESSION-MANAGEMENT-UX-0: migration 1 → 2.
+         *
+         * Adds the `title_origin` column (the durable title-ownership seam) to
+         * existing `topic_sessions` rows. Existing rows get NULL (no title yet /
+         * legacy — the legacy normalization pass, if any, runs separately and
+         * only touches sessions whose title is deterministically a legacy
+         * auto-generated value; in practice existing rows have title = NULL, so
+         * no user custom name can be overwritten). This is a pure ADD COLUMN —
+         * no data is rewritten, so existing titles (all NULL) are preserved.
+         */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE topic_sessions ADD COLUMN title_origin INTEGER",
+                )
+            }
+        }
 
         /**
          * Opens (or creates) the database for the application context.
@@ -56,6 +77,7 @@ abstract class TopicSessionDatabase : RoomDatabase() {
                 DATABASE_NAME,
             )
                 .openHelperFactory(WalOpenHelperFactory())
+                .addMigrations(MIGRATION_1_2)
                 .build()
         }
     }

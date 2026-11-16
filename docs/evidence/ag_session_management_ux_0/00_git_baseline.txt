@@ -1,0 +1,16 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 00: Git Baseline
+=====================================================
+
+Freeze tag: ag-current-capability-release-baseline-v1
+Freeze commit: 8828893 (never moves)
+
+START_HEAD: 83ce04f (task start; all changes uncommitted)
+HEAD at evidence time: 83ce04f (NO commit yet)
+
+Git status:
+  - All production code changes: UNCOMMITTED
+  - Freeze tag 8828893: INTACT (not moved)
+  - No push performed
+
+SUBAGENTS_USED = NO
+PUSH = NO

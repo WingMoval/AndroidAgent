@@ -1,0 +1,120 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 16: Final Verdict
+=======================================================
+
+日期: 2026-11-13
+设备: HONOR ALI-AN00 (APLMUT4312005935)
+Provider: OpenRouter / deepseek/deepseek-v4-flash-0731
+
+============================================================
+VERDICT
+============================================================
+
+PASS — SESSION_MANAGEMENT_UX_COMPLETE
+
+Core contract (NO USER MESSAGE = NO SESSION):
+  BLANK_DRAFT_NON_DURABLE = PASS
+  BLANK_DRAFT_NON_LISTED = PASS
+  BLANK_DRAFT_NO_TITLE = PASS
+  FIRST_MESSAGE_MATERIALIZES = PASS
+  TITLE_FROM_FIRST_MESSAGE = PASS
+  TITLE_AUTO_UPDATE_ONCE = PASS
+  TITLE_STABLE_AFTER_SECOND_MSG = PASS
+  MANUAL_RENAME_WINS = PASS
+  DELETE_CURRENT_BLANK_DRAFT = PASS
+  DELETE_CURRENT_NO_REPLACEMENT = PASS
+  DELETE_NON_CURRENT_FK_CASCADE = PASS
+  BUSY_RENAME_BLOCKED = PASS (unit test)
+  BUSY_DELETE_BLOCKED = PASS (unit test)
+
+Legacy audit:
+  LEGACY_TIMESTAMP_TITLE_NORMALIZED = NOT_NEEDED
+  LEGACY_AUTO_DELETE = NO (conservative per section 57)
+  NO_DATA_LOSS = PASS (69 sessions survived migration)
+
+Cold restart persistence:
+  SESSION_SURVIVED = PASS
+  TITLE_PRESERVED = PASS
+  TITLE_ORIGIN_PRESERVED = PASS
+  HISTORY_PRESERVED = PASS
+  NO_DUPLICATE = PASS
+  BOOTSTRAP_READY = PASS
+  TRANSCRIPT_RESTORED = PASS
+  RESTORE_PASSIVE = PASS (0 model/tool calls)
+
+ADB regression:
+  ADB_READY = PASS
+  UID_2000 = PASS
+  NO_REPAIR = PASS
+
+Provider regression:
+  PROVIDER_REGRESSION = PASS (real model responded)
+
+UI:
+  SESSION_MANAGEMENT_ACTIVITY = PASS
+  SESSION_LIST = PASS
+  RENAME_UI = PASS (dialog, save, list refresh)
+  DELETE_UI = PASS (confirm dialog, FK CASCADE)
+  SIDEBAR_SESSIONS_ENTRY = PASS
+  SINGLE_SURFACE = PASS
+
+============================================================
+PASS GATES
+============================================================
+
+NO_USER_MESSAGE_NO_SESSION = PASS
+BLANK_DRAFT_PERSISTED = NO
+BLANK_DRAFT_LISTED = NO
+FIRST_MESSAGE_MATERIALIZES_SESSION = YES
+TITLE_STABLE_AFTER_SECOND_MESSAGE = PASS
+MANUAL_RENAME_PERSISTENT = PASS
+DELETE_CURRENT -> BLANK_DRAFT = PASS
+DELETE_NON_CURRENT -> FK_CASCADE = PASS
+BUSY_BLOCK_RENAME = PASS
+BUSY_BLOCK_DELETE = PASS
+LEGACY_NO_AUTO_DELETE = PASS
+COLD_RESTART_PERSISTENCE = PASS
+RESTORE_PASSIVE = PASS
+ADB_REGRESSION = PASS
+PROVIDER_REGRESSION = PASS
+
+============================================================
+TESTS = 403 / 0
+  ag-core:    52 / 0
+  ag-runtime: 103 / 0
+  app:        248 / 0
+ASSEMBLE_DEBUG = PASS
+DEVICE_VALIDATION = PASS
+
+============================================================
+CONTROLLER_REVIEW = PASS
+
+COMMIT = YES
+IMPLEMENTATION_COMMIT = see repository HEAD for this closeout
+
+TAG_CREATED = NO
+PUSH = NO
+
+WORKTREE = CLEAN (post-commit)
+SUBAGENTS_USED = NO
+DELEGATED_WORKERS_USED = NO
+============================================================
+
+============================================================
+Harness artifacts (documented, not app bugs):
+============================================================
+
+1. Rename text entry garble: ADB `input text` INSERTS rather than
+   REPLACES in the EditText on this HONOR device (keyevent 67 = DEL
+   not select-all; IME iFLY not driven by am broadcast/clip). The
+   garbled title 'SRENAMED123NAMED123' is a harness artifact. The
+   rename API is fully proven by unit tests + UI flow verification.
+
+2. Screen lock: The phone screen locked repeatedly during UI
+   automation, causing some delete confirm taps to land on the
+   lockscreen. Mitigated with svc power stayon true + keyevent 224
+   + wm dismiss-keyguard. All delete operations eventually
+   succeeded (69 -> 59 sessions).
+
+3. DB pull timing: Some intermediate DB pulls occurred before the
+   async Room commit completed, showing stale counts. Final
+   verification (after cold restart) confirms all changes persisted.

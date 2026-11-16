@@ -65,6 +65,7 @@ class StoreMessageDurabilityTest {
             model: String?,
             provider: String?,
             title: String?,
+            titleOrigin: com.androidagent.runtime.persistence.TitleOrigin?,
         ): TopicSessionRecord {
             createCalls.add(id)
             sessions.add(id)
@@ -120,6 +121,11 @@ class StoreMessageDurabilityTest {
 
         override suspend fun listSessions(): List<TopicSessionRecord> =
             sessions.map { TopicSessionRecord(it, 0, 0) }
+
+        override suspend fun renameSession(sessionId: String, newTitle: String): TopicSessionRecord =
+            TopicSessionRecord(sessionId, 0, 0, title = newTitle)
+        override suspend fun deleteSession(sessionId: String): Boolean = sessions.remove(sessionId)
+        override suspend fun countMessages(sessionId: String): Int = 0
 
         private fun typeOf(m: com.androidagent.core.Message): String = when (m) {
             is UserMessage -> "USER"

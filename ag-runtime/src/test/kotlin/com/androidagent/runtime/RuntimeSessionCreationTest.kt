@@ -66,6 +66,7 @@ class RuntimeSessionCreationTest {
             model: String?,
             provider: String?,
             title: String?,
+            titleOrigin: com.androidagent.runtime.persistence.TitleOrigin?,
         ): com.androidagent.runtime.persistence.TopicSessionRecord {
             if (failCreate) throw PersistenceException(null, "create_failed")
             createGate.await()
@@ -91,6 +92,10 @@ class RuntimeSessionCreationTest {
         ) {}
         override suspend fun listSessions(): List<com.androidagent.runtime.persistence.TopicSessionRecord> =
             createdIds.map { com.androidagent.runtime.persistence.TopicSessionRecord(it, 0L, 0L) }
+        override suspend fun renameSession(sessionId: String, newTitle: String): com.androidagent.runtime.persistence.TopicSessionRecord =
+            com.androidagent.runtime.persistence.TopicSessionRecord(sessionId, 0L, 0L, title = newTitle, titleOrigin = com.androidagent.runtime.persistence.TitleOrigin.USER_RENAMED)
+        override suspend fun deleteSession(sessionId: String): Boolean = createdIds.remove(sessionId)
+        override suspend fun countMessages(sessionId: String): Int = 0
     }
 
     private fun makeRuntime(
@@ -222,21 +227,23 @@ class RuntimeSessionCreationTest {
     }
 
     // ================================================================
-    // newSession() durably creates a new session
+    // enterBlankDraft() does NOT durably create a session
+    // (AG.SESSION-MANAGEMENT-UX-0: NO USER MESSAGE = NO SESSION)
     // ================================================================
     @Test
-    fun `newSession durably creates a new session`() {
+    fun `enterBlankDraft does not create a durable session`() {
         val store = FakeTopicSessionStore()
         val runtime = makeRuntime(store, "ns")
 
         val firstId = runBlocking { runtime.initialize() }
         assertEquals(1, store.createdSessionIds.size)
 
-        val switched = runBlocking { runtime.newSession() }
-        assertTrue(switched, "newSession must succeed when not busy")
-        assertEquals(2, store.createdSessionIds.size, "store.createSession called for new session")
-        val secondId = runtime.currentSessionId!!
-        assertEquals(secondId, store.createdSessionIds.last())
-        assertTrue(secondId != firstId, "new session must have a different id")
+        // Entering a blank draft must NOT create a durable row.
+        val entered = runtime.enterBlankDraft()
+        assertTrue(entered, "enterBlankDraft must succeed when not busy")
+        assertEquals(1, store.createdSessionIds.size, "blank draft must NOT create a durable row")
+        assertNull(runtime.currentSessionId, "blank draft has no current durable session")
+        assertTrue(runtime.inBlankDraft, "runtime must be in blank draft")
+        assertEquals(firstId, store.createdSessionIds.single(), "original session preserved")
     }
 }

@@ -18,9 +18,15 @@ import androidx.room.PrimaryKey
  * topic_sessions + messages. No runs / tool_calls / events / checkpoints.
  *
  * Column names are pinned to the frozen SSOT snake_case shape
- * (id / created_at / last_used_at / model / provider / title) via
- * [androidx.room.ColumnInfo] so the physical schema matches the
+ * (id / created_at / last_used_at / model / provider / title / title_origin)
+ * via [androidx.room.ColumnInfo] so the physical schema matches the
  * architecture contract exactly.
+ *
+ * AG.SESSION-MANAGEMENT-UX-0: [titleOrigin] (column `title_origin`) is the
+ * durable title-ownership seam. It stores the [com.androidagent.runtime.persistence.TitleOrigin]
+ * ordinal (null = no title yet). A Room [Migration] 1→2 adds the column for
+ * existing databases; the enum is serialized by ordinal so it is stable
+ * across the migration boundary.
  */
 @Entity(
     tableName = "topic_sessions",
@@ -33,6 +39,7 @@ data class TopicSessionEntity(
     @ColumnInfo(name = "model") val model: String? = null,
     @ColumnInfo(name = "provider") val provider: String? = null,
     @ColumnInfo(name = "title") val title: String? = null,
+    @ColumnInfo(name = "title_origin") val titleOrigin: Int? = null,
 )
 
 /**

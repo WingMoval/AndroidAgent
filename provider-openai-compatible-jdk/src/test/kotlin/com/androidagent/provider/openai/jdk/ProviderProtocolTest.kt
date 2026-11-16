@@ -487,7 +487,7 @@ class ProviderProtocolTest {
                 }
                 val l2Store = object : TopicSessionStore {
                     private val sessions = mutableSetOf<String>()
-                    override suspend fun createSession(id: String, nowMillis: Long, model: String?, provider: String?, title: String?): TopicSessionRecord {
+                    override suspend fun createSession(id: String, nowMillis: Long, model: String?, provider: String?, title: String?, titleOrigin: com.androidagent.runtime.persistence.TitleOrigin?): TopicSessionRecord {
                         sessions.add(id); return TopicSessionRecord(id, nowMillis, nowMillis)
                     }
                     override suspend fun appendMessage(sessionId: String, message: Message, nowMillis: Long): MessageRecord =
@@ -497,6 +497,9 @@ class ProviderProtocolTest {
                     override suspend fun loadMessages(sessionId: String): List<Message>? = if (sessionId in sessions) emptyList() else null
                     override suspend fun updateModelProviderMetadata(sessionId: String, model: String?, provider: String?) {}
                     override suspend fun listSessions(): List<TopicSessionRecord> = sessions.map { TopicSessionRecord(it, 0, 0) }
+                    override suspend fun renameSession(sessionId: String, newTitle: String): TopicSessionRecord = TopicSessionRecord(sessionId, 0, 0, title = newTitle)
+                    override suspend fun deleteSession(sessionId: String): Boolean = sessions.remove(sessionId)
+                    override suspend fun countMessages(sessionId: String): Int = 0
                 }
                 val runtime = com.androidagent.runtime.AgentRuntime(
                     agentCore = com.androidagent.core.AgentCore(provider, com.androidagent.core.ToolRegistry(), MessageDurability.Noop),

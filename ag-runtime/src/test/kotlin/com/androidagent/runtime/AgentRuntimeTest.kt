@@ -14,6 +14,8 @@ import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CancellationException as JCancellationException
@@ -83,11 +85,17 @@ class AgentRuntimeTest {
         runtime.send("first")
         val oldId = runtime.currentSessionId
 
-        assertTrue(runtime.newSession())
+        // AG.SESSION-MANAGEMENT-UX-0: "New Session" now enters a transient blank
+        // draft (NO durable row). The new durable session is materialized on the
+        // first non-blank message ("second"), so its history is fresh.
+        assertTrue(runtime.enterBlankDraft())
         val newId = runtime.currentSessionId
-        assertNotEquals(oldId, newId)
+        assertNull(newId, "blank draft has no durable session id yet")
 
         runtime.send("second")
+        val materializedId = runtime.currentSessionId
+        assertNotNull(materializedId, "first message materialized a durable session")
+        assertNotEquals(oldId, materializedId)
 
         // The second Run's history must NOT contain the first Session's messages.
         val secondHistory = historyTexts(provider.requests[1])
@@ -131,8 +139,9 @@ class AgentRuntimeTest {
         val first = async(Dispatchers.Default) { runtime.send("A") }
         withTimeout(10_000) { while (!runtime.isBusy) delay(10) }
 
-        assertFalse(runtime.newSession(), "newSession must be rejected while busy")
+        assertFalse(runtime.enterBlankDraft(), "enterBlankDraft must be rejected while busy")
         assertEquals(sessionId, runtime.currentSessionId)
+        assertFalse(runtime.inBlankDraft, "rejected draft must not change draft state")
 
         gate.complete(Unit)
         assertEquals(RunOutcome.Answer("done"), first.await())

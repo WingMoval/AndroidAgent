@@ -1,0 +1,30 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 06: Delete E2E
+===================================================
+
+UI Flow: SessionManagementActivity -> Delete button -> confirm dialog -> DELETE
+
+On-device result:
+  - SessionManagementActivity opened: PASS
+  - Delete button found on session rows: PASS
+  - Delete confirm dialog opened ("Delete Session?"): PASS
+  - DELETE confirm tapped: PASS (dialog closed)
+  - Sessions removed from DB: PASS
+
+DB verification:
+  - Before: total=69 sessions
+  - After: total=59 sessions (10 sessions deleted over multiple test runs)
+  - Non-current sessions deleted: PASS (row removed, FK CASCADE cleaned messages)
+  - Current session delete -> blank draft: PASS (see Evidence 08)
+
+DELETE_NON_CURRENT_PERSISTED = YES
+DELETE_FK_CASCADE = PASS (messages removed with session)
+DELETE_BUSY_BLOCKED = PASS (unit test: delete rejected when isBusy=true)
+
+Unit test coverage (delete):
+  - deleteSession removes the session row + messages (FK CASCADE)
+  - deleteSession returns DeleteResult.Deleted(currentAfter)
+  - deleteSession rejected when busy (isBusy=true)
+  - deleteSession rejected when session not found
+  - delete current session -> blank draft (sessionId=null, blankDraft=true)
+  - delete non-current session -> current session unchanged
+  - no replacement row created on current delete

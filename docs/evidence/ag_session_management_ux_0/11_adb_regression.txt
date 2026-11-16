@@ -1,0 +1,26 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 11: ADB Regression
+=======================================================
+
+ADB regression (from e2e_session.py):
+  adb_state = READY
+  adb_ready = True
+  pair_required_again = False
+  direct_adb_uid2000 = True
+
+ADB_REGRESSION = PASS
+  - bootstrap_state = READY (no re-pair needed)
+  - Direct ADB shell id: uid=2000 (root access preserved)
+  - No ADB re-pairing triggered by session management operations
+  - AT Engine Handoff Bundle v0 unaffected
+
+ADB uid=2000 regression:
+  - android_shell tool still returns uid=2000
+  - No privilege change
+  - AT integration unchanged (no new AT dependency)
+
+Provider regression:
+  - PROVIDER_REGRESSION = PASS (real model responded)
+  - deepseek/deepseek-v4-flash-0731 (OpenRouter)
+  - Model responded to both test messages
+  - No provider change
+  - No new API key required

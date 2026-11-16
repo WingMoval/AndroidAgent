@@ -104,6 +104,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var providerSettingsEntry: View
     private lateinit var providerStatusLabel: TextView
     private lateinit var currentSessionLabel: TextView
+    private lateinit var sessionsEntry: View
 
     private var root: ChatCompositionRoot? = null
     private var runtime: AgentRuntime? = null
@@ -152,6 +153,7 @@ class ChatActivity : AppCompatActivity() {
         providerSettingsEntry = findViewById(R.id.sidebar_provider_settings)
         providerStatusLabel = findViewById(R.id.sidebar_provider_status)
         currentSessionLabel = findViewById(R.id.sidebar_current_session)
+        sessionsEntry = findViewById(R.id.sidebar_sessions_entry)
 
         // ---- Composer actions
         send.setOnClickListener { onSend() }
@@ -169,7 +171,11 @@ class ChatActivity : AppCompatActivity() {
             startActivity(Intent(this, AdbConnectionActivity::class.java))
         }
         providerSettingsEntry.setOnClickListener { showProviderSettings() }
-        currentSessionLabel.setOnClickListener { showSessionSwitcher() }
+        currentSessionLabel.setOnClickListener { openSessionManagement() }
+        sessionsEntry.setOnClickListener {
+            closeSidebar()
+            openSessionManagement()
+        }
 
         // ---- AG.UI-TRANSCRIPT-CARDS-1: RecyclerView card renderer
         cardAdapter = TranscriptCardAdapter(
@@ -815,54 +821,14 @@ class ChatActivity : AppCompatActivity() {
         providerStatusLabel.text = "$activeName · $configured"
     }
 
-    // ------------------------------------------------------------- Session Browser
+    // ------------------------------------------------------------- Session
 
     /**
-     * AG.UI-TRANSCRIPT-CARDS-1: Shows a dialog to switch between historical sessions.
-     * The current session is highlighted. Clicking a session calls
-     * HostActions.switchSession (shared entry with Debug).
+     * AG.SESSION-MANAGEMENT-UX-0: session switching/management now lives in the
+     * central [SessionManagementActivity] (SESSION_MANAGEMENT_SURFACE_COUNT = 1).
+     * The previous in-place switcher dialog was removed so the sidebar is a
+     * concise navigation entry only.
      */
-    private fun showSessionSwitcher() {
-        lifecycleScope.launch {
-            val sessions = HostActions.listSessions()
-            val currentId = SessionHolder.runtime?.currentSessionId
-            val labels = sessions.map { s ->
-                val title = s.title ?: "Session"
-                val time = formatSessionTime(s.lastUsedAt)
-                val marker = if (s.id == currentId) "● " else "  "
-                "$marker$title · $time"
-            }
-            val currentIdx = sessions.indexOfFirst { it.id == currentId }.coerceAtLeast(0)
-
-            runOnUiThread {
-                AlertDialog.Builder(this@ChatActivity)
-                    .setTitle("Sessions")
-                    .setSingleChoiceItems(labels.toTypedArray(), currentIdx) { dialog, which ->
-                        val selected = sessions[which]
-                        dialog.dismiss()
-                        if (selected.id != currentId) {
-                            lifecycleScope.launch {
-                                val result = HostActions.switchSession(selected.id)
-                                when (result) {
-                                    is SessionSwitchResult.Ok -> {
-                                        transcriptModel = SessionHolder.transcriptModel
-                                        autoFollow = true
-                                        renderTranscript()
-                                        renderStatus()
-                                    }
-                                    is SessionSwitchResult.Rejected -> {
-                                        updateRunStatus(result.reason)
-                                        renderStatus()
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .setNegativeButton(R.string.ws_cancel, null)
-                    .show()
-            }
-        }
-    }
 
     private fun formatSessionTime(millis: Long): String {
         return try {
@@ -876,20 +842,23 @@ class ChatActivity : AppCompatActivity() {
     // ------------------------------------------------------------- Session
 
     private fun onNewSession() {
-        lifecycleScope.launch {
-            val switched = HostActions.newSession()
-            if (switched) {
-                transcriptModel = SessionHolder.transcriptModel
-                autoFollow = true
-                runStatusText = SessionHolder.runStatusText
-                renderTranscript()
-                renderStatus()
-                refreshSessionList()
-            } else {
-                runStatusText = SessionHolder.runStatusText
-                renderStatus()
-            }
+        // AG.SESSION-MANAGEMENT-UX-0: New Session enters a transient blank draft
+        // (NO durable row). The UI update flows through the onUiUpdate callback
+        // (renderTranscript/renderStatus), so this is a direct call.
+        val switched = HostActions.newSession()
+        if (switched) {
+            autoFollow = true
+            refreshSessionList()
         }
+    }
+
+    /**
+     * Opens the central Session Management surface (AG.SESSION-MANAGEMENT-UX-0).
+     * This is the SINGLE management surface (SESSION_MANAGEMENT_SURFACE_COUNT =
+     * 1). The old in-place switcher dialog is removed in favour of this Activity.
+     */
+    private fun openSessionManagement() {
+        startActivity(Intent(this, SessionManagementActivity::class.java))
     }
 
     /** Refreshes the session list in the sidebar (AG.UI-TRANSCRIPT-CARDS-1). */

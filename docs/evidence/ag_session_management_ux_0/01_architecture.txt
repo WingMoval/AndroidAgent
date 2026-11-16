@@ -1,0 +1,53 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 01: Architecture
+=====================================================
+
+Core contract: NO USER MESSAGE = NO SESSION
+
+Architecture:
+  - AgentRuntime.enterBlankDraft() (non-suspend) replaces old newSession()
+  - Draft hydrates Core under placeholder DRAFT_CORE_ID="__blank_draft__"
+  - sessionId=null, blankDraft=true
+  - send() materializes: materializeDraft() creates durable row
+    (title=normalized first msg, origin=AUTO_FIRST_MESSAGE)
+    then restoreSession(id, emptyList()) so Core's D1 commits the
+    user message to the real session (two-step ordering avoids the
+    empty-history-UNRECOVERABLE trap)
+
+Verified Core durability ordering:
+  messageDurability.commit(session.id, userMsg) happens BEFORE
+  modelProvider.complete (AgentCore.kt ~L349-356)
+
+Title ownership:
+  - New TitleOrigin enum (AUTO_FIRST_MESSAGE=0, USER_RENAMED=1)
+  - New title_origin INTEGER column (Room migration 1->2)
+  - MIGRATION_1_2 in TopicSessionDatabase.kt
+  - normalizeTitle = trim + collapse whitespace (no LLM)
+
+Store contract additions:
+  - renameSession (sets USER_RENAMED)
+  - deleteSession (FK cascade)
+  - countMessages
+  - createSession gained titleOrigin param
+
+AgentRuntime additions:
+  - enterBlankDraft()
+  - materializeDraft()
+  - renameCurrentSession()
+  - deleteSession() returns DeleteResult.Deleted/Rejected
+  - DeleteResult sealed interface
+
+UI:
+  - New SessionManagementActivity (single management surface)
+  - Sidebar "Sessions" entry (sidebar_sessions_entry)
+  - Old showSessionSwitcher dialog removed from ChatActivity
+  - SessionSummary gained titleOrigin + messageCount
+
+Files changed:
+  ag-runtime: AgentRuntime.kt, TopicSessionStore.kt, Records.kt
+  app: SessionManagementActivity.kt, activity_session_management.xml,
+       SessionHolder.kt, HostActions.kt, ChatActivity.kt,
+       TopicSessionDatabase.kt, Entities.kt, Daos.kt,
+       RoomTopicSessionStore.kt, strings.xml, AndroidManifest.xml
+  Tests: SessionLifecycleManagementTest.kt, TestSupport.kt,
+         InMemoryTopicSessionStore, FakeTopicSessionStore, GatingStore,
+         ProviderProtocolTest, StoreMessageDurabilityTest, HostStopStateTest

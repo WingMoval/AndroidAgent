@@ -1,0 +1,35 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 09: Cold Restart Persistence
+================================================================
+
+E2E: force-stop -> relaunch -> session + history restored
+
+From cold_restart.py:
+  BEFORE: total=59 title='帮我检查当前 SRENAMED123NAMED123sion...' origin=1 msgs=28
+  force_stop_pid_empty = True (PID cleared)
+  relaunch_pid = 25810 (new process)
+  relaunch_ok = True
+
+AFTER COLD RESTART:
+  bootstrap_state = READY
+  currentSessionId = session-44c0f147-21ce-4d68-8963-9972463f87cd (restored)
+  transcriptBlockCount = 40 (transcript restored)
+  total = 59 (no duplicate, no loss)
+  title = '帮我检查当前 SRENAMED123NAMED123sion...' (preserved)
+  title_origin = 1 (USER_RENAMED, preserved)
+  msgs = 28 (history preserved)
+
+COLD_RESTART_PERSISTENCE:
+  SESSION_SURVIVED = True
+  TITLE_PRESERVED = True
+  TITLE_ORIGIN_PRESERVED = True
+  HISTORY_PRESERVED = True (28 msgs before = 28 msgs after)
+  NO_DUPLICATE_SESSION = True (59 before = 59 after)
+  BOOTSTRAP_READY = True (ADB re-paired automatically)
+  TRANSCRIPT_RESTORED = True (40 blocks re-projected)
+
+RESTORE = PASSIVE (0 model calls, 0 tool calls on restore):
+  - Restore is DB -> Runtime/Core -> Presentation (single pipeline)
+  - No second UI->DB path
+  - No model inference on restore
+  - No tool execution on restore
+  - TranscriptModel re-projects from durable history

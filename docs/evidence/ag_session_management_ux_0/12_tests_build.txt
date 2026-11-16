@@ -1,0 +1,39 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 12: Tests & Build
+=======================================================
+
+Test counts (from actual JUnit XML execution):
+  ag-core:    tests=52   failures=0
+  ag-runtime: tests=103  failures=0
+  app:        tests=248  failures=0
+  TOTAL:      tests=403  failures=0
+
+BUILD:
+  :ag-core:test              PASS
+  :ag-runtime:test           PASS
+  :app:testDebugUnitTest     PASS
+  :app:assembleDebug         PASS (BUILD SUCCESSFUL)
+
+New tests (SessionLifecycleManagementTest: 15 tests):
+  - T1: enterBlankDraft -> sessionId=null, blankDraft=true
+  - T2: enterBlankDraft does NOT create a durable row
+  - T3: first message materializes durable session
+  - T4: materialized title = first user message (normalized)
+  - T5: materialized title_origin = AUTO_FIRST_MESSAGE
+  - T6: second message does NOT change title
+  - T7: renameCurrentSession sets title + title_origin=USER_RENAMED
+  - T8: rename is durable (survives restore)
+  - T9: manual rename wins permanently (no auto-override)
+  - T10: rename rejected when busy
+  - T11: rename rejected when no current session
+  - T12: deleteSession removes session + messages (FK CASCADE)
+  - T13: delete current -> blank draft (sessionId=null, no replacement)
+  - T14: delete non-current -> current unchanged
+  - T15: delete rejected when busy
+
+Test fakes updated:
+  - InMemoryTopicSessionStore (titleOrigin, rename, delete, countMessages)
+  - FakeTopicSessionStore (same)
+  - GatingStore (same)
+  - ProviderProtocolTest inline store (same)
+  - StoreMessageDurabilityTest ScriptedStore (same)
+  - HostStopStateTest NoopStore (same)

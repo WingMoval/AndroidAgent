@@ -11,6 +11,7 @@ import com.androidagent.core.ToolCall
 import com.androidagent.core.ToolResultMessage
 import com.androidagent.runtime.persistence.MessageDecodeException
 import com.androidagent.runtime.persistence.PersistenceException
+import com.androidagent.runtime.persistence.TitleOrigin
 import com.androidagent.runtime.persistence.TopicSessionStore
 import com.androidagent.runtime.persistence.UnrecoverableSessionHistoryException
 import java.util.UUID
@@ -56,8 +57,17 @@ import kotlinx.coroutines.withContext
  *    return the same session id without re-loading/re-creating/re-repairing.
  *  - Concurrent [initialize] calls are single-flight (Mutex): one startup
  *    lifecycle, one restore/create, one repair sequence.
- *  - [newSession] always creates a brand-new durable TopicSession (never
- *    restores the latest). If creation fails, the old session remains current.
+ *
+ * Transient blank draft (AG.SESSION-MANAGEMENT-UX-0):
+ *  - [enterBlankDraft] does NOT create a durable row. It only clears the live
+ *    Core Session to an empty, untitled draft. NO USER MESSAGE = NO SESSION:
+ *    a blank draft is not durable, not listed, and has no title.
+ *  - The durable TopicSession is MATERIALIZED lazily on the FIRST non-blank
+ *    User Message: [send] creates the durable row (title = first message,
+ *    origin = AUTO_FIRST_MESSAGE), persists the first message, then hydrates
+ *    Core and runs. Materialization does NOT depend on model success.
+ *  - The automatic title runs ONCE (at materialization). Later messages never
+ *    change it. A manual rename (USER_RENAMED) wins permanently.
  */
 class AgentRuntime(
     private val agentCore: AgentCore,
@@ -111,8 +121,29 @@ class AgentRuntime(
     @Volatile
     private var sessionId: String? = null
 
+    /**
+     * Transient blank-draft flag (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * When true, the live Core Session is an empty, untitled draft that has NOT
+     * been durably committed. [sessionId] is null. The draft is NOT durable,
+     * NOT listed, and has no title. The durable TopicSession is created lazily
+     * by [send] on the first non-blank User Message (see [materializeDraft]).
+     *
+     * This is a pure runtime/UI state flag — it is never persisted. A process
+     * restart discards it (RESTORE_EMPTY_DRAFT = NO).
+     */
+    @Volatile
+    private var blankDraft: Boolean = false
+
     /** Identifier of the current Session, or null when no durable session exists yet. */
     val currentSessionId: String? get() = sessionId
+
+    /**
+     * True when the host is in a transient blank draft (no current durable
+     * session). The durable TopicSession does not exist yet; it is created on
+     * the first non-blank User Message. (AG.SESSION-MANAGEMENT-UX-0)
+     */
+    val inBlankDraft: Boolean get() = blankDraft
 
     /**
      * Read-only, host-neutral seam to the current Session's restored/ live
@@ -384,35 +415,161 @@ class AgentRuntime(
         }
     }
 
-    // ---- Phase G: newSession ----
+    // ---- AG.SESSION-MANAGEMENT-UX-0: transient blank draft ----
 
     /**
-     * Switches to a brand-new durable Session (user "New Session").
+     * Enters a transient BLANK DRAFT (user "New Session").
      *
-     * ALWAYS creates a new durable TopicSession (never restores the latest).
-     * The previous session stays intact — it is never deleted, only no longer
-     * current.
+     * NO USER MESSAGE = NO SESSION. This does NOT create a durable TopicSession
+     * row. It only:
+     *  1. Clears the live Core Session to an empty, untitled draft
+     *     ([AgentCore.restoreSession] with an empty list — a hydration, not a
+     *     durability write), and
+     *  2. Marks the runtime in [blankDraft] (sessionId stays null).
      *
-     * If the new session creation fails, the OLD session remains current
-     * (SESSION_ROW_EXISTS_BEFORE_CURRENT: the old row is still valid).
+     * The previous durable session is PRESERVED (not deleted, only no longer
+     * current). The draft is not durable, not listed, and has no title.
+     * Repeated calls are idempotent and never create DB rows
+     * (REPEATED_EMPTY_NEW_SESSION_CREATES_DB_ROWS = NO).
      *
-     * Rejected while a Run is active.
+     * The durable TopicSession is created LAZILY by [send] on the first
+     * non-blank User Message ([materializeDraft]).
      *
-     * @return true if switched, false if rejected because busy.
-     * @throws PersistenceException if the store fails to create the new session.
+     * Rejected while a Run is active (no half-switch mid-Run).
+     *
+     * @return true if the draft was entered, false if rejected because busy.
      */
-    suspend fun newSession(): Boolean {
+    fun enterBlankDraft(): Boolean {
         if (isBusy) return false
-        if (startupState != StartupState.READY) {
-            // Must be READY before switching (no session to switch from).
-            // Initialize first (create-or-restore), then create the new one.
-            initialize()
-        }
-        // Durable create BEFORE switching (old remains current until success).
-        val newId = createNewDurableSession()
-        // Switch current: old session preserved in store + Core.
-        sessionId = newId
+        if (startupState != StartupState.READY) return false
+        // Clear the live Core Session to an empty untitled draft (no DB write).
+        // A DRAFT id is used for the Core Session; it is never committed as a
+        // durable row. If the user sends a first message, [materializeDraft]
+        // creates the real durable id and re-hydrates Core under it.
+        agentCore.restoreSession(DRAFT_CORE_ID, emptyList())
+        sessionId = null
+        blankDraft = true
         return true
+    }
+
+    /**
+     * The placeholder id used to hydrate the live Core Session while in a
+     * transient blank draft. It is NEVER a durable TopicSession id and is never
+     * written to the store.
+     */
+    private companion object {
+        const val DRAFT_CORE_ID = "__blank_draft__"
+    }
+
+    /**
+     * Lazily materializes the durable TopicSession on the FIRST non-blank User
+     * Message (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * Ordering (frozen, two-step, model-success-independent):
+     *  1. [TopicSessionStore.createSession] with title = first message,
+     *     titleOrigin = AUTO_FIRST_MESSAGE (durable row committed).
+     *  2. [AgentCore.restoreSession] under the REAL durable id with the empty
+     *     history — this re-hydrates Core so the Run's durability gate persists
+     *     the first User Message to the REAL session (the user message is
+     *     committed by AG Core BEFORE the model call, so a model failure still
+     *     leaves Session + UserMessage + title).
+     *
+     * The two steps are ordered so that Core can NEVER be hydrated with an
+     * EMPTY history while the durable row has messages (that combination is
+     * classified UNRECOVERABLE). At this point the row has zero messages, so
+     * step 2 is always safe.
+     *
+     * @return the new durable session id.
+     * @throws PersistenceException if the store fails to create the session
+     *   (the draft is then cleared so the next send retries).
+     */
+    private suspend fun materializeDraft(firstUserMessage: String): String {
+        val id = sessionIdFactory()
+        val title = normalizeTitle(firstUserMessage)
+        topicSessionStore.createSession(
+            id = id,
+            nowMillis = nowMillis(),
+            title = title,
+            titleOrigin = TitleOrigin.AUTO_FIRST_MESSAGE,
+        )
+        // Re-hydrate Core under the real durable id (empty history — the row
+        // has no messages yet). The Run then appends the first User Message to
+        // this session via the durability gate.
+        agentCore.restoreSession(id, emptyList())
+        sessionId = id
+        blankDraft = false
+        return id
+    }
+
+    /**
+     * Deterministic title normalization (AG.SESSION-MANAGEMENT-UX-0): trim
+     * leading/trailing whitespace and collapse internal line breaks to single
+     * spaces. NO LLM, NO AI summary, NO regeneration. The UI ellipsizes long
+     * titles visually; the durable title is never truncated by UI width.
+     */
+    private fun normalizeTitle(raw: String): String =
+        raw.trim().replace(Regex("\\s+"), " ")
+
+    /**
+     * Durably renames the CURRENT session (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * Metadata-only: updates the title + origin (USER_RENAMED) in the durable
+     * store. It does NOT touch the message history, last_used_at, Core, or
+     * trigger any model/tool call.
+     *
+     * Rejected when not in a durable session (blank draft / no session) or
+     * while a Run is active (the Host also disables this in the UI).
+     *
+     * @return true if renamed, false if rejected (no current session / busy).
+     * @throws SessionNotFoundException / PersistenceException on store failure.
+     */
+    suspend fun renameCurrentSession(newTitle: String): Boolean {
+        if (isBusy) return false
+        val currentId = sessionId ?: return false
+        topicSessionStore.renameSession(currentId, newTitle)
+        return true
+    }
+
+    /**
+     * Permanently deletes a durable TopicSession and everything it owns
+     * (AG.SESSION-MANAGEMENT-UX-0).
+     *
+     * Ownership-scoped: removes the session row + its messages via the FK
+     * ON DELETE CASCADE contract. It does NOT touch other sessions, provider
+     * config, API keys, AT identity, or the workspace.
+     *
+     * If the deleted session is the CURRENT one, the runtime enters a transient
+     * blank draft (DELETE_CURRENT -> BLANK DRAFT). No replacement durable row is
+     * created (DELETE_CURRENT_CREATES_DURABLE_REPLACEMENT = NO).
+     *
+     * Rejected while a Run is active (DELETE_DOES_NOT_IMPLICITLY_INTERRUPT_RUN
+     * = YES; the Host also disables delete for busy sessions).
+     *
+     * @return [DeleteResult.Deleted] with the new current id (null if a blank
+     *   draft was entered), or [DeleteResult.Rejected].
+     */
+    suspend fun deleteSession(sessionId: String): DeleteResult {
+        if (isBusy) return DeleteResult.Rejected("busy")
+        val existed = topicSessionStore.deleteSession(sessionId)
+        if (!existed) return DeleteResult.Rejected("session not found")
+        if (this.sessionId == sessionId) {
+            // Deleted the current session: enter a transient blank draft.
+            // Reuse the draft hydration (no durable row is created).
+            agentCore.restoreSession(DRAFT_CORE_ID, emptyList())
+            this.sessionId = null
+            blankDraft = true
+            return DeleteResult.Deleted(currentAfter = null)
+        }
+        // Deleted a non-current session: the current session is unchanged.
+        return DeleteResult.Deleted(currentAfter = this.sessionId)
+    }
+
+    /** Outcome of [AgentRuntime.deleteSession]. */
+    sealed interface DeleteResult {
+        /** A session was deleted. [currentAfter] is the new current durable id (null = blank draft). */
+        data class Deleted(val currentAfter: String?) : DeleteResult
+        /** The delete was rejected (busy or session not found). */
+        data class Rejected(val reason: String) : DeleteResult
     }
 
     // ---- AG.UI-TRANSCRIPT-CARDS-1: Session switching (additive) ----
@@ -458,6 +615,17 @@ class AgentRuntime(
      * rejected with [RunFailure.SessionBusy] — no D1, no model call.
      */
     suspend fun send(userInput: String): RunOutcome {
+        // AG.SESSION-MANAGEMENT-UX-0: materialize the transient blank draft on
+        // the first non-blank User Message. The durable TopicSession (title =
+        // first message, origin = AUTO_FIRST_MESSAGE) is created BEFORE the run
+        // proceeds, and does NOT depend on model success.
+        if (blankDraft) {
+            if (userInput.isBlank()) {
+                // A blank send in a draft is a no-op (no session is created).
+                return RunOutcome.Failure(RunFailure.SessionBusy("no-session"))
+            }
+            materializeDraft(userInput)
+        }
         val currentId = sessionId
             ?: return RunOutcome.Failure(RunFailure.SessionBusy("no-session"))
         if (!runActive.compareAndSet(false, true)) {

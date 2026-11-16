@@ -1,0 +1,40 @@
+AG.SESSION-MANAGEMENT-UX-0 — Evidence 13: DB Schema Migration
+============================================================
+
+Room migration 1 -> 2:
+  - Added title_origin INTEGER column to topic_sessions
+  - MIGRATION_1_2 in TopicSessionDatabase.kt
+  - All existing rows: title_origin=NULL (treated as legacy)
+  - No data loss: 69 sessions before = 69 sessions after
+  - No message loss
+  - No schema corruption
+
+Schema v2:
+  topic_sessions:
+    id TEXT PRIMARY KEY
+    title TEXT (nullable)
+    title_origin INTEGER (nullable; 0=AUTO_FIRST_MESSAGE, 1=USER_RENAMED)
+    created_at INTEGER
+    last_used_at INTEGER
+  messages:
+    id TEXT PRIMARY KEY
+    topic_session_id TEXT (FK -> topic_sessions.id, ON DELETE CASCADE)
+    type TEXT
+    payload_json TEXT
+    sequence INTEGER
+    created_at INTEGER
+
+FK CASCADE:
+  - messages.topic_session_id ON DELETE CASCADE
+  - Deleting a session removes its messages automatically
+  - Verified: delete non-current session -> messages removed
+
+TopicSessionRecord:
+  - Added titleOrigin field (TitleOrigin enum)
+  - TitleOrigin: AUTO_FIRST_MESSAGE=0, USER_RENAMED=1
+
+RoomTopicSessionStore:
+  - createSession gained titleOrigin param
+  - renameSession: updates title + sets title_origin=USER_RENAMED
+  - deleteSession: deletes row (FK CASCADE handles messages)
+  - countMessages: returns message count for a session

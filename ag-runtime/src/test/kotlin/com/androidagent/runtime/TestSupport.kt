@@ -106,12 +106,13 @@ internal class FakeTopicSessionStore(
         model: String?,
         provider: String?,
         title: String?,
+        titleOrigin: com.androidagent.runtime.persistence.TitleOrigin?,
     ): TopicSessionRecord {
         if (failCreate) throw com.androidagent.runtime.persistence.PersistenceException(null, "create_failed")
         createdSessionIds.add(id)
         sessionOrder.add(id)
         sessionMessages[id] = mutableListOf()
-        val record = TopicSessionRecord(id, nowMillis, nowMillis)
+        val record = TopicSessionRecord(id, nowMillis, nowMillis, title = title, titleOrigin = titleOrigin)
         sessionRecords[id] = record
         return record
     }
@@ -165,11 +166,47 @@ internal class FakeTopicSessionStore(
     }
 
     override suspend fun listSessions(): List<TopicSessionRecord> =
-        sessionMessages.keys.map { TopicSessionRecord(it, 0L, 0L) }
+        sessionOrder.map { sessionRecords[it] }.filterNotNull()
+
+    override suspend fun renameSession(sessionId: String, newTitle: String): TopicSessionRecord {
+        val session = sessionRecords[sessionId]
+            ?: throw com.androidagent.runtime.persistence.SessionNotFoundException(sessionId)
+        val updated = session.copy(title = newTitle, titleOrigin = com.androidagent.runtime.persistence.TitleOrigin.USER_RENAMED)
+        sessionRecords[sessionId] = updated
+        return updated
+    }
+
+    override suspend fun deleteSession(sessionId: String): Boolean {
+        val removed = sessionRecords.remove(sessionId)
+        if (removed == null) return false
+        sessionMessages.remove(sessionId)
+        sessionOrder.remove(sessionId)
+        return true
+    }
+
+    override suspend fun countMessages(sessionId: String): Int =
+        sessionMessages[sessionId]?.size ?: 0
 
     /** Test helper: get the stored messages for a session. */
     fun messagesFor(sessionId: String): List<Message> =
-        sessionMessages[sessionId]?.toList() ?: emptyList()
+        sessionMessages[sessionId]?.toList().orEmpty()
+}
+
+/**
+ * A production-equivalent [MessageDurability] backed by a [TopicSessionStore]
+ * (mirrors the app's StoreMessageDurability). AG.SESSION-MANAGEMENT-UX-0 tests
+ * use this so Core's D1 (user-message durable BEFORE the model call) and D2
+ * (final answer durable) actually persist to the store — proving that
+ * materialization persists the first user message independent of model success.
+ */
+internal class StoreDurability(private val store: TopicSessionStore) : MessageDurability {
+    override suspend fun commit(sessionId: String, message: Message) {
+        try {
+            store.appendMessage(sessionId, message, 0L)
+        } catch (e: Exception) {
+            throw com.androidagent.core.DurabilityCommitException(e)
+        }
+    }
 }
 
 /** Builds a runtime over a scripted provider, with an explicit [FakeTopicSessionStore]. */
@@ -186,6 +223,26 @@ internal fun runtimeOf(
         topicSessionStore = store,
     )
     return runtime to store
+}
+
+/**
+ * Builds a runtime over an EXISTING [store] (AG.SESSION-MANAGEMENT-UX-0 tests
+ * need to pre-seed durable sessions and observe the same store the runtime uses).
+ * The runtime is NOT initialized by this helper (call [AgentRuntime.initialize]
+ * explicitly when a durable current session is needed).
+ */
+internal fun runtimeWithExistingStore(
+    store: FakeTopicSessionStore,
+    provider: ModelProvider,
+    idPrefix: String = "s",
+): AgentRuntime {
+    var counter = 0
+    return AgentRuntime(
+        agentCore = AgentCore(provider, ToolRegistry(), MessageDurability.Noop),
+        runOptions = RunOptions(),
+        sessionIdFactory = { "$idPrefix-${++counter}" },
+        topicSessionStore = store,
+    )
 }
 
 /**
