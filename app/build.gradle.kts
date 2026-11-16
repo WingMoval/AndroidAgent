@@ -24,8 +24,8 @@ android {
         applicationId = "com.androidagent.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         // AG.SHELL-1: the AT Engine handoff bundle v0 is arm64-v8a only, so the
         // final APK carries exactly that ABI (v0 product constraint).
@@ -57,6 +57,62 @@ android {
         jvmTarget = "17"
     }
 
+    // AG.V020-RELEASE-PREP-0: release signing is driven ENTIRELY by the
+    // process environment (never by files in this repository):
+    //
+    //   ANDROID_AGENT_KEYSTORE_FILE   absolute path to the .jks (outside the repo)
+    //   ANDROID_AGENT_KEYSTORE_PASSWORD
+    //   ANDROID_AGENT_KEY_ALIAS
+    //   ANDROID_AGENT_KEY_PASSWORD
+    //
+    // If ANY of the four is missing/blank, or the keystore file does not
+    // exist, the release build FAILS at configuration time. It deliberately
+    // does NOT fall back to debug signing: a misconfigured "release" APK
+    // signed with the debug key is worse than a failed build.
+    signingConfigs {
+        create("androidagentRelease") {
+            val envKeystoreFile = System.getenv("ANDROID_AGENT_KEYSTORE_FILE")
+            val envStorePassword = System.getenv("ANDROID_AGENT_KEYSTORE_PASSWORD")
+            val envKeyAlias = System.getenv("ANDROID_AGENT_KEY_ALIAS")
+            val envKeyPassword = System.getenv("ANDROID_AGENT_KEY_PASSWORD")
+            val missing = listOfNotNull(
+                if (envKeystoreFile.isNullOrBlank()) "ANDROID_AGENT_KEYSTORE_FILE" else null,
+                if (envStorePassword.isNullOrBlank()) "ANDROID_AGENT_KEYSTORE_PASSWORD" else null,
+                if (envKeyAlias.isNullOrBlank()) "ANDROID_AGENT_KEY_ALIAS" else null,
+                if (envKeyPassword.isNullOrBlank()) "ANDROID_AGENT_KEY_PASSWORD" else null,
+            )
+            // Fail fast ONLY when a release task is actually requested, so that
+            // test / debug / other module tasks keep working without signing
+            // material.
+            val releaseRequested = gradle.startParameter.taskNames.any {
+                it.contains("Release", ignoreCase = true) ||
+                    it == "assemble" || it == "build" || it == "bundle"
+            }
+            if (missing.isNotEmpty() && releaseRequested) {
+                error(
+                    "Release signing is not configured. Missing environment variable(s): " +
+                        missing.joinToString(", ") +
+                        ". Release builds must be signed with the dedicated " +
+                        "AndroidAgent release identity; no fallback to debug signing.",
+                )
+            }
+            if (releaseRequested) {
+                val ks = File(envKeystoreFile!!)
+                if (!ks.isFile) {
+                    error(
+                        "Release keystore file does not exist at ANDROID_AGENT_KEYSTORE_FILE. " +
+                            "Release builds must be signed with the dedicated AndroidAgent " +
+                            "release identity; no fallback to debug signing.",
+                    )
+                }
+                storeFile = ks
+                storePassword = envStorePassword!!
+                keyAlias = envKeyAlias!!
+                keyPassword = envKeyPassword!!
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -64,6 +120,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            signingConfig = signingConfigs.getByName("androidagentRelease")
         }
     }
 }
