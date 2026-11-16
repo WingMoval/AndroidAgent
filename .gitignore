@@ -58,5 +58,10 @@ research/
 *.aab
 *.jar
 
+# Local ephemeral staging (AG.UPLOAD-STAGING-POLICY-0)
+# upload/ is for local temporary viewing / delivery staging only.
+# Canonical project documentation lives under docs/.
+/upload/
+
 /config/provider.openrouter.local.json
 
