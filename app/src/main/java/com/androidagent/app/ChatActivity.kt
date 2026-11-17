@@ -354,6 +354,11 @@ class ChatActivity : AppCompatActivity() {
                 val view = convertView ?: LayoutInflater.from(this@ChatActivity).inflate(
                     R.layout.item_model_picker, parent, false,
                 )
+                // Make each row reliably clickable (do NOT rely on the ListView's
+                // item-click callback — a custom getView that sets its own listeners
+                // can swallow the row touch and the callback never fires).
+                view.isClickable = true
+                view.setOnLongClickListener(null)
                 val t1 = view.findViewById<TextView>(R.id.model_picker_line1)
                 val t2 = view.findViewById<TextView>(R.id.model_picker_line2)
                 if (row != null) {
@@ -361,18 +366,21 @@ class ChatActivity : AppCompatActivity() {
                     t1.visibility = View.VISIBLE
                     t2.text = row.fullId
                     t2.visibility = View.VISIBLE
-                    // Long-press a configured model to remove it (the active model
-                    // is protected — see confirmRemoveModel).
-                    view.setOnClickListener(null)
+                    view.setOnClickListener {
+                        onPickModel(row.opt)
+                    }
+                    // Long-press a configured model to manage it (rename alias / remove).
                     view.setOnLongClickListener {
-                        confirmRemoveModel(row.opt)
+                        showModelManageMenu(row.opt)
                         true
                     }
                 } else {
                     t1.text = getString(R.string.ws_model_add)
                     t1.visibility = View.VISIBLE
                     t2.visibility = View.GONE
-                    view.setOnLongClickListener(null)
+                    view.setOnClickListener {
+                        showAddModelDialog()
+                    }
                 }
                 return view
             }
@@ -380,33 +388,103 @@ class ChatActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle(R.string.ws_model_label_settings)
-            .setAdapter(adapter) { dialog, which ->
-                dialog.dismiss()
-                if (which < rows.size) {
-                    val opt = rows[which].opt
-                    lifecycleScope.launch {
-                        val result = HostActions.switchProfile(opt.profileId, opt.modelId)
-                        when (result) {
-                            is ProfileSwitchResult.Applied -> {
-                                activeModel = SessionHolder.activeModel
-                                updateModelLabel()
-                                updateProviderStatus()
-                                renderStatus()
-                            }
-                            is ProfileSwitchResult.Rejected -> {
-                                updateRunStatus(result.reason)
-                                renderStatus()
-                            }
-                        }
-                    }
-                } else {
-                    showAddModelDialog()
-                }
-            }
+            .setAdapter(adapter, null)
             .setNegativeButton(R.string.ws_cancel, null)
             .show()
 
         @Suppress("UNUSED_EXPRESSION") currentIdx
+    }
+
+    /** Switch the active model to [opt] through the canonical apply path. */
+    private fun onPickModel(opt: ModelOption) {
+        lifecycleScope.launch {
+            val result = HostActions.switchProfile(opt.profileId, opt.modelId)
+            when (result) {
+                is ProfileSwitchResult.Applied -> {
+                    activeModel = SessionHolder.activeModel
+                    updateModelLabel()
+                    updateProviderStatus()
+                    renderStatus()
+                }
+                is ProfileSwitchResult.Rejected -> {
+                    updateRunStatus(result.reason)
+                    renderStatus()
+                }
+            }
+        }
+    }
+
+    /**
+     * AG.PROVIDER-CONFIGURED-MODELS-0: long-press menu for a configured model —
+     * rename its alias and/or remove it. Editing happens HERE in the picker,
+     * not only at Add time. Credential (endpoint + key) is profile-level and is
+     * never touched by per-model edits.
+     */
+    private fun showModelManageMenu(opt: ModelOption) {
+        val options = arrayOf(
+            getString(R.string.ws_model_rename),
+            getString(R.string.ws_model_remove),
+        )
+        AlertDialog.Builder(this)
+            .setTitle(opt.modelId)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showAliasDialogForEdit(opt)
+                    1 -> confirmRemoveModel(opt)
+                }
+            }
+            .setNegativeButton(R.string.ws_cancel, null)
+            .show()
+    }
+
+    /**
+     * Edit the alias of an already-configured model. Blank input clears the
+     * alias (falls back to the provider-prefix short name).
+     */
+    private fun showAliasDialogForEdit(opt: ModelOption) {
+        val profile = activeProfile() ?: return
+        val existing = profile.configuredModels.firstOrNull { it.modelId == opt.modelId }
+            ?.normalizedAlias
+        val aliasInput = EditText(this)
+        aliasInput.hint = getString(R.string.ws_model_alias_hint)
+        aliasInput.setText(existing ?: "")
+        val pad = (24 * resources.displayMetrics.density).toInt()
+        val container = FrameLayout(this).apply {
+            setPadding(pad, pad, pad, pad)
+            addView(
+                aliasInput,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.ws_model_rename)
+            .setMessage(opt.modelId)
+            .setView(container)
+            .setPositiveButton(R.string.ws_save) { _, _ ->
+                val alias = aliasInput.text.toString().trim().takeIf { it.isNotEmpty() }
+                persistModelAlias(profile, opt.modelId, alias)
+            }
+            .setNegativeButton(R.string.ws_cancel, null)
+            .show()
+    }
+
+    /**
+     * Update (or clear) the alias of a configured model, preserving everything
+     * else (modelId, credential, timeout, other models, selected model).
+     */
+    private fun persistModelAlias(profile: ProviderProfile, modelId: String, alias: String?) {
+        val updated = profile.copy(
+            configuredModels = profile.configuredModels.map { cm ->
+                if (cm.modelId == modelId) ConfiguredModel(modelId, alias) else cm
+            },
+        )
+        saveProfileKeepingCredential(updated)
+        Toast.makeText(this, R.string.ws_model_alias_saved, Toast.LENGTH_SHORT).show()
+        refreshModelCatalog()
+        updateModelLabel()
     }
 
     /**

@@ -121,4 +121,6 @@
     <string name="ws_model_removed">Model removed</string>
     <string name="ws_model_cannot_remove_selected">Cannot remove the active model</string>
     <string name="ws_model_long_press_hint">Long-press a model to remove it</string>
+    <string name="ws_model_rename">Rename</string>
+    <string name="ws_model_alias_saved">Alias saved</string>
 </resources>
