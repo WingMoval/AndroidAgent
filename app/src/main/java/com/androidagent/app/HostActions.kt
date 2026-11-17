@@ -434,6 +434,14 @@ object HostActions {
         node: ProviderNode,
     ) {
         val ctx = SessionHolder.appContext ?: return
+
+        // AG.PROVIDER-CONFIGURED-MODELS-0: persist the newly-selected model back to
+        // the node's device-local config file so the selected model survives a
+        // cold restart. This is NON-DESTRUCTIVE: it preserves the existing
+        // configuredModels (and their aliases) and the credential/timeout. If the
+        // selected model is not already in the configured set, it is added.
+        persistSelectedModel(ctx, node, cfg)
+
         SessionHolder.createRoot(
             cfg,
             ctx,
@@ -450,6 +458,28 @@ object HostActions {
         SessionHolder.notifyUiUpdate()
         adbReconnect()
         SessionHolder.initialize()
+    }
+
+    /**
+     * AG.PROVIDER-CONFIGURED-MODELS-0: write [cfg.model] (the selected model) back
+     * to [node]'s device-local config file, preserving the existing configured
+     * models + aliases + credential. No-op when the file is absent/invalid (we
+     * never create a config the user didn't provision).
+     */
+    private fun persistSelectedModel(
+        ctx: android.content.Context,
+        node: ProviderNode,
+        cfg: com.androidagent.provider.openai.OpenAiCompatibleConfig,
+    ) {
+        val loaded = DeviceLocalProviderNodeLoader.loadWithConfigured(ctx, node)
+        if (loaded !is DeviceLocalProviderNodeLoader.NodeLoadResult.Loaded) return
+        val existing = loaded.configuredModels
+        val configured = if (existing.any { it.modelId == cfg.model }) {
+            existing
+        } else {
+            existing + ConfiguredModel(cfg.model)
+        }
+        DeviceLocalProviderNodeLoader.saveConfigured(ctx, node, cfg, configured)
     }
 
     /** Process-scoped stream observer (shared; mirrors ChatActivity's). */

@@ -107,4 +107,18 @@
     <string name="adb_pair_entry">Pair / Re-pair</string>
     <string name="adb_pair_entry_collapsed">Hide Pairing</string>
     <string name="adb_pair_failed_with_detail">Pairing failed: %1$s</string>
+
+    <!-- AG.PROVIDER-CONFIGURED-MODELS-0: configured vs discovered model semantics -->
+    <string name="ws_model_add">Add Model</string>
+    <string name="ws_model_discovering">Loading available models…</string>
+    <string name="ws_model_discovery_failed">Could not load available models</string>
+    <string name="ws_model_all_configured">All available models are already configured</string>
+    <string name="ws_model_already_configured">Model already configured</string>
+    <string name="ws_model_added">Model added</string>
+    <string name="ws_model_alias_hint">Alias (optional display name)</string>
+    <string name="ws_model_remove">Remove</string>
+    <string name="ws_model_remove_confirm">Remove this model from the switcher?</string>
+    <string name="ws_model_removed">Model removed</string>
+    <string name="ws_model_cannot_remove_selected">Cannot remove the active model</string>
+    <string name="ws_model_long_press_hint">Long-press a model to remove it</string>
 </resources>

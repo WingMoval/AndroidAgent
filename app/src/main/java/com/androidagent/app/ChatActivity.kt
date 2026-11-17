@@ -7,10 +7,13 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -23,6 +26,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.androidagent.app.debug.DebugBridge
 import com.androidagent.app.debug.DebugProtocol
 import com.androidagent.app.trace.AgentTrace
@@ -60,9 +65,15 @@ fun workspaceAdbIndicator(atStatusText: String?, bootstrapCode: String?): Worksp
         WorkspaceAdbIndicator(R.color.ws_adb_disconnected, R.string.ws_adb_disconnected, pairOffered = true)
 }
 
-/** Composer model label: the REAL active model id only (no fake effort). */
+/**
+ * Composer model label: the SHORT display name only (no fake effort).
+ *
+ * AG.PROVIDER-CONFIGURED-MODELS-0: the home composer shows the provider prefix
+ * (the part before "/") of the active model id, or the id itself when there is
+ * no "/". The full long modelId is shown in the model picker instead.
+ */
 fun workspaceModelLabel(activeModel: String?): String =
-    activeModel?.takeIf { it.isNotBlank() } ?: "Model"
+    modelShortDisplay(activeModel)
 
 
 /**
@@ -75,6 +86,16 @@ fun workspaceModelLabel(activeModel: String?): String =
  *  - Sidebar order: ADB → Provider/Models → Session
  *  - Header shows compact "ADB ●" only
  */
+/** A two-line row in the main model picker: short/alias name + full modelId. */
+private data class PickerRow(
+    val line1: String,
+    val fullId: String,
+    val opt: ModelOption,
+)
+
+/** Sentinel item for the "Add Model" row in the model picker adapter. */
+private object ADD_MODEL_SENTINEL
+
 class ChatActivity : AppCompatActivity() {
 
     // ---- Conversation viewport (AG.UI-TRANSCRIPT-CARDS-1: RecyclerView)
@@ -124,8 +145,15 @@ class ChatActivity : AppCompatActivity() {
     private var sidebarOpen: Boolean = false
     private var autoFollow: Boolean = true
 
-    /** Available models for the LLM selector. */
+    /** Available (CONFIGURED) models for the LLM selector. */
     private var modelCatalog: List<ModelOption> = emptyList()
+
+    /**
+     * AG.PROVIDER-CONFIGURED-MODELS-0: display metadata for each configured
+     * model in the active profile, keyed by modelId. Used to render the home
+     * short label (alias or provider prefix) and the two-line picker items.
+     */
+    private var modelDisplay: Map<String, ConfiguredModel> = emptyMap()
 
     /** Available sessions for the Session Browser (AG.UI-TRANSCRIPT-CARDS-1). */
     private var availableSessions: List<SessionSummary> = emptyList()
@@ -293,60 +321,264 @@ class ChatActivity : AppCompatActivity() {
      * HostActions.switchModel (canonical apply path).
      */
     private fun showModelSelector() {
+        refreshModelCatalog()
         if (modelCatalog.isEmpty()) {
-            refreshModelCatalog()
-            if (modelCatalog.isEmpty()) {
-                Toast.makeText(this, "No models configured", Toast.LENGTH_SHORT).show()
-                return
+            Toast.makeText(this, "No models configured", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val currentIdx = modelCatalog.indexOfFirst { it.modelId == activeModel }.coerceAtLeast(0)
+
+        // AG.PROVIDER-CONFIGURED-MODELS-0: the main picker shows CONFIGURED models
+        // only, each as a TWO-LINE row:
+        //   line 1 = alias (if set) else the provider prefix (short name)
+        //   line 2 = the FULL modelId (always visible, so the real model is identifiable)
+        // plus an "Add Model" entry — the ONLY place the discovered /models
+        // catalogue is reachable.
+        val rows = modelCatalog.map { opt ->
+            val meta = modelDisplay[opt.modelId]
+            val line1 = meta?.shortDisplay ?: opt.modelId.substringBefore("/", opt.modelId)
+            PickerRow(line1, opt.modelId, opt)
+        }
+
+        // Build a two-line list: each configured model contributes one row, and the
+        // LAST row is the "Add Model" entry. getCount/getItem must report rows.size+1
+        // so the ListAdapter actually creates the Add Model row.
+        val adapter = object : BaseAdapter() {
+            override fun getCount(): Int = rows.size + 1
+            override fun getItem(position: Int): Any =
+                if (position < rows.size) rows[position] else ADD_MODEL_SENTINEL
+            override fun getItemId(position: Int): Long = position.toLong()
+            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
+                val row = if (position < rows.size) rows[position] else null
+                val view = convertView ?: LayoutInflater.from(this@ChatActivity).inflate(
+                    R.layout.item_model_picker, parent, false,
+                )
+                val t1 = view.findViewById<TextView>(R.id.model_picker_line1)
+                val t2 = view.findViewById<TextView>(R.id.model_picker_line2)
+                if (row != null) {
+                    t1.text = row.line1
+                    t1.visibility = View.VISIBLE
+                    t2.text = row.fullId
+                    t2.visibility = View.VISIBLE
+                    // Long-press a configured model to remove it (the active model
+                    // is protected — see confirmRemoveModel).
+                    view.setOnClickListener(null)
+                    view.setOnLongClickListener {
+                        confirmRemoveModel(row.opt)
+                        true
+                    }
+                } else {
+                    t1.text = getString(R.string.ws_model_add)
+                    t1.visibility = View.VISIBLE
+                    t2.visibility = View.GONE
+                    view.setOnLongClickListener(null)
+                }
+                return view
             }
         }
 
-        val labels = modelCatalog.map { it.displayLabel }
-        val currentIdx = modelCatalog.indexOfFirst { it.modelId == activeModel }.coerceAtLeast(0)
-
         AlertDialog.Builder(this)
             .setTitle(R.string.ws_model_label_settings)
-            .setSingleChoiceItems(labels.toTypedArray(), currentIdx) { dialog, which ->
-                val selected = modelCatalog[which]
+            .setAdapter(adapter) { dialog, which ->
                 dialog.dismiss()
-                lifecycleScope.launch {
-                    val result = HostActions.switchProfile(selected.profileId, selected.modelId)
-                    when (result) {
-                        is ProfileSwitchResult.Applied -> {
-                            activeModel = SessionHolder.activeModel
-                            updateModelLabel()
-                            updateProviderStatus()
-                            renderStatus()
-                        }
-                        is ProfileSwitchResult.Rejected -> {
-                            updateRunStatus(result.reason)
-                            renderStatus()
+                if (which < rows.size) {
+                    val opt = rows[which].opt
+                    lifecycleScope.launch {
+                        val result = HostActions.switchProfile(opt.profileId, opt.modelId)
+                        when (result) {
+                            is ProfileSwitchResult.Applied -> {
+                                activeModel = SessionHolder.activeModel
+                                updateModelLabel()
+                                updateProviderStatus()
+                                renderStatus()
+                            }
+                            is ProfileSwitchResult.Rejected -> {
+                                updateRunStatus(result.reason)
+                                renderStatus()
+                            }
                         }
                     }
+                } else {
+                    showAddModelDialog()
                 }
+            }
+            .setNegativeButton(R.string.ws_cancel, null)
+            .show()
+
+        @Suppress("UNUSED_EXPRESSION") currentIdx
+    }
+
+    /**
+     * AG.PROVIDER-CONFIGURED-MODELS-0: rebuild the main-switcher catalog from the
+     * CONFIGURED models of all saved profiles. Discovery is intentionally NOT run
+     * here — the discovered catalogue is reachable only through "Add Model".
+     */
+    private fun refreshModelCatalog() {
+        val profiles = ProviderProfileStore.loadAll(applicationContext)
+        modelCatalog = buildModelCatalog(applicationContext)
+        val active = profiles.firstOrNull {
+            it.isBuiltIn && SessionHolder.providerNode.name.lowercase() == it.profileId
+        } ?: profiles.firstOrNull()
+        modelDisplay = active?.configuredModels?.associateBy { it.modelId } ?: emptyMap()
+        // Keep the display map complete for any catalog entry (covers models owned
+        // by other profiles if the catalog is later extended).
+        for (opt in modelCatalog) {
+            if (!modelDisplay.containsKey(opt.modelId)) {
+                ProviderProfileStore.load(applicationContext, opt.profileId)
+                    ?.configuredModels
+                    ?.firstOrNull { it.modelId == opt.modelId }
+                    ?.let { modelDisplay += opt.modelId to it }
+            }
+        }
+    }
+
+    /**
+     * The profile that is currently applied (built-in by node, else first).
+     * Returns null when NO profiles exist yet (e.g. a fresh install with no
+     * provider configured) — callers must handle that.
+     */
+    private fun activeProfile(): ProviderProfile? =
+        ProviderProfileStore.loadAll(applicationContext).firstOrNull {
+            it.isBuiltIn && SessionHolder.providerNode.name.lowercase() == it.profileId
+        } ?: ProviderProfileStore.loadAll(applicationContext).firstOrNull()
+
+    /**
+     * AG.PROVIDER-CONFIGURED-MODELS-0: "Add Model" — fetch the provider /models
+     * catalogue (ONLY here), let the user pick one, optionally give it an alias,
+     * and persist it into the profile's configured models.
+     */
+    private fun showAddModelDialog() {
+        val profile = activeProfile() ?: run {
+            Toast.makeText(this, "No provider configured", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val progress = AlertDialog.Builder(this)
+            .setTitle(R.string.ws_model_add)
+            .setMessage(R.string.ws_model_discovering)
+            .setCancelable(false)
+            .show()
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { ModelDiscovery.discover(profile.config) }
+            progress.dismiss()
+            when (result) {
+                is ModelDiscoveryResult.Success -> {
+                    val candidates = result.models
+                        .filter { profile.configuredModels.none { cm -> cm.modelId == it } }
+                    if (candidates.isEmpty()) {
+                        Toast.makeText(this@ChatActivity, R.string.ws_model_all_configured, Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+                    showPickDiscoveredDialog(profile, candidates)
+                }
+                is ModelDiscoveryResult.Failure -> {
+                    Toast.makeText(this@ChatActivity, R.string.ws_model_discovery_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun showPickDiscoveredDialog(profile: ProviderProfile, candidates: List<String>) {
+        val labels = candidates.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.ws_model_add)
+            .setItems(labels) { _, which ->
+                showAliasDialog(profile, candidates[which])
+            }
+            .setNegativeButton(R.string.ws_cancel, null)
+            .show()
+    }
+
+    /** Optional alias entry for a model being added (or already configured). */
+    private fun showAliasDialog(profile: ProviderProfile, modelId: String) {
+        val aliasInput = EditText(this)
+        aliasInput.hint = getString(R.string.ws_model_alias_hint)
+        val pad = (24 * resources.displayMetrics.density).toInt()
+        val container = FrameLayout(this).apply {
+            setPadding(pad, pad, pad, pad)
+            addView(
+                aliasInput,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+        }
+        AlertDialog.Builder(this)
+            .setTitle(modelId)
+            .setView(container)
+            .setPositiveButton(R.string.ws_model_add) { _, _ ->
+                val alias = aliasInput.text.toString().trim().takeIf { it.isNotEmpty() }
+                persistConfiguredModel(profile, modelId, alias)
             }
             .setNegativeButton(R.string.ws_cancel, null)
             .show()
     }
 
     /**
-     * Rebuilds the model catalog from all saved provider profiles + discovery.
+     * Persist a configured model into [profile] (dedup by modelId), preserving
+     * endpoint / apiKey / request timeout / selected model. No-op (with a toast)
+     * when the modelId is already configured.
      */
-    private fun refreshModelCatalog() {
-        modelCatalog = buildModelCatalog(applicationContext)
-        // Attempt model discovery for the active profile (best-effort, async)
-        lifecycleScope.launch {
-            val profiles = ProviderProfileStore.loadAll(applicationContext)
-            val activeProfile = profiles.firstOrNull {
-                it.isBuiltIn && SessionHolder.providerNode.name.lowercase() == it.profileId
-            } ?: profiles.firstOrNull()
-            if (activeProfile != null) {
-                val result = ModelDiscovery.discover(activeProfile.config)
-                if (result is ModelDiscoveryResult.Success) {
-                    val discovered = mapOf(activeProfile.profileId to result.models)
-                    modelCatalog = buildModelCatalog(applicationContext, discovered)
-                }
+    private fun persistConfiguredModel(profile: ProviderProfile, modelId: String, alias: String?) {
+        if (profile.configuredModels.any { it.modelId == modelId }) {
+            Toast.makeText(this, R.string.ws_model_already_configured, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val updated = profile.copy(
+            configuredModels = profile.configuredModels + ConfiguredModel(modelId, alias),
+        )
+        saveProfileKeepingCredential(updated)
+        Toast.makeText(this, R.string.ws_model_added, Toast.LENGTH_SHORT).show()
+        refreshModelCatalog()
+    }
+
+    /**
+     * AG.PROVIDER-CONFIGURED-MODELS-0: confirm + remove a configured model from the
+     * active profile's switcher. The currently SELECTED model cannot be removed
+     * (a profile must keep at least its active model). Removal is non-destructive:
+     * credential / endpoint / timeout / the other configured models are preserved.
+     */
+    private fun confirmRemoveModel(opt: ModelOption) {
+        val profile = activeProfile() ?: return
+        if (opt.modelId == activeModel) {
+            Toast.makeText(this, R.string.ws_model_cannot_remove_selected, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (profile.configuredModels.none { it.modelId == opt.modelId }) {
+            Toast.makeText(this, R.string.ws_model_already_configured, Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.ws_model_remove)
+            .setMessage("${opt.modelId}\n\n${getString(R.string.ws_model_remove_confirm)}")
+            .setPositiveButton(R.string.ws_model_remove) { _, _ ->
+                val updated = profile.copy(
+                    configuredModels = profile.configuredModels.filterNot { it.modelId == opt.modelId },
+                )
+                saveProfileKeepingCredential(updated)
+                Toast.makeText(this, R.string.ws_model_removed, Toast.LENGTH_SHORT).show()
+                refreshModelCatalog()
             }
+            .setNegativeButton(R.string.ws_cancel, null)
+            .show()
+    }
+
+    /**
+     * Persist a profile, reusing the canonical save path for built-in profiles and
+     * ProviderProfileStore for custom ones. The credential (endpoint + apiKey) and
+     * request timeout come from [profile] and are never altered here.
+     */
+    private fun saveProfileKeepingCredential(profile: ProviderProfile) {
+        if (profile.isBuiltIn) {
+            val node = ProviderProfileStore.toProviderNode(profile.profileId)
+            if (node != null) {
+                DeviceLocalProviderNodeLoader.saveConfigured(
+                    applicationContext, node, profile.config, profile.configuredModels,
+                )
+            }
+        } else {
+            ProviderProfileStore.saveCustom(applicationContext, profile)
         }
     }
 
@@ -427,10 +659,24 @@ class ChatActivity : AppCompatActivity() {
                 baseUrl = endpoint, apiKey = finalKey, model = model,
             )
 
+            // AG.PROVIDER-CONFIGURED-MODELS-0: the model field in the settings dialog
+            // is the SELECTED model. Editing it may point at a model that was not
+            // previously configured (e.g. a new endpoint with a new model id); in
+            // that case it is added to the configured set. Existing configured
+            // models and their aliases are preserved.
+            val newConfigured = if (profile.configuredModels.any { it.modelId == model }) {
+                profile.configuredModels
+            } else {
+                profile.configuredModels + ConfiguredModel(model)
+            }
+            val newProfile = profile.copy(config = newConfig, configuredModels = newConfigured)
+
             if (profile.isBuiltIn) {
                 val node = ProviderProfileStore.toProviderNode(profile.profileId)
                     ?: return@setOnClickListener
-                DeviceLocalProviderNodeLoader.save(applicationContext, node, newConfig)
+                DeviceLocalProviderNodeLoader.saveConfigured(
+                    applicationContext, node, newConfig, newConfigured,
+                )
                 lifecycleScope.launch {
                     val result = HostActions.switchProvider(node)
                     when (result) {
@@ -445,7 +691,6 @@ class ChatActivity : AppCompatActivity() {
                     }
                 }
             } else {
-                val newProfile = profile.copy(config = newConfig)
                 ProviderProfileStore.saveCustom(applicationContext, newProfile)
                 lifecycleScope.launch {
                     val result = HostActions.switchProfile(profile.profileId, model)
@@ -505,7 +750,12 @@ class ChatActivity : AppCompatActivity() {
             val config = OpenAiCompatibleConfig(
                 baseUrl = endpoint, apiKey = apiKey, model = model,
             )
-            val profile = ProviderProfileStore.createCustom(applicationContext, "My API", config)
+            // AG.PROVIDER-CONFIGURED-MODELS-0: a fresh custom profile has exactly
+            // the one model the user typed as its configured set.
+            val profile = ProviderProfileStore.createCustom(
+                applicationContext, "My API", config,
+                configuredModels = listOf(ConfiguredModel(model)),
+            )
             if (profile == null) {
                 Toast.makeText(this, "Failed to save", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -809,7 +1059,14 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun updateModelLabel() {
-        modelLabel.text = workspaceModelLabel(activeModel)
+        // AG.PROVIDER-CONFIGURED-MODELS-0: home shows the SHORT display name
+        // (alias, else provider prefix). Never the full long modelId.
+        val cm = activeModel?.let { modelDisplay[it] }
+        modelLabel.text = if (cm != null) {
+            cm.shortDisplay
+        } else {
+            modelShortDisplay(activeModel)
+        }
     }
 
     /** Updates the sidebar provider status line (e.g. "EMG · Configured"). */

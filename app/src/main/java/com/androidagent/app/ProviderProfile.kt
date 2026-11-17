@@ -40,7 +40,32 @@ data class ProviderProfile(
     val displayName: String,
     val isBuiltIn: Boolean,
     val config: OpenAiCompatibleConfig,
-)
+    /**
+     * AG.PROVIDER-CONFIGURED-MODELS-0: the models the user EXPLICITLY configured
+     * on this profile (the only models switchable in the main model picker).
+     *
+     * `config.model` remains the currently SELECTED model id and MUST be a member
+     * of this list. A legacy profile file (no `configuredModels` field) is
+     * normalized to a single entry `[ConfiguredModel(config.model)]` on read.
+     */
+    val configuredModels: List<ConfiguredModel> = listOf(
+        ConfiguredModel(config.model),
+    ),
+) {
+    init {
+        require(configuredModels.isNotEmpty()) { "configuredModels must not be empty" }
+        require(configuredModels.any { it.modelId == config.model }) {
+            "selected model '${config.model}' must be one of the configured models"
+        }
+        require(configuredModels.map { it.modelId }.toSet().size == configuredModels.size) {
+            "configured modelIds must be unique within a profile"
+        }
+    }
+
+    /** The [ConfiguredModel] currently selected (by [config.model]), or null. */
+    val selectedConfiguredModel: ConfiguredModel?
+        get() = configuredModels.firstOrNull { it.modelId == config.model }
+}
 
 /**
  * Loads/saves provider profiles from the app's filesDir.
@@ -65,8 +90,8 @@ object ProviderProfileStore {
 
         // Built-in: reuse existing node files
         for (node in ProviderNode.entries) {
-            val loaded = DeviceLocalProviderNodeLoader.load(context, node)
-            if (loaded is DeviceLocalProviderConfig.Loaded) {
+            val loaded = DeviceLocalProviderNodeLoader.loadWithConfigured(context, node)
+            if (loaded is DeviceLocalProviderNodeLoader.NodeLoadResult.Loaded) {
                 val builtinId = if (node == ProviderNode.EMG) BUILTIN_EMG else BUILTIN_OPENROUTER
                 profiles.add(
                     ProviderProfile(
@@ -74,6 +99,7 @@ object ProviderProfileStore {
                         displayName = node.displayName,
                         isBuiltIn = true,
                         config = loaded.config,
+                        configuredModels = loaded.configuredModels,
                     )
                 )
             }
@@ -127,6 +153,7 @@ object ProviderProfileStore {
         context: Context,
         name: String,
         config: OpenAiCompatibleConfig,
+        configuredModels: List<ConfiguredModel> = listOf(ConfiguredModel(config.model)),
     ): ProviderProfile? {
         val id = "custom-${UUID.randomUUID().toString().take(8)}"
         val profile = ProviderProfile(
@@ -134,6 +161,7 @@ object ProviderProfileStore {
             displayName = name,
             isBuiltIn = false,
             config = config,
+            configuredModels = configuredModels,
         )
         return if (saveCustom(context, profile)) profile else null
     }
@@ -161,7 +189,16 @@ object ProviderProfileStore {
             append("    \"baseUrl\": \"").append(esc(profile.config.baseUrl)).append("\",\n")
             append("    \"apiKey\": \"").append(esc(profile.config.apiKey)).append("\",\n")
             append("    \"model\": \"").append(esc(profile.config.model)).append("\",\n")
-            append("    \"requestTimeoutSeconds\": ").append(timeoutSeconds).append("\n")
+            append("    \"requestTimeoutSeconds\": ").append(timeoutSeconds).append(",\n")
+            append("    \"configuredModels\": [\n")
+            profile.configuredModels.forEachIndexed { i, cm ->
+                append("      { \"modelId\": \"").append(esc(cm.modelId)).append("\"")
+                if (cm.normalizedAlias != null) {
+                    append(", \"alias\": \"").append(esc(cm.normalizedAlias!!)).append("\"")
+                }
+                append(" }").append(if (i < profile.configuredModels.lastIndex) "," else "").append("\n")
+            }
+            append("    ]\n")
             append("  }\n")
             append("}\n")
         }
@@ -189,15 +226,73 @@ object ProviderProfileStore {
                 model = model,
                 requestTimeout = timeout,
             )
+            val configured = parseConfiguredModels(raw, fallbackSelected = model)
+                ?: listOf(ConfiguredModel(model))
             ProviderProfile(
                 profileId = profileId,
                 displayName = name,
                 isBuiltIn = false,
                 config = config,
+                configuredModels = configured,
             )
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * AG.PROVIDER-CONFIGURED-MODELS-0: parse the optional `configuredModels`
+     * array from the profile JSON. Returns null when the field is absent (legacy
+     * file) so the caller normalizes to `[ConfiguredModel(fallbackSelected)]`.
+     *
+     * Tolerant, minimal parse (mirrors [extractString]): each entry is an object
+     * with a required `modelId` and an optional `alias`. Entries with a blank
+     * modelId are skipped; duplicates by modelId are dropped (first wins). If the
+     * field is present but yields no usable entry, returns null (normalize).
+     */
+    internal fun parseConfiguredModels(raw: String, fallbackSelected: String): List<ConfiguredModel>? {
+        // Isolate the "configuredModels": [ ... ] region (bracket-balanced scan).
+        val keyIdx = raw.indexOf("\"configuredModels\"")
+        if (keyIdx < 0) return null
+        val open = raw.indexOf('[', keyIdx)
+        if (open < 0) return null
+        var depth = 0
+        var end = -1
+        for (i in open until raw.length) {
+            when (raw[i]) {
+                '[' -> depth++
+                ']' -> {
+                    depth--
+                    if (depth == 0) {
+                        end = i
+                        break
+                    }
+                }
+            }
+        }
+        if (end < 0) return null
+        val body = raw.substring(open + 1, end)
+
+        val models = mutableListOf<ConfiguredModel>()
+        val seen = mutableSetOf<String>()
+        // Each entry is { ...modelId... ...alias... }; split on '}' to bound entries.
+        val entryPattern = Regex("\\{([^{}]*)\\}")
+        for (entryMatch in entryPattern.findAll(body)) {
+            val entry = entryMatch.groupValues[1]
+            val modelId = extractString(entry, "modelId")?.trim() ?: continue
+            if (modelId.isEmpty()) continue
+            val alias = extractString(entry, "alias")?.trim()?.takeIf { it.isNotEmpty() }
+            if (seen.add(modelId)) {
+                models.add(ConfiguredModel(modelId, alias))
+            }
+        }
+        if (models.isEmpty()) return null
+        // The selected model must be representable; if the file's selected model is
+        // not in the configured list, prepend it so the profile stays consistent.
+        if (!models.any { it.modelId == fallbackSelected }) {
+            models.add(0, ConfiguredModel(fallbackSelected))
+        }
+        return models
     }
 
     private fun extractString(json: String, key: String): String? {

@@ -105,15 +105,24 @@ class WorkspaceShellStateTest {
     }
 
     // ----------------------------------------------------------------- model label
+    //
+    // AG.PROVIDER-CONFIGURED-MODELS-0: the home composer shows the SHORT display
+    // name (alias, else the modelId's provider prefix), never the full long id.
 
     @Test
-    fun modelLabelShowsRealModelId() {
+    fun modelLabelShowsProviderPrefixWhenNoAlias() {
+        assertEquals("deepseek", workspaceModelLabel("deepseek/deepseek-v4-flash-0731"))
+    }
+
+    @Test
+    fun modelLabelShowsModelIdWhenNoSlash() {
+        // A model id without "/" has no provider prefix, so it is shown as-is.
         assertEquals("deepseek-v4-flash-0731", workspaceModelLabel("deepseek-v4-flash-0731"))
     }
 
     @Test
     fun modelLabelNeverFakesEffort() {
-        // A real model id is shown verbatim; no "High"/"Medium"/"Low" effort is invented.
+        // No "High"/"Medium"/"Low" effort is invented for the display name.
         val label = workspaceModelLabel("gpt-5.6")
         assertEquals("gpt-5.6", label)
         assertFalse(label.contains("High"))

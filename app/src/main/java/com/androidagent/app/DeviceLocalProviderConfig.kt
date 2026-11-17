@@ -149,6 +149,42 @@ object DeviceLocalProviderNodeLoader {
         DeviceLocalProviderConfigLoader.load(configFile(context, node))
 
     /**
+     * Loads [node]'s device-local config AND its configured models, normalizing a
+     * legacy file (no `configuredModels` field) to `[ConfiguredModel(config.model)]`.
+     *
+     * AG.PROVIDER-CONFIGURED-MODELS-0: the credential/timeout/model come from the
+     * existing parser ([DeviceLocalProviderConfigLoader]); only the optional
+     * `configuredModels` array is parsed here, reusing
+     * [ProviderProfileStore.parseConfiguredModels] so both built-in and custom
+     * profiles share one parser.
+     *
+     * @return Loaded(config, configuredModels), or Missing/Invalid (no configured
+     *   models in that case).
+     */
+    sealed interface NodeLoadResult {
+        data class Loaded(
+            val config: OpenAiCompatibleConfig,
+            val configuredModels: List<ConfiguredModel>,
+        ) : NodeLoadResult
+        data object Missing : NodeLoadResult
+        data class Invalid(val reason: String) : NodeLoadResult
+    }
+
+    fun loadWithConfigured(context: Context, node: ProviderNode): NodeLoadResult {
+        val base = load(context, node)
+        return when (base) {
+            is DeviceLocalProviderConfig.Missing -> NodeLoadResult.Missing
+            is DeviceLocalProviderConfig.Invalid -> NodeLoadResult.Invalid(base.safeReason)
+            is DeviceLocalProviderConfig.Loaded -> {
+                val raw = runCatching { configFile(context, node).readText() }.getOrNull()
+                val configured = raw?.let { ProviderProfileStore.parseConfiguredModels(it, base.config.model) }
+                    ?: listOf(ConfiguredModel(base.config.model))
+                NodeLoadResult.Loaded(base.config, configured)
+            }
+        }
+    }
+
+    /**
      * Saves [config] to [node]'s device-local file.
      *
      * AG.UI-SHELL-1.PRODUCT-CONTROLS-ALIGNMENT: minimal Host-side save path
@@ -162,11 +198,24 @@ object DeviceLocalProviderNodeLoader {
      *
      * @return true if the file was written successfully.
      */
-    fun save(context: Context, node: ProviderNode, config: OpenAiCompatibleConfig): Boolean {
+    fun save(context: Context, node: ProviderNode, config: OpenAiCompatibleConfig): Boolean =
+        saveConfigured(context, node, config, listOf(ConfiguredModel(config.model)))
+
+    /**
+     * AG.PROVIDER-CONFIGURED-MODELS-0: save [config] + [configuredModels] to
+     * [node]'s device-local file. The `configuredModels` array is written inside
+     * the `provider` object so [loadWithConfigured] restores it. Credential,
+     * endpoint and request timeout are taken verbatim from [config].
+     */
+    fun saveConfigured(
+        context: Context,
+        node: ProviderNode,
+        config: OpenAiCompatibleConfig,
+        configuredModels: List<ConfiguredModel>,
+    ): Boolean {
         val file = configFile(context, node)
         return try {
-            val json = buildConfigJson(config)
-            file.writeText(json)
+            file.writeText(buildConfigJson(config, configuredModels))
             true
         } catch (e: Exception) {
             false
@@ -176,8 +225,13 @@ object DeviceLocalProviderNodeLoader {
     /**
      * Builds the device-local config JSON from [config].
      * Matches the format that [OpenAiCompatibleConfigLoader.parse] expects.
+     * When [configuredModels] is supplied (and non-empty), an optional
+     * `configuredModels` array is included; otherwise the legacy shape is kept.
      */
-    internal fun buildConfigJson(config: OpenAiCompatibleConfig): String {
+    internal fun buildConfigJson(
+        config: OpenAiCompatibleConfig,
+        configuredModels: List<ConfiguredModel>? = null,
+    ): String {
         val timeoutSeconds = config.requestTimeout.toSeconds()
         return buildString {
             append("{\n")
@@ -186,7 +240,20 @@ object DeviceLocalProviderNodeLoader {
             append("    \"baseUrl\": \"").append(jsonEscape(config.baseUrl)).append("\",\n")
             append("    \"apiKey\": \"").append(jsonEscape(config.apiKey)).append("\",\n")
             append("    \"model\": \"").append(jsonEscape(config.model)).append("\",\n")
-            append("    \"requestTimeoutSeconds\": ").append(timeoutSeconds).append("\n")
+            if (configuredModels != null && configuredModels.isNotEmpty()) {
+                append("    \"requestTimeoutSeconds\": ").append(timeoutSeconds).append(",\n")
+                append("    \"configuredModels\": [\n")
+                configuredModels.forEachIndexed { i, cm ->
+                    append("      { \"modelId\": \"").append(jsonEscape(cm.modelId)).append("\"")
+                    if (cm.normalizedAlias != null) {
+                        append(", \"alias\": \"").append(jsonEscape(cm.normalizedAlias!!)).append("\"")
+                    }
+                    append(" }").append(if (i < configuredModels.lastIndex) "," else "").append("\n")
+                }
+                append("    ]\n")
+            } else {
+                append("    \"requestTimeoutSeconds\": ").append(timeoutSeconds).append("\n")
+            }
             append("  }\n")
             append("}\n")
         }
