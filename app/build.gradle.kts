@@ -24,8 +24,8 @@ android {
         applicationId = "com.androidagent.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
 
         // AG.SHELL-1: the AT Engine handoff bundle v0 is arm64-v8a only, so the
         // final APK carries exactly that ABI (v0 product constraint).
