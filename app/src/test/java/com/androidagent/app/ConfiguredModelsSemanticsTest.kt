@@ -59,10 +59,11 @@ class ConfiguredModelsSemanticsTest {
     }
 
     @Test
-    fun shortDisplayFallsBackToProviderPrefix() {
-        assertEquals("deepseek", ConfiguredModel("deepseek/deepseek-v4-flash-0731").shortDisplay)
-        assertEquals("google", ConfiguredModel("google/gemini-2.5-flash").shortDisplay)
-        assertEquals("qwen", ConfiguredModel("qwen/qwen3-coder").shortDisplay)
+    fun shortDisplayFallsBackToModelSuffix() {
+        // AG.PROVIDER-AWARE-MODEL-UX-0: default = substringAfterLast("/")
+        assertEquals("deepseek-v4-flash-0731", ConfiguredModel("deepseek/deepseek-v4-flash-0731").shortDisplay)
+        assertEquals("gemini-2.5-flash", ConfiguredModel("google/gemini-2.5-flash").shortDisplay)
+        assertEquals("qwen3-coder", ConfiguredModel("qwen/qwen3-coder").shortDisplay)
     }
 
     @Test
@@ -71,13 +72,14 @@ class ConfiguredModelsSemanticsTest {
     }
 
     @Test
-    fun shortDisplayBlankAliasFallsBackToPrefix() {
-        assertEquals("deepseek", ConfiguredModel("deepseek/deepseek-v4-flash-0731", "   ").shortDisplay)
+    fun shortDisplayBlankAliasFallsBackToSuffix() {
+        assertEquals("deepseek-v4-flash-0731", ConfiguredModel("deepseek/deepseek-v4-flash-0731", "   ").shortDisplay)
     }
 
     @Test
     fun modelShortDisplayTopLevelMatchesRule() {
-        assertEquals("deepseek", modelShortDisplay("deepseek/deepseek-v4-flash-0731"))
+        // AG.PROVIDER-AWARE-MODEL-UX-0: default = substringAfterLast("/")
+        assertEquals("deepseek-v4-flash-0731", modelShortDisplay("deepseek/deepseek-v4-flash-0731"))
         assertEquals("V4 Flash", modelShortDisplay("deepseek/deepseek-v4-flash-0731", "V4 Flash"))
         assertEquals("local-qwen", modelShortDisplay("local-qwen"))
         assertEquals("Model", modelShortDisplay(null))

@@ -31,13 +31,15 @@ data class ConfiguredModel(
     /**
      * The short home-composer display name:
      *  - the alias, when present (non-blank after trim)
-     *  - otherwise the modelId's provider prefix (the part before "/")
+     *  - otherwise the modelId's suffix after the LAST "/" (the actual model name)
      *  - otherwise the modelId itself (no "/")
      *
+     * AG.PROVIDER-AWARE-MODEL-UX-0: the default is the model-name suffix, NOT the
+     * provider prefix. `deepseek/deepseek-v4-flash-0731` -> `deepseek-v4-flash-0731`.
      * This is UI display only and never substitutes for [modelId] in requests.
      */
     val shortDisplay: String
-        get() = normalizedAlias ?: modelId.substringBefore("/", modelId)
+        get() = normalizedAlias ?: modelId.substringAfterLast("/", modelId)
 
     override fun toString(): String = "ConfiguredModel(modelId=$modelId, alias=$alias)"
 }
@@ -46,19 +48,19 @@ data class ConfiguredModel(
  * Resolves the home-composer short display name for a model id, given the
  * optional alias the user configured for it.
  *
- * Rule (frozen):
+ * Rule (AG.PROVIDER-AWARE-MODEL-UX-0):
  * ```
  * if alias is non-blank after trim  -> alias.trim()
- * else if modelId contains "/"      -> substringBefore("/")
+ * else if modelId contains "/"      -> substringAfterLast("/")
  * else                              -> modelId
  * ```
  *
- * No brand mapping table is applied: the default display is derived strictly
- * from the model id (a user who wants "DeepSeek" types it as an alias).
+ * No brand mapping table is applied: the default display is the model-name
+ * suffix (a user who wants a shorter name types it as an alias).
  */
 fun modelShortDisplay(modelId: String?, alias: String? = null): String {
     val id = modelId?.trim().orEmpty()
     if (id.isEmpty()) return "Model"
     val a = alias?.trim().orEmpty()
-    return if (a.isNotEmpty()) a else id.substringBefore("/", id)
+    return if (a.isNotEmpty()) a else id.substringAfterLast("/", id)
 }

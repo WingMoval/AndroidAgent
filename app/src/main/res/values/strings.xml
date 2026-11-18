@@ -123,4 +123,6 @@
     <string name="ws_model_long_press_hint">Long-press a model to remove it</string>
     <string name="ws_model_rename">Rename</string>
     <string name="ws_model_alias_saved">Alias saved</string>
+    <!-- AG.PROVIDER-AWARE-MODEL-UX-0: provider-aware Add Model -->
+    <string name="ws_model_select_provider">Select Provider</string>
 </resources>

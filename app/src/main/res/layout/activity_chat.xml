@@ -113,6 +113,45 @@
             android:textColor="@color/ws_text_hint"
             android:textSize="@dimen/ws_text_caption" />
 
+        <!-- ============================ Model Status Row (above composer) ============================ -->
+        <!-- AG.PROVIDER-AWARE-MODEL-UX-0: Provider + Model display moved here from
+             the composer row. No border, no card, no background — just a lightweight
+             clickable text row. -->
+        <LinearLayout
+            android:id="@+id/composer_model_selector"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/ws_spacing_sm"
+            android:layout_marginEnd="@dimen/ws_spacing_sm"
+            android:layout_marginBottom="@dimen/ws_spacing_xs"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/ws_spacing_sm"
+            android:paddingEnd="@dimen/ws_spacing_sm"
+            android:paddingTop="@dimen/ws_spacing_xs"
+            android:paddingBottom="@dimen/ws_spacing_xs">
+
+            <TextView
+                android:id="@+id/composer_model_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/ws_model_placeholder"
+                android:textColor="@color/ws_text_secondary"
+                android:textSize="@dimen/ws_text_label" />
+
+            <ImageView
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="@null"
+                android:src="@android:drawable/arrow_down_float"
+                android:importantForAccessibility="no" />
+        </LinearLayout>
+
         <!-- ============================ Composer (unified surface) ============================ -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -161,40 +200,6 @@
                     android:textColor="@color/ws_text_primary"
                     android:textColorHint="@color/ws_text_hint"
                     android:textSize="@dimen/ws_text_body" />
-
-                <!-- LLM Selector: shows current model + dropdown arrow -->
-                <LinearLayout
-                    android:id="@+id/composer_model_selector"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/ws_spacing_xs"
-                    android:background="?attr/selectableItemBackground"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="@dimen/ws_spacing_xs"
-                    android:paddingEnd="@dimen/ws_spacing_xs"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="4dp">
-
-                    <TextView
-                        android:id="@+id/composer_model_label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="start"
-                        android:maxLines="1"
-                        android:maxWidth="120dp"
-                        android:text="@string/ws_model_placeholder"
-                        android:textColor="@color/ws_text_secondary"
-                        android:textSize="@dimen/ws_text_label" />
-
-                    <ImageView
-                        android:layout_width="12dp"
-                        android:layout_height="12dp"
-                        android:layout_marginStart="4dp"
-                        android:contentDescription="@null"
-                        android:src="@android:drawable/arrow_down_float"
-                        android:importantForAccessibility="no" />
-                </LinearLayout>
 
                 <!-- Send / Stop compact action slot -->
                 <FrameLayout

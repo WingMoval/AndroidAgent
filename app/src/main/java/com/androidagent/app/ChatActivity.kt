@@ -335,10 +335,15 @@ class ChatActivity : AppCompatActivity() {
         //   line 2 = the FULL modelId (always visible, so the real model is identifiable)
         // plus an "Add Model" entry — the ONLY place the discovered /models
         // catalogue is reachable.
+        // AG.PROVIDER-AWARE-MODEL-UX-0: line2 now shows "ProviderName · fullModelId"
+        // so the user can identify which provider owns each model.
         val rows = modelCatalog.map { opt ->
             val meta = modelDisplay[opt.modelId]
-            val line1 = meta?.shortDisplay ?: opt.modelId.substringBefore("/", opt.modelId)
-            PickerRow(line1, opt.modelId, opt)
+            val line1 = meta?.shortDisplay ?: opt.modelId.substringAfterLast("/", opt.modelId)
+            val profile = ProviderProfileStore.load(applicationContext, opt.profileId)
+            val providerName = profile?.displayName ?: ""
+            val line2 = if (providerName.isNotEmpty()) "$providerName · ${opt.modelId}" else opt.modelId
+            PickerRow(line1, line2, opt)
         }
 
         // Build a two-line list: each configured model contributes one row, and the
@@ -526,11 +531,30 @@ class ChatActivity : AppCompatActivity() {
      * catalogue (ONLY here), let the user pick one, optionally give it an alias,
      * and persist it into the profile's configured models.
      */
+    /**
+     * AG.PROVIDER-AWARE-MODEL-UX-0: "Add Model" now first shows a Provider
+     * selector (even when only one profile exists), then discovers models from
+     * the SELECTED provider's /models endpoint.
+     */
     private fun showAddModelDialog() {
-        val profile = activeProfile() ?: run {
+        val profiles = ProviderProfileStore.loadAll(applicationContext)
+        if (profiles.isEmpty()) {
             Toast.makeText(this, "No provider configured", Toast.LENGTH_SHORT).show()
             return
         }
+        // Show provider selector (always, even for a single provider).
+        val labels = profiles.map { it.displayName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.ws_model_select_provider)
+            .setItems(labels) { _, which ->
+                showDiscoveryForProvider(profiles[which])
+            }
+            .setNegativeButton(R.string.ws_cancel, null)
+            .show()
+    }
+
+    /** Discover models from the SELECTED provider's /models endpoint. */
+    private fun showDiscoveryForProvider(profile: ProviderProfile) {
         val progress = AlertDialog.Builder(this)
             .setTitle(R.string.ws_model_add)
             .setMessage(R.string.ws_model_discovering)
@@ -1136,14 +1160,18 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * AG.PROVIDER-AWARE-MODEL-UX-0: home shows "ProviderDisplayName · ModelDisplay"
+     * where ModelDisplay = alias (if set) else modelId suffix after last "/".
+     */
     private fun updateModelLabel() {
-        // AG.PROVIDER-CONFIGURED-MODELS-0: home shows the SHORT display name
-        // (alias, else provider prefix). Never the full long modelId.
-        val cm = activeModel?.let { modelDisplay[it] }
-        modelLabel.text = if (cm != null) {
-            cm.shortDisplay
+        val modelDisplayPart = activeModel?.let { modelDisplay[it] }
+            ?.shortDisplay ?: modelShortDisplay(activeModel)
+        val providerName = activeProfile()?.displayName ?: ""
+        modelLabel.text = if (providerName.isNotEmpty()) {
+            "$providerName · $modelDisplayPart"
         } else {
-            modelShortDisplay(activeModel)
+            modelDisplayPart
         }
     }
 

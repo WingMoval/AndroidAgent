@@ -110,8 +110,9 @@ class WorkspaceShellStateTest {
     // name (alias, else the modelId's provider prefix), never the full long id.
 
     @Test
-    fun modelLabelShowsProviderPrefixWhenNoAlias() {
-        assertEquals("deepseek", workspaceModelLabel("deepseek/deepseek-v4-flash-0731"))
+    fun modelLabelShowsModelSuffixWhenNoAlias() {
+        // AG.PROVIDER-AWARE-MODEL-UX-0: default = substringAfterLast("/")
+        assertEquals("deepseek-v4-flash-0731", workspaceModelLabel("deepseek/deepseek-v4-flash-0731"))
     }
 
     @Test
